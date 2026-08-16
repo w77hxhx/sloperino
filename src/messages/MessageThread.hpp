@@ -1,0 +1,78 @@
+// SPDX-FileCopyrightText: 2022 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <boost/signals2.hpp>
+#include <QString>
+
+#include <memory>
+#include <vector>
+
+class QJsonObject;
+
+namespace chatterino {
+struct Message;
+
+class MessageThread
+{
+public:
+    enum class Subscription : uint8_t {
+        None,
+        Subscribed,
+        Unsubscribed,
+    };
+
+    MessageThread(std::shared_ptr<const Message> rootMessage);
+    ~MessageThread();
+
+    void addToThread(const std::shared_ptr<const Message> &message);
+    void addToThread(const std::weak_ptr<const Message> &message);
+
+    size_t liveCount() const;
+
+    size_t liveCount(const std::shared_ptr<const Message> &exclude) const;
+
+    bool subscribed() const
+    {
+        return this->subscription_ == Subscription::Subscribed;
+    }
+
+    bool unsubscribed() const
+    {
+        return this->subscription_ == Subscription::Unsubscribed;
+    }
+
+    void markSubscribed();
+
+    void markUnsubscribed();
+
+    const QString &rootId() const
+    {
+        return this->rootMessageId_;
+    }
+
+    const std::shared_ptr<const Message> &root() const
+    {
+        return this->rootMessage_;
+    }
+
+    const std::vector<std::weak_ptr<const Message>> &replies() const
+    {
+        return this->replies_;
+    }
+
+    QJsonObject toJson() const;
+
+    boost::signals2::signal<void()> subscriptionUpdated;
+
+private:
+    const QString rootMessageId_;
+    const std::shared_ptr<const Message> rootMessage_;
+    std::vector<std::weak_ptr<const Message>> replies_;
+
+    Subscription subscription_ = Subscription::None;
+};
+
+}  // namespace chatterino

@@ -1,0 +1,43 @@
+// SPDX-FileCopyrightText: 2023 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <QtGlobal>
+
+#ifdef CHATTERINO_WITH_CRASHPAD
+#    include <client/crashpad_client.h>
+
+#    include <memory>
+#endif
+
+namespace chatterino {
+
+class Args;
+class Paths;
+
+class CrashHandler
+{
+    const Paths &paths;
+
+public:
+    explicit CrashHandler(const Paths &paths_);
+
+    bool shouldRecover() const
+    {
+        return this->shouldRecover_;
+    }
+
+    void saveShouldRecover(bool value);
+
+private:
+    bool shouldRecover_ = false;
+};
+
+#ifdef CHATTERINO_WITH_CRASHPAD
+std::unique_ptr<crashpad::CrashpadClient> installCrashHandler(
+    const Args &args, const Paths &paths);
+#endif
+
+}  // namespace chatterino

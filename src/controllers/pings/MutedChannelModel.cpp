@@ -1,0 +1,30 @@
+// SPDX-FileCopyrightText: 2018 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "controllers/pings/MutedChannelModel.hpp"
+
+#include "Application.hpp"
+#include "singletons/Settings.hpp"
+#include "util/StandardItemHelper.hpp"
+
+namespace chatterino {
+
+MutedChannelModel::MutedChannelModel(QObject *parent)
+    : SignalVectorModel<QString>(1, parent)
+{
+}
+
+QString MutedChannelModel::getItemFromRow(std::vector<QStandardItem *> &row,
+                                          const QString &original)
+{
+    return QString(row[0]->data(Qt::DisplayRole).toString());
+}
+
+void MutedChannelModel::getRowFromItem(const QString &item,
+                                       std::vector<QStandardItem *> &row)
+{
+    setStringItem(row[0], item);
+}
+
+}  // namespace chatterino

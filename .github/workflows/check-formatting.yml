@@ -1,0 +1,36 @@
+---
+name: Check formatting
+
+on:
+  push:
+    branches:
+      - leafyrino
+  pull_request:
+  merge_group:
+
+concurrency:
+  group: check-formatting-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: apt-get update
+        run: sudo apt-get update
+
+      - name: Install clang-format
+        run: sudo apt-get -y install dos2unix
+
+      - name: Check formatting
+        uses: DoozyX/clang-format-lint-action@v0.20
+        with:
+          source: "./src ./tests/src ./benchmarks/src ./mocks/include ./lib/twitch-eventsub-ws/include ./lib/twitch-eventsub-ws/src"
+          extensions: "hpp,cpp"
+          clangFormatVersion: 19
+
+      - name: Check line-endings
+        run: ./scripts/check-line-endings.sh

@@ -1,0 +1,103 @@
+#include "providers/chatterino/ChatterinoBadges.hpp"
+
+#include "common/network/NetworkRequest.hpp"
+#include "common/network/NetworkResult.hpp"
+#include "messages/Emote.hpp"
+#include "messages/Image.hpp"
+
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QUrl>
+
+namespace chatterino {
+
+ChatterinoBadges::ChatterinoBadges()
+{
+    this->loadChatterinoBadges();
+}
+
+std::optional<EmotePtr> ChatterinoBadges::getBadge(const UserId &id)
+{
+    std::shared_lock lock(this->mutex_);
+
+    auto it = this->badgeMap.find(id.string);
+    if (it != this->badgeMap.end())
+    {
+        return this->emotes[it->second];
+    }
+    return std::nullopt;
+}
+
+EmotePtr ChatterinoBadges::getKickBadge(uint64_t kickID)
+{
+    auto it = this->kickMapping.find(kickID);
+    if (it != this->kickMapping.end())
+    {
+        return this->emotes[it->second];
+    }
+    return {};
+}
+
+void ChatterinoBadges::setKickMapping(const QString &twitchID, uint64_t kickID)
+{
+    // Lookup by Twitch ID first. Assume that most users don't have a Chatterino badge.
+    auto existing = this->badgeMap.find(twitchID);
+    if (existing == this->badgeMap.end())
+    {
+        return;
+    }
+    this->kickMapping.emplace(kickID, existing->second);
+}
+
+void ChatterinoBadges::loadChatterinoBadges()
+{
+    static QUrl url("https://api.chatterino.com/badges");
+
+    NetworkRequest(url)
+        .concurrent()
+        .onSuccess([this](auto result) {
+            auto jsonRoot = result.parseJson();
+
+            std::unique_lock lock(this->mutex_);
+
+            int index = 0;
+            for (const auto &jsonBadgeValue :
+                 jsonRoot.value("badges").toArray())
+            {
+                auto jsonBadge = jsonBadgeValue.toObject();
+
+                constexpr QSize baseSize(18, 18);
+                auto tooltip = jsonBadge.value("tooltip").toString();
+                auto emote = Emote{
+                    .name = EmoteName{u"chatterino:" % tooltip},
+                    .images =
+                        ImageSet{
+                            Image::fromUrl(
+                                Url{jsonBadge.value("image1").toString()}, 1.0,
+                                baseSize),
+                            Image::fromUrl(
+                                Url{jsonBadge.value("image2").toString()}, 0.5,
+                                baseSize * 2),
+                            Image::fromUrl(
+                                Url{jsonBadge.value("image3").toString()}, 0.25,
+                                baseSize * 4),
+                        },
+                    .tooltip = Tooltip{tooltip},
+                    .homePage = Url{},
+                };
+
+                this->emotes.push_back(
+                    std::make_shared<const Emote>(std::move(emote)));
+
+                for (const auto &user : jsonBadge.value("users").toArray())
+                {
+                    this->badgeMap[user.toString()] = index;
+                }
+                ++index;
+            }
+        })
+        .execute();
+}
+
+}  // namespace chatterino

@@ -1,0 +1,35 @@
+// SPDX-FileCopyrightText: 2018 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "common/SignalVectorModel.hpp"
+
+#include <QObject>
+
+namespace chatterino {
+
+class ModerationAction;
+
+class ModerationActionModel : public SignalVectorModel<ModerationAction>
+{
+public:
+    explicit ModerationActionModel(QObject *parent);
+
+    enum Column {
+        Command = 0,
+        Icon = 1,
+    };
+
+protected:
+    ModerationAction getItemFromRow(std::vector<QStandardItem *> &row,
+                                    const ModerationAction &original) override;
+
+    void getRowFromItem(const ModerationAction &item,
+                        std::vector<QStandardItem *> &row) override;
+
+    friend class HighlightController;
+};
+
+}  // namespace chatterino

@@ -1,0 +1,33 @@
+// SPDX-FileCopyrightText: 2023 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "common/Channel.hpp"
+#include "controllers/completion/sources/CommandSource.hpp"
+#include "controllers/completion/sources/EmoteSource.hpp"
+#include "controllers/completion/sources/Source.hpp"
+#include "controllers/completion/sources/UserSource.hpp"
+
+#include <functional>
+#include <memory>
+
+namespace chatterino::completion {
+
+class UnifiedSource : public Source
+{
+public:
+    UnifiedSource(std::vector<std::unique_ptr<Source>> sources);
+
+    void update(const QString &query) override;
+    void addToListModel(GenericListModel &model,
+                        size_t maxCount = 0) const override;
+    void addToStringList(QStringList &list, size_t maxCount = 0,
+                         bool isFirstWord = false) const override;
+
+private:
+    std::vector<std::unique_ptr<Source>> sources_;
+};
+
+}  // namespace chatterino::completion

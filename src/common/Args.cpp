@@ -1,0 +1,376 @@
+// SPDX-FileCopyrightText: 2019 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "common/Args.hpp"
+
+#include "common/QLogging.hpp"
+#include "debug/AssertInGuiThread.hpp"
+#include "singletons/Paths.hpp"
+#include "singletons/WindowManager.hpp"
+#include "util/AttachToConsole.hpp"
+#include "util/CombinePath.hpp"
+#include "widgets/Window.hpp"
+
+#include <QApplication>
+#include <QCommandLineParser>
+#include <QDebug>
+#include <QRegularExpression>
+#include <QStringList>
+#include <QUuid>
+
+namespace {
+
+using namespace chatterino;
+
+template <class... Args>
+QCommandLineOption hiddenOption(Args... args)
+{
+    QCommandLineOption opt(args...);
+    opt.setFlags(QCommandLineOption::HiddenFromHelp);
+    return opt;
+}
+
+QStringList extractCommandLine(
+    const QCommandLineParser &parser,
+    std::initializer_list<QCommandLineOption> options)
+{
+    QStringList args;
+    for (const auto &option : options)
+    {
+        if (parser.isSet(option))
+        {
+            auto optionName = option.names().first();
+            if (optionName.length() == 1)
+            {
+                optionName.prepend(u'-');
+            }
+            else
+            {
+                optionName.prepend("--");
+            }
+
+            auto values = parser.values(option);
+            if (values.empty())
+            {
+                args += optionName;
+            }
+            else
+            {
+                for (const auto &value : values)
+                {
+                    args += optionName;
+                    args += value;
+                }
+            }
+        }
+    }
+    return args;
+}
+
+std::optional<Args::Channel> parseActivateOption(QString input)
+{
+    auto colon = input.indexOf(u':');
+    if (colon >= 0)
+    {
+        auto ty = input.left(colon);
+        if (ty != u"t")
+        {
+            qCWarning(chatterinoApp).nospace()
+                << "Failed to parse active channel (unknown type: " << ty
+                << ")";
+            return std::nullopt;
+        }
+
+        input = input.mid(colon + 1);
+    }
+
+    return Args::Channel{
+        .provider = ProviderId::Twitch,
+        .name = input,
+    };
+}
+
+std::vector<Args::Channel> parseCustomChannels(const QString &argValue)
+{
+    std::vector<Args::Channel> list;
+
+    QStringList channelArgList = argValue.split(";");
+    for (const QString &channelArg : channelArgList)
+    {
+        if (channelArg.isEmpty())
+        {
+            continue;
+        }
+
+        // Twitch is default platform
+        QString platform = "t";
+        QString channelName = channelArg;
+
+        const QRegularExpression regExp("(.):(.*)");
+        if (auto match = regExp.match(channelArg); match.hasMatch())
+        {
+            platform = match.captured(1);
+            channelName = match.captured(2);
+        }
+
+        // Twitch (default)
+        if (platform == "t")
+        {
+            list.push_back(Args::Channel{
+                .provider = ProviderId::Twitch,
+                .name = channelName,
+            });
+        }
+    }
+
+    list.shrink_to_fit();
+    return list;
+}
+
+}  // namespace
+
+namespace chatterino {
+
+Args::Args(const QApplication &app)
+{
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Leafyrino Client for Twitch Chat");
+    parser.addHelpOption();
+
+    auto crashRecoveryOption = hiddenOption("crash-recovery");
+    auto remoteRestartOption = hiddenOption("remote-restart");
+    auto exceptionCodeOption = hiddenOption("cr-exception-code", "", "code");
+    auto exceptionMessageOption =
+        hiddenOption("cr-exception-message", "", "message");
+
+    auto parentWindowOption = hiddenOption("parent-window");
+    auto parentWindowIdOption =
+        hiddenOption("x-attach-split-to-window", "", "window-id");
+
+    auto verboseOption = QCommandLineOption(
+        QStringList{"v", "verbose"}, "Attaches to the Console on windows, "
+                                     "allowing you to see debug output.");
+
+    QCommandLineOption safeModeOption(
+        "safe-mode", "Starts Chatterino without loading Plugins and always "
+                     "show the settings button.");
+
+    QCommandLineOption loginOption(
+        "login",
+        "Starts Chatterino logged in as the account matching the supplied "
+        "username. If the supplied username does not match any account, "
+        "Chatterino starts logged in as anonymous.",
+        "username");
+
+    auto channelLayout = QCommandLineOption(
+        {"c", "channels"},
+        "Joins only supplied channels on startup. Use letters with colons to "
+        "specify platform. Only Twitch channels are supported at the moment.\n"
+        "If platform isn't specified, default is Twitch.",
+        "t:channel1;t:channel2;...");
+
+    QCommandLineOption activateOption(
+        {"a", "activate"},
+        "Activate the tab with this channel or add one in the main "
+        "window.\nOnly Twitch is "
+        "supported at the moment (prefix: 't:').\nIf the platform isn't "
+        "specified, Twitch is assumed.",
+        "t:channel");
+
+    QCommandLineOption useOldScalingOption(
+        "use-old-scaling",
+        "Starts Chatterino with legacy scaling (96 DPI) for this run only. "
+        "To persist it, enable \"Use legacy scaling\" in Settings → General.");
+
+    QCommandLineOption portableEnable("portable", "Enable portable mode.");
+
+    QCommandLineOption portableDirectory(
+        "portable-dir", "Directory to use when portable mode is enabled.",
+        "directory");
+
+#ifndef NDEBUG
+    QCommandLineOption useLocalEventsubOption(
+        "use-local-eventsub",
+        "Use the local eventsub server at 127.0.0.1:3012.");
+#endif
+
+    parser.addOptions({
+        {{"V", "version"}, "Displays version information."},
+        crashRecoveryOption,
+        remoteRestartOption,
+        exceptionCodeOption,
+        exceptionMessageOption,
+        parentWindowOption,
+        parentWindowIdOption,
+        verboseOption,
+        safeModeOption,
+        loginOption,
+        channelLayout,
+        activateOption,
+        useOldScalingOption,
+        portableEnable,
+        portableDirectory,
+#ifndef NDEBUG
+        useLocalEventsubOption,
+#endif
+    });
+
+    if (!parser.parse(app.arguments()))
+    {
+        qCWarning(chatterinoArgs)
+            << "Unhandled options:" << parser.unknownOptionNames();
+    }
+
+    if (parser.isSet("help"))
+    {
+        attachToConsole();
+        qInfo().noquote() << parser.helpText();
+        ::exit(EXIT_SUCCESS);
+    }
+
+    const QStringList args = parser.positionalArguments();
+    this->shouldRunBrowserExtensionHost =
+        (args.size() > 0 && (args[0].startsWith("chrome-extension://") ||
+                             args[0].endsWith(".json")));
+
+    if (parser.isSet(channelLayout))
+    {
+        this->customChannels = parseCustomChannels(parser.value(channelLayout));
+        if (!this->customChannels.empty())
+        {
+            this->dontSaveSettings = true;
+        }
+    }
+
+    this->verbose = parser.isSet(verboseOption);
+
+    this->printVersion = parser.isSet("V");
+
+    this->crashRecovery = parser.isSet(crashRecoveryOption);
+    this->remoteRestart = parser.isSet(remoteRestartOption);
+    if (parser.isSet(exceptionCodeOption))
+    {
+        this->exceptionCode =
+            static_cast<uint32_t>(parser.value(exceptionCodeOption).toULong());
+    }
+    if (parser.isSet(exceptionMessageOption))
+    {
+        this->exceptionMessage = parser.value(exceptionMessageOption);
+    }
+
+    if (parser.isSet(parentWindowIdOption))
+    {
+        this->isFramelessEmbed = true;
+        this->dontSaveSettings = true;
+        this->dontLoadMainWindow = true;
+
+        this->parentWindowId = parser.value(parentWindowIdOption).toULongLong();
+    }
+    if (parser.isSet(safeModeOption))
+    {
+        this->safeMode = true;
+    }
+
+    if (parser.isSet(loginOption))
+    {
+        this->initialLogin = parser.value(loginOption);
+    }
+
+    if (parser.isSet(activateOption))
+    {
+        this->activateChannel =
+            parseActivateOption(parser.value(activateOption));
+    }
+
+    if (parser.isSet(useOldScalingOption))
+    {
+        this->useOldScaling = true;
+    }
+
+    if (parser.isSet(portableEnable))
+    {
+        this->portableEnable = true;
+    }
+
+    if (parser.isSet(portableDirectory))
+    {
+        this->portableDirectory =
+            QDir(parser.value(portableDirectory)).absolutePath();
+    }
+
+#ifndef NDEBUG
+    if (parser.isSet(useLocalEventsubOption))
+    {
+        this->useLocalEventsub = true;
+    }
+#endif
+
+    this->currentArguments_ = extractCommandLine(parser, {
+                                                             verboseOption,
+                                                             safeModeOption,
+                                                             loginOption,
+                                                             channelLayout,
+                                                             activateOption,
+                                                         });
+}
+
+QStringList Args::currentArguments() const
+{
+    return this->currentArguments_;
+}
+
+std::optional<WindowLayout> Args::makeCustomChannelLayout(
+    const QString &windowLayoutFile) const
+{
+    if (this->customChannels.empty())
+    {
+        return {};
+    }
+
+    WindowLayout layout;
+    WindowDescriptor window;
+
+    window.type_ = WindowType::Main;
+
+    // Load main window layout from config file so we can use the same geometry
+    const QRect configMainLayout = [windowLayoutFile] {
+        const WindowLayout configLayout =
+            WindowLayout::loadFromFile(windowLayoutFile);
+
+        for (const WindowDescriptor &window : configLayout.windows_)
+        {
+            if (window.type_ != WindowType::Main)
+            {
+                continue;
+            }
+
+            return window.geometry_;
+        }
+
+        return QRect(-1, -1, -1, -1);
+    }();
+
+    window.geometry_ = configMainLayout;
+
+    for (const Channel &channel : this->customChannels)
+    {
+        assert(channel.provider == ProviderId::Twitch);
+
+        TabDescriptor tab = {
+            .selected_ = window.tabs_.empty(),
+            .rootNode_ = SplitNodeDescriptor{{
+                .type_ = "twitch",
+                .channelName_ = channel.name,
+            }},
+        };
+
+        window.tabs_.emplace_back(std::move(tab));
+    }
+
+    layout.windows_.emplace_back(std::move(window));
+
+    return layout;
+}
+
+}  // namespace chatterino

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Leafyrino
+GenericName=Leafyrino
+Comment=Chat client for Twitch
+Exec=Leafyrino
+Icon=com.leafyzito.leafyrino
+Terminal=false
+Categories=Network;InstantMessaging;
+StartupWMClass=chatterino

@@ -1,0 +1,46 @@
+// SPDX-FileCopyrightText: 2018 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "common/SignalVectorModel.hpp"
+#include "util/QStringHash.hpp"
+
+#include <unordered_map>
+
+namespace chatterino {
+
+class HotkeyController;
+class Hotkey;
+
+class HotkeyModel : public SignalVectorModel<std::shared_ptr<Hotkey>>
+{
+public:
+    HotkeyModel(QObject *parent);
+
+protected:
+    std::shared_ptr<Hotkey> getItemFromRow(
+        std::vector<QStandardItem *> &row,
+        const std::shared_ptr<Hotkey> &original) override;
+
+    void getRowFromItem(const std::shared_ptr<Hotkey> &item,
+                        std::vector<QStandardItem *> &row) override;
+
+    int beforeInsert(const std::shared_ptr<Hotkey> &item,
+                     std::vector<QStandardItem *> &row,
+                     int proposedIndex) override;
+
+    void afterRemoved(const std::shared_ptr<Hotkey> &item,
+                      std::vector<QStandardItem *> &row, int index) override;
+
+    friend class HotkeyController;
+
+private:
+    std::tuple<int, int> getCurrentAndNextCategoryModelIndex(
+        const QString &category) const;
+
+    std::unordered_map<QString, int> categoryCount_;
+};
+
+}  // namespace chatterino

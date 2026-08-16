@@ -1,0 +1,115 @@
+# To add yourself to this list, or to update one of your fields, send a PR with this file updated
+# This list is displayed in the About section of the preferences window
+# TODO: Parse this into a CONTRIBUTORS.md too
+
+# Adding yourself? Copy and paste this template at the bottom of this file and fill in the fields in a PR!
+# Name | Link | Avatar (Loaded as a resource, avatars are not required).
+
+# Name should preferably be your GitHub username, but can be another alias you use online (e.g. your Twitch username).
+# If you use a name that's not your GitHub username, please clarify in the pull request description.
+#
+# Link should be a link to your GitHub profile.
+#
+# Avatar should be located in avatars/ directory. Its size should be 128x128 (get it from https://github.com/username.png?size=128), and may be a PNG or JPG.
+# Keep the avatar under 10KB.
+# Make sure to reduce avatar's size as much as possible with tool like pngcrush or optipng (if the file is in png format).
+
+@header Maintainers
+
+fourtf | https://fourtf.com | :/avatars/fourtf.png
+pajlada | https://pajlada.se | :/avatars/pajlada.png
+
+@header Collaborators
+
+zneix | https://github.com/zneix | :/avatars/zneix.png
+Mm2PL | https://github.com/mm2pl | :/avatars/mm2pl.png
+YungLPR | https://github.com/leon-richardt |
+dnsge | https://github.com/dnsge |
+Felanbird | https://github.com/Felanbird |
+kornes | https://github.com/kornes |
+
+@header Contributors
+
+Cranken | https://github.com/Cranken |
+hemirt | https://github.com/hemirt |
+LajamerrMittesdine | https://github.com/LajamerrMittesdine |
+coral | https://github.com/coral |
+apa420 | https://github.com/apa420 |
+DatGuy1 | https://github.com/DatGuy1 |
+Confuseh | https://github.com/Confuseh |
+ch-ems | https://github.com/ch-ems |
+Bur0k | https://github.com/Bur0k |
+nuuls | https://github.com/nuuls |
+Chronophylos | https://github.com/Chronophylos |
+Ckath | https://github.com/Ckath |
+matijakevic | https://github.com/matijakevic |
+nforro | https://github.com/nforro |
+vanolpfan | https://github.com/vanolpfan |
+23rd | https://github.com/23rd |
+machgo | https://github.com/machgo |
+TranRed | https://github.com/TranRed |
+RAnders00 | https://github.com/RAnders00 |
+gempir | https://github.com/gempir |
+mfmarlow | https://github.com/mfmarlow |
+y0dax | https://github.com/y0dax |
+Iulian Onofrei | https://github.com/revolter | :/avatars/revolter.jpg
+matthewde | https://github.com/m4tthewde | :/avatars/matthewde.jpg
+Karar Al-Remahy | https://github.com/KararTY | :/avatars/kararty.png
+Talen | https://github.com/talneoran |
+Defman21 | https://github.com/Defman21 |
+vilgotf | https://github.com/vilgotf |
+Ian321 | https://github.com/Ian321 |
+Yardanico | https://github.com/Yardanico |
+huti26 | https://github.com/huti26 |
+chrisduerr | https://github.com/chrisduerr |
+ynot01 | https://github.com/ynot01 | :/avatars/ynot01.png
+SLCH | https://github.com/SLCH | :/avatars/slch.png
+ALazyMeme | https://github.com/alazymeme | :/avatars/alazymeme.png
+xHeaveny_ | https://github.com/xHeaveny | :/avatars/xheaveny.png
+1xelerate | https://github.com/xel86 | :/avatars/_1xelerate.png
+acdvs | https://github.com/acdvs |
+karl-police | https://github.com/karl-police | :/avatars/karlpolice.png
+brian6932 | https://github.com/brian6932 | :/avatars/brian6932.png
+hicupalot | https://github.com/hicupalot | :/avatars/hicupalot.png
+iProdigy | https://github.com/iProdigy | :/avatars/iprodigy.png
+Jaxkey | https://github.com/Jaxkey | :/avatars/jaxkey.png
+Explooosion | https://github.com/Explooosion-code | :/avatars/explooosion_code.png
+mohad12211 | https://github.com/mohad12211 | :/avatars/mohad12211.png
+Wissididom | https://github.com/Wissididom | :/avatars/wissididom.png
+03y | https://github.com/03y |
+ScrubN | https://github.com/ScrubN |
+Cyclone | https://github.com/PsycloneTM | :/avatars/cyclone.png
+2547techno | https://github.com/2547techno | :/avatars/techno.png
+ZonianMidian | https://github.com/ZonianMidian | :/avatars/zonianmidian.png
+olafyang | https://github.com/olafyang |
+chrrs | https://github.com/chrrs |
+4rneee | https://github.com/4rneee |
+crazysmc | https://github.com/crazysmc | :/avatars/crazysmc.png
+SputNikPlop | https://github.com/SputNikPlop |
+fraxx | https://github.com/fraxxio | :/avatars/fraxx.png
+KleberPF | https://github.com/KleberPF |
+nealxm | https://github.com/nealxm | :/avatars/nealxm.png
+Niller2005 | https://github.com/Niller2005 | :/avatars/niller2005.png
+JakeRYW | https://github.com/JakeRYW | :/avatars/jakeryw.png
+maliByatzes | https://github.com/maliByatzes | :/avatars/maliByatzes.png
+Zakary2841 | https://github.com/Zakary2841 | :/avatars/zakary2841.png
+MiguVT | https://github.com/MiguVT | :/avatars/miguvt.png
+jacob-thompson | https://github.com/jacob-thompson |
+Jujufrost | https://github.com/Jujufrost |
+occluder | https://github.com/occluder | :/avatars/occluder.png
+knobby-tires | https://github.com/knobby-tires | :/avatars/knobby-tires.jpg
+droidicus | https://github.com/droidicus | :/avatars/droidicus.png
+vincent0955 | https://github.com/vincent0955 | :/avatars/vincent0955.png
+isgkm | https://github.com/isgkm |
+otaviobia | https://github.com/otaviobia | :/avatars/otaviobia.png
+obertura777 | https://github.com/obertura777 | :/avatars/obertura777.png
+Supa | https://github.com/0Supa | :/avatars/supa.jpg
+devPoland | https://github.com/devPoland | :/avatars/devpoland.png
+Solomoncyj | https://github.com/solomoncyj |
+Juliapixel | https://github.com/Juliapixel | :/avatars/juliapixel.png
+Nevicar | https://github.com/Nevicar | :/avatars/nevicar.png
+Leafyzito | https://github.com/leafyzito | :/avatars/leafyzito.png
+tlos | https://github.com/realtlos | :/avatars/realtlos.jpg
+ArmpitsLover420 | https://github.com/JEC15 | :/avatars/armpitslover420.jpg
+
+# Add yourself to the list above this comment

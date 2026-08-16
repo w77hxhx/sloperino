@@ -1,0 +1,89 @@
+// SPDX-FileCopyrightText: 2018 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "common/Atomic.hpp"
+#include "util/Expected.hpp"
+
+#include <QString>
+#include <QThread>
+
+#include <optional>
+#include <vector>
+
+namespace chatterino::nm::detail {
+
+enum class WriteManifestError : std::uint8_t {
+    FailedToCreateDirectory,
+    FailedToCreateFile,
+};
+
+Expected<void, WriteManifestError> writeManifestTo(QString directory,
+                                                   const QString &nmDirectory,
+                                                   const QString &filename,
+                                                   const QJsonDocument &json);
+
+}  // namespace chatterino::nm::detail
+
+namespace chatterino {
+
+class Application;
+class Paths;
+class Channel;
+class Modes;
+
+using ChannelPtr = std::shared_ptr<Channel>;
+
+void registerNmHost(const Modes &modes, const Paths &paths);
+std::string &getNmQueueName(const Paths &paths);
+
+Atomic<std::optional<QString>> &nmIpcError();
+
+namespace nm::client {
+
+void sendMessage(const QByteArray &array);
+void writeToCout(const QByteArray &array);
+
+}  // namespace nm::client
+
+class NativeMessagingServer final
+{
+public:
+    NativeMessagingServer();
+    NativeMessagingServer(const NativeMessagingServer &) = delete;
+    NativeMessagingServer(NativeMessagingServer &&) = delete;
+    NativeMessagingServer &operator=(const NativeMessagingServer &) = delete;
+    NativeMessagingServer &operator=(NativeMessagingServer &&) = delete;
+    ~NativeMessagingServer();
+
+    void start();
+
+private:
+    class ReceiverThread : public QThread
+    {
+    public:
+        ReceiverThread(NativeMessagingServer &parent);
+
+        void run() override;
+
+    private:
+        void handleMessage(const QJsonObject &root);
+        void handleSelect(const QJsonObject &root);
+        void handleDetach(const QJsonObject &root);
+        void handleSync(const QJsonObject &root);
+
+        NativeMessagingServer &parent_;
+    };
+
+    void syncChannels(const QJsonArray &twitchChannels);
+
+    ReceiverThread *thread;
+
+    std::vector<ChannelPtr> channelWarmer_;
+
+    friend ReceiverThread;
+};
+
+}  // namespace chatterino

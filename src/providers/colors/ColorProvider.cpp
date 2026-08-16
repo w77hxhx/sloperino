@@ -1,0 +1,200 @@
+// SPDX-FileCopyrightText: 2020 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "providers/colors/ColorProvider.hpp"
+
+#include "common/QLogging.hpp"
+#include "controllers/highlights/HighlightPhrase.hpp"
+#include "singletons/Settings.hpp"
+
+#include <QSet>
+
+namespace chatterino {
+
+const ColorProvider &ColorProvider::instance()
+{
+    static ColorProvider instance;
+    return instance;
+}
+
+ColorProvider::ColorProvider()
+{
+    this->initTypeColorMap();
+    this->initDefaultColors();
+}
+
+std::shared_ptr<QColor> ColorProvider::color(ColorType type) const
+{
+    return this->typeColorMap_.at(type);
+}
+
+QSet<QColor> ColorProvider::recentColors() const
+{
+    QSet<QColor> retVal;
+
+    for (const auto &phrase : getSettings()->highlightedMessages)
+    {
+        retVal.insert(*phrase.getColor());
+    }
+
+    for (const auto &userHl : getSettings()->highlightedUsers)
+    {
+        retVal.insert(*userHl.getColor());
+    }
+
+    retVal.insert(*this->color(ColorType::SelfHighlight));
+    retVal.insert(*this->color(ColorType::Subscription));
+    retVal.insert(*this->color(ColorType::Follow));
+    retVal.insert(*this->color(ColorType::WatchStreak));
+    retVal.insert(*this->color(ColorType::Whisper));
+    retVal.insert(*this->color(ColorType::AnnouncementHighlight));
+
+    return retVal;
+}
+
+const std::vector<QColor> &ColorProvider::defaultColors() const
+{
+    return this->defaultColors_;
+}
+
+void ColorProvider::initTypeColorMap()
+{
+    auto initColor = [this](ColorType colorType, QStringSetting &setting,
+                            QColor fallbackColor) {
+        const auto &colorString = setting.getValue();
+        QColor color(colorString);
+        if (color.isValid())
+        {
+            this->typeColorMap_.insert({
+                colorType,
+                std::make_shared<QColor>(color),
+            });
+        }
+        else
+        {
+            this->typeColorMap_.insert({
+                colorType,
+                std::make_shared<QColor>(fallbackColor),
+            });
+        }
+
+        setting.connect(
+            [this, colorType](const auto &colorString) {
+                QColor color(colorString);
+                if (color.isValid())
+                {
+                    *this->typeColorMap_.at(colorType) = color;
+                }
+                else
+                {
+                    qCWarning(chatterinoCommon)
+                        << "Updated"
+                        << static_cast<std::underlying_type_t<ColorType>>(
+                               colorType)
+                        << "to invalid color" << colorString;
+                }
+            },
+            false);
+    };
+
+    initColor(ColorType::SelfHighlight, getSettings()->selfHighlightColor,
+              HighlightPhrase::FALLBACK_HIGHLIGHT_COLOR);
+
+    initColor(ColorType::SelfMessageHighlight,
+              getSettings()->selfMessageHighlightColor,
+              HighlightPhrase::FALLBACK_SELF_MESSAGE_HIGHLIGHT_COLOR);
+
+    initColor(ColorType::Subscription, getSettings()->subHighlightColor,
+              HighlightPhrase::FALLBACK_SUB_COLOR);
+
+    initColor(ColorType::Follow, getSettings()->followHighlightColor,
+              HighlightPhrase::FALLBACK_FOLLOW_COLOR);
+
+    initColor(ColorType::WatchStreak, getSettings()->watchStreakHighlightColor,
+              HighlightPhrase::FALLBACK_WATCH_STREAK_COLOR);
+
+    initColor(ColorType::Whisper, getSettings()->whisperHighlightColor,
+              HighlightPhrase::FALLBACK_HIGHLIGHT_COLOR);
+
+    initColor(ColorType::RedeemedHighlight,
+              getSettings()->redeemedHighlightColor,
+              HighlightPhrase::FALLBACK_REDEEMED_HIGHLIGHT_COLOR);
+
+    initColor(ColorType::FirstMessageHighlight,
+              getSettings()->firstMessageHighlightColor,
+              HighlightPhrase::FALLBACK_FIRST_MESSAGE_HIGHLIGHT_COLOR);
+
+    initColor(ColorType::ThreadMessageHighlight,
+              getSettings()->threadHighlightColor,
+              HighlightPhrase::FALLBACK_THREAD_HIGHLIGHT_COLOR);
+
+    initColor(ColorType::AutomodHighlight, getSettings()->automodHighlightColor,
+              HighlightPhrase::FALLBACK_AUTOMOD_HIGHLIGHT_COLOR);
+
+    initColor(ColorType::AnnouncementHighlight,
+              getSettings()->announcementHighlightColor,
+              HighlightPhrase::FALLBACK_ANNOUNCEMENT_HIGHLIGHT_COLOR);
+
+    this->typeColorMap_.insert({
+        ColorType::AnnouncementBlue,
+        std::make_shared<QColor>(
+            HighlightPhrase::ANNOUNCEMENT_BLUE_HIGHLIGHT_COLOR),
+    });
+    this->typeColorMap_.insert({
+        ColorType::AnnouncementGreen,
+        std::make_shared<QColor>(
+            HighlightPhrase::ANNOUNCEMENT_GREEN_HIGHLIGHT_COLOR),
+    });
+    this->typeColorMap_.insert({
+        ColorType::AnnouncementOrange,
+        std::make_shared<QColor>(
+            HighlightPhrase::ANNOUNCEMENT_ORANGE_HIGHLIGHT_COLOR),
+    });
+    this->typeColorMap_.insert({
+        ColorType::AnnouncementPurple,
+        std::make_shared<QColor>(
+            HighlightPhrase::ANNOUNCEMENT_PURPLE_HIGHLIGHT_COLOR),
+    });
+}
+
+void ColorProvider::initDefaultColors()
+{
+    this->defaultColors_.emplace_back(75, 127, 107, 100);
+    this->defaultColors_.emplace_back(105, 127, 63, 100);
+    this->defaultColors_.emplace_back(63, 83, 127, 100);
+    this->defaultColors_.emplace_back(72, 127, 63, 100);
+
+    this->defaultColors_.emplace_back(31, 141, 43, 115);
+    this->defaultColors_.emplace_back(28, 126, 141, 90);
+    this->defaultColors_.emplace_back(136, 141, 49, 90);
+    this->defaultColors_.emplace_back(143, 48, 24, 127);
+    this->defaultColors_.emplace_back(28, 141, 117, 90);
+
+    this->defaultColors_.push_back(HighlightPhrase::FALLBACK_HIGHLIGHT_COLOR);
+    this->defaultColors_.push_back(HighlightPhrase::FALLBACK_SUB_COLOR);
+}
+
+ColorType colorTypeFromHelixAnnouncementColor(HelixAnnouncementColor color,
+                                              bool enableColoredAnnouncements)
+{
+    if (enableColoredAnnouncements)
+    {
+        switch (color)
+        {
+            case HelixAnnouncementColor::Primary:
+                return ColorType::AnnouncementHighlight;
+            case HelixAnnouncementColor::Blue:
+                return ColorType::AnnouncementBlue;
+            case HelixAnnouncementColor::Green:
+                return ColorType::AnnouncementGreen;
+            case HelixAnnouncementColor::Orange:
+                return ColorType::AnnouncementOrange;
+            case HelixAnnouncementColor::Purple:
+                return ColorType::AnnouncementPurple;
+        }
+    }
+    return ColorType::AnnouncementHighlight;
+}
+
+}  // namespace chatterino

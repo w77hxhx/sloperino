@@ -1,0 +1,900 @@
+#include "Application.hpp"
+
+#include "common/Args.hpp"
+#include "common/Channel.hpp"
+#include "common/Modes.hpp"
+#include "common/Version.hpp"
+#include "controllers/accounts/AccountController.hpp"
+#include "controllers/commands/Command.hpp"
+#include "controllers/commands/CommandController.hpp"
+#include "controllers/highlights/HighlightController.hpp"
+#include "controllers/hotkeys/HotkeyController.hpp"
+#include "controllers/ignores/IgnoreController.hpp"
+#include "controllers/notifications/NotificationController.hpp"
+#include "controllers/sound/ISoundController.hpp"
+#include "controllers/spellcheck/SpellChecker.hpp"
+#include "providers/bttv/BttvBadges.hpp"
+#include "providers/bttv/BttvEmotes.hpp"
+#include "providers/ffz/FfzEmotes.hpp"
+#include "providers/kick/KickChatServer.hpp"
+#include "providers/firehose/FirehoseManager.hpp"
+#include "providers/links/LinkResolver.hpp"
+#include "providers/pronouns/Pronouns.hpp"
+#include "providers/seventv/SeventvAPI.hpp"
+#include "providers/seventv/SeventvEmotes.hpp"
+#include "providers/twitch/eventsub/Controller.hpp"
+#include "providers/twitch/TwitchBadges.hpp"
+#include "providers/youtube/YouTubeChatServer.hpp"
+#include "singletons/ImageUploader.hpp"
+#include "singletons/NativeMessaging.hpp"
+#ifdef CHATTERINO_HAVE_PLUGINS
+#    include "controllers/plugins/PluginController.hpp"
+#endif
+#include "controllers/emotes/EmoteController.hpp"
+#include "controllers/sound/MiniaudioBackend.hpp"
+#include "controllers/sound/NullBackend.hpp"
+#include "controllers/twitch/LiveController.hpp"
+#include "controllers/userdata/UserDataController.hpp"
+#include "debug/AssertInGuiThread.hpp"
+#include "messages/Message.hpp"
+#include "messages/MessageBuilder.hpp"
+#include "providers/bttv/BttvLiveUpdates.hpp"
+#include "providers/chatsen/ChatsenBadges.hpp"
+#include "providers/chatterino/ChatterinoBadges.hpp"
+#include "providers/dankchat/DankChatBadges.hpp"
+#include "providers/ffz/FfzBadges.hpp"
+#include "providers/ffzap/FfzApBadges.hpp"
+#include "providers/folhinha/FolhinhaBadges.hpp"
+#include "providers/homies/HomiesBadges.hpp"
+#include "providers/moltorino/MoltorinoAuth.hpp"
+#include "providers/repetitions/RepeatedMessageDetector.hpp"
+#include "providers/seventv/SeventvBadges.hpp"
+#include "providers/seventv/SeventvEventAPI.hpp"
+#include "providers/seventv/SeventvPaints.hpp"
+#include "providers/seventv/SeventvPersonalEmotes.hpp"
+#include "providers/twitch/ChannelPointReward.hpp"
+#include "providers/twitch/PubSubManager.hpp"
+#include "providers/twitch/PubSubMessages.hpp"
+#include "providers/twitch/TwitchChannel.hpp"
+#include "providers/twitch/TwitchIrcServer.hpp"
+#include "providers/twitch/TwitchUsers.hpp"
+#include "singletons/CrashHandler.hpp"
+#include "singletons/Fonts.hpp"
+#include "singletons/helper/LoggingChannel.hpp"
+// #include "providers/moltorino/MoltorinoPresence.hpp"
+#include "common/network/NetworkRequest.hpp"
+#include "common/network/NetworkResult.hpp"
+#include "providers/moltorino/MoltorinoSupporterBadges.hpp"
+#include "singletons/Logging.hpp"
+#include "singletons/Paths.hpp"
+#include "singletons/Settings.hpp"
+#include "singletons/StreamerMode.hpp"
+#include "singletons/Theme.hpp"
+#include "singletons/Toasts.hpp"
+#include "singletons/Updates.hpp"
+#include "singletons/WindowManager.hpp"
+#include "util/Helpers.hpp"
+#include "util/PostToThread.hpp"
+#include "widgets/Notebook.hpp"
+#include "widgets/splits/Split.hpp"
+#include "widgets/Window.hpp"
+
+#include <miniaudio.h>
+#include <QApplication>
+#include <QDateTime>
+#include <QDesktopServices>
+#include <QFontDatabase>
+#include <QTimer>
+#include <QUrl>
+#include <QUrlQuery>
+
+namespace {
+
+using namespace chatterino;
+
+const QString BTTV_LIVE_UPDATES_URL = "wss://sockets.betterttv.net/ws";
+const QString SEVENTV_EVENTAPI_URL = "wss://events.7tv.io/v3";
+
+std::atomic<bool> STOPPED{false};
+std::atomic<bool> ABOUT_TO_QUIT{false};
+
+ISoundController *makeSoundController(Settings &settings)
+{
+    SoundBackend soundBackend = settings.soundBackend;
+    switch (soundBackend)
+    {
+        case SoundBackend::Miniaudio: {
+            return new MiniaudioBackend(settings.soundMiniaudioKeepEngineAlive);
+        }
+        break;
+
+        case SoundBackend::Null: {
+            return new NullBackend();
+        }
+        break;
+
+        default: {
+            return new MiniaudioBackend(settings.soundMiniaudioKeepEngineAlive);
+        }
+        break;
+    }
+}
+
+BttvLiveUpdates *makeBttvLiveUpdates(Settings &settings)
+{
+    bool enabled =
+        settings.enableBTTVLiveUpdates &&
+        (settings.enableBTTVChannelEmotes || settings.showBadgesBttv);
+
+    if (enabled)
+    {
+        return new BttvLiveUpdates(BTTV_LIVE_UPDATES_URL);
+    }
+
+    return nullptr;
+}
+
+SeventvEventAPI *makeSeventvEventAPI(Settings &settings)
+{
+    bool enabled = settings.enableSevenTVEventAPI;
+
+    if (enabled)
+    {
+        return new SeventvEventAPI(SEVENTV_EVENTAPI_URL %
+                                   "?app=Chatterino&version=" %
+                                   Version::instance().version());
+    }
+
+    return nullptr;
+}
+
+eventsub::IController *makeEventSubController(Settings &settings)
+{
+    bool enabled = settings.enableExperimentalEventSub;
+
+    if (enabled)
+    {
+        return new eventsub::Controller();
+    }
+
+    return new eventsub::DummyController();
+}
+
+const QString TWITCH_PUBSUB_URL = "wss://pubsub-edge.twitch.tv";
+
+IApplication *INSTANCE = nullptr;
+
+}  // namespace
+
+namespace chatterino {
+
+IApplication::IApplication()
+{
+    INSTANCE = this;
+}
+
+IApplication::~IApplication()
+{
+    INSTANCE = nullptr;
+}
+
+Application::Application(Settings &_settings, const Paths &paths,
+                         const Args &_args, Updates &_updates)
+    : paths_(paths)
+    , args_(_args)
+    , themes(new Theme(paths))
+    , fonts(new Fonts(_settings))
+    , logging(new Logging(_settings))
+    , emotes(new EmoteController)
+    , accounts(new AccountController)
+    , eventSub(makeEventSubController(_settings))
+    , hotkeys(new HotkeyController)
+    , windows(new WindowManager(_args, paths, _settings, *this->themes,
+                                *this->fonts))
+    , toasts(new Toasts)
+    , imageUploader(new ImageUploader)
+    , seventvAPI(new SeventvAPI)
+    , crashHandler(new CrashHandler(paths))
+
+    , commands(new CommandController(paths))
+    , notifications(new NotificationController)
+    , highlights(new HighlightController(_settings, this->accounts.get()))
+    , twitch(new TwitchIrcServer)
+    , ffzBadges(new FfzBadges)
+    , bttvBadges(new BttvBadges)
+    , seventvBadges(new SeventvBadges)
+    , homiesBadges(new HomiesBadges)
+    , folhinhaBadges(new FolhinhaBadges)
+    , ffzApBadges(new FfzApBadges)
+    , dankChatBadges(new DankChatBadges)
+    , chatsenBadges(new ChatsenBadges)
+    , moltorinoSupporterBadges(new MoltorinoSupporterBadges)
+    , repeatedMessageDetector(new RepeatedMessageDetector)
+    , seventvPaints(new SeventvPaints)
+    , seventvPersonalEmotes(new SeventvPersonalEmotes)
+    , userData(new UserDataController(paths))
+    , sound(makeSoundController(_settings))
+    , twitchLiveController(new TwitchLiveController)
+    , twitchPubSub(new PubSub(TWITCH_PUBSUB_URL))
+    , twitchBadges(new TwitchBadges)
+    , chatterinoBadges(new ChatterinoBadges)
+    , bttvEmotes(new BttvEmotes)
+    , bttvLiveUpdates(makeBttvLiveUpdates(_settings))
+    , ffzEmotes(new FfzEmotes)
+    , seventvEmotes(new SeventvEmotes)
+    , seventvEventAPI(makeSeventvEventAPI(_settings))
+    , linkResolver(new LinkResolver)
+    , streamerMode(new StreamerMode)
+    , twitchUsers(new TwitchUsers)
+    , pronouns(new pronouns::Pronouns)
+    , spellChecker(new SpellChecker)
+    , kickChatServer(new KickChatServer)
+    , youTubeChatServer(new YouTubeChatServer)
+    , firehose(new FirehoseManager)
+#ifdef CHATTERINO_HAVE_PLUGINS
+    , plugins(new PluginController(paths))
+#endif
+    , nmServer(new NativeMessagingServer())
+    , updates(_updates)
+{
+}
+
+Application::~Application()
+{
+    INSTANCE = nullptr;
+}
+
+void Application::initialize(Settings &settings, const Modes &modes,
+                             const Paths &paths)
+{
+    assert(!this->initialized);
+
+    // Show changelog
+    if (!this->args_.isFramelessEmbed &&
+        getSettings()->currentVersion.getValue() != "" &&
+        getSettings()->currentVersion.getValue() != CHATTERINO_VERSION)
+    {
+        auto *box = new QMessageBox(QMessageBox::Information, "Sloperino",
+                                    "Show changelog?",
+                                    QMessageBox::Yes | QMessageBox::No);
+        box->setAttribute(Qt::WA_DeleteOnClose);
+        if (box->exec() == QMessageBox::Yes)
+        {
+            QDesktopServices::openUrl(
+                QUrl("https://www.chatterino.com/changelog"));
+        }
+    }
+
+    if (!this->args_.isFramelessEmbed)
+    {
+        getSettings()->currentVersion.setValue(CHATTERINO_VERSION);
+    }
+    this->emotes->initialize();
+
+    this->accounts->load();
+
+    this->windows->initialize();
+
+    this->ffzBadges->load();
+    this->bttvBadges->load();
+    this->moltorinoSupporterBadges->initialize();
+
+    this->bttvEmotes->loadEmotes();
+    this->ffzEmotes->loadEmotes();
+    this->seventvEmotes->loadGlobalEmotes();
+
+    this->twitch->initialize();
+    this->kickChatServer->initialize();
+    this->youTubeChatServer->initialize();
+
+    this->notifications->initialize();
+
+    this->twitchBadges->loadTwitchBadges();
+
+#ifdef CHATTERINO_HAVE_PLUGINS
+    this->plugins->initialize(settings);
+#endif
+
+#ifndef Q_OS_WIN
+    if (!this->args_.isFramelessEmbed && this->args_.crashRecovery)
+    {
+        if (auto *selected =
+                this->windows->getMainWindow().getNotebook().getSelectedPage())
+        {
+            if (auto *container = dynamic_cast<SplitContainer *>(selected))
+            {
+                for (auto &&split : container->getSplits())
+                {
+                    if (auto channel = split->getChannel(); !channel->isEmpty())
+                    {
+                        channel->addSystemMessage(
+                            "Chatterino unexpectedly crashed and restarted. "
+                            "You can disable automatic restarts in the "
+                            "settings.");
+                    }
+                }
+            }
+        }
+    }
+#endif
+
+    if (!this->args_.isFramelessEmbed)
+    {
+        this->initNm(modes, paths);
+    }
+
+    this->twitch->initEventAPIs(this->bttvLiveUpdates.get(),
+                                this->seventvEventAPI.get());
+
+    this->streamerMode->start();
+
+    // getMoltorinoPresence()->init();
+
+    {
+        auto &s = *getSettings();
+        const auto clientId = s.botBadgeClientID.getValue().trimmed();
+        const auto clientSecret = s.botBadgeClientSecret.getValue().trimmed();
+        const auto expiryStr = s.botBadgeAppTokenExpiry.getValue().trimmed();
+
+        if (!clientId.isEmpty() && !clientSecret.isEmpty())
+        {
+            bool needsRefresh = false;
+
+            if (expiryStr.isEmpty())
+            {
+                needsRefresh = true;
+            }
+            else
+            {
+                auto expiry = QDateTime::fromString(expiryStr, Qt::ISODate);
+
+                needsRefresh =
+                    !expiry.isValid() ||
+                    QDateTime::currentDateTimeUtc().secsTo(expiry) < 86400;
+            }
+
+            if (needsRefresh)
+            {
+                QUrl tokenUrl("https://id.twitch.tv/oauth2/token");
+                QUrlQuery tokenQuery;
+                tokenQuery.addQueryItem("client_id", clientId);
+                tokenQuery.addQueryItem("client_secret", clientSecret);
+                tokenQuery.addQueryItem("grant_type", "client_credentials");
+                tokenUrl.setQuery(tokenQuery);
+
+                NetworkRequest(tokenUrl, NetworkRequestType::Post)
+                    .timeout(15000)
+                    .onSuccess([](const NetworkResult &res) {
+                        auto json = res.parseJson();
+                        auto token =
+                            json.value("access_token").toString().trimmed();
+                        auto expiresIn = json.value("expires_in").toInt();
+
+                        if (!token.isEmpty())
+                        {
+                            auto &settings = *getSettings();
+                            settings.botBadgeAppAccessToken = token;
+                            settings.botBadgeAppTokenExpiry =
+                                QDateTime::currentDateTimeUtc()
+                                    .addSecs(expiresIn)
+                                    .toString(Qt::ISODate);
+                            settings.requestSave();
+
+                            qCDebug(chatterinoApp)
+                                << "Bot badge app token refreshed.";
+                        }
+                    })
+                    .onError([](const NetworkResult &res) {
+                        qCWarning(chatterinoApp)
+                            << "Failed to refresh bot badge app token:"
+                            << res.formatError();
+                    })
+                    .execute();
+            }
+        }
+    }
+
+    this->monoFontId =
+        QFontDatabase::addApplicationFont(":/fonts/consolas.otf");
+
+    this->initialized = true;
+}
+
+int Application::run()
+{
+    assert(this->initialized);
+
+    this->twitch->connect();
+    this->firehose->initialize();
+
+    if (!this->args_.isFramelessEmbed)
+    {
+        this->windows->getMainWindow().show();
+    }
+
+    getSettings()->enableBTTVChannelEmotes.connect(
+        [this] {
+            this->twitch->reloadAllBTTVChannelEmotes();
+        },
+        false);
+    getSettings()->enableFFZChannelEmotes.connect(
+        [this] {
+            this->twitch->reloadAllFFZChannelEmotes();
+        },
+        false);
+    getSettings()->enableSevenTVChannelEmotes.connect(
+        [this] {
+            this->twitch->reloadAllSevenTVChannelEmotes();
+        },
+        false);
+
+    // QTimer::singleShot(2500, qApp, [] {
+    //     getMoltorinoPresence()->startHeartbeat();
+    // });
+
+    MoltorinoAuth::scheduleStartupRefresh();
+
+    return QApplication::exec();
+}
+
+Theme *Application::getThemes()
+{
+    assertInGuiThread();
+    assert(this->themes);
+
+    return this->themes.get();
+}
+
+Fonts *Application::getFonts()
+{
+    assertInGuiThread();
+    assert(this->fonts);
+
+    return this->fonts.get();
+}
+
+EmoteController *Application::getEmotes()
+{
+    assertInGuiThread();
+    assert(this->emotes);
+
+    return this->emotes.get();
+}
+
+AccountController *Application::getAccounts()
+{
+    assertInGuiThread();
+    assert(this->accounts);
+
+    return this->accounts.get();
+}
+
+HotkeyController *Application::getHotkeys()
+{
+    assertInGuiThread();
+    assert(this->hotkeys);
+
+    return this->hotkeys.get();
+}
+
+WindowManager *Application::getWindows()
+{
+    assertInGuiThread();
+    assert(this->windows);
+
+    return this->windows.get();
+}
+
+Toasts *Application::getToasts()
+{
+    assertInGuiThread();
+    assert(this->toasts);
+
+    return this->toasts.get();
+}
+
+CrashHandler *Application::getCrashHandler()
+{
+    assertInGuiThread();
+    assert(this->crashHandler);
+
+    return this->crashHandler.get();
+}
+
+CommandController *Application::getCommands()
+{
+    assertInGuiThread();
+    assert(this->commands);
+
+    return this->commands.get();
+}
+
+NotificationController *Application::getNotifications()
+{
+    assertInGuiThread();
+    assert(this->notifications);
+
+    return this->notifications.get();
+}
+
+HighlightController *Application::getHighlights()
+{
+    assertInGuiThread();
+    assert(this->highlights);
+
+    return this->highlights.get();
+}
+
+FfzBadges *Application::getFfzBadges()
+{
+    assertInGuiThread();
+    assert(this->ffzBadges);
+
+    return this->ffzBadges.get();
+}
+
+BttvBadges *Application::getBttvBadges()
+{
+    assert(this->bttvBadges);
+
+    return this->bttvBadges.get();
+}
+
+SeventvBadges *Application::getSeventvBadges()
+{
+    assert(this->seventvBadges);
+
+    return this->seventvBadges.get();
+}
+
+HomiesBadges *Application::getHomiesBadges()
+{
+    // HomiesBadges handles its own locks, so we don't need to assert that this is called in the GUI thread
+    assert(this->homiesBadges);
+
+    return this->homiesBadges.get();
+}
+
+FolhinhaBadges *Application::getFolhinhaBadges()
+{
+    // FolhinhaBadges handles its own locks, so we don't need to assert that this
+    // is called in the GUI thread
+    assert(this->folhinhaBadges);
+
+    return this->folhinhaBadges.get();
+}
+
+FfzApBadges *Application::getFfzApBadges()
+{
+    assert(this->ffzApBadges);
+    return this->ffzApBadges.get();
+}
+
+DankChatBadges *Application::getDankChatBadges()
+{
+    assert(this->dankChatBadges);
+    return this->dankChatBadges.get();
+}
+
+ChatsenBadges *Application::getChatsenBadges()
+{
+    assert(this->chatsenBadges);
+    return this->chatsenBadges.get();
+}
+
+MoltorinoSupporterBadges *Application::getMoltorinoSupporterBadges()
+{
+    assert(this->moltorinoSupporterBadges);
+
+    return this->moltorinoSupporterBadges.get();
+}
+
+RepeatedMessageDetector *Application::getRepeatedMessageDetector()
+{
+    assertInGuiThread();
+    assert(this->repeatedMessageDetector);
+
+    return this->repeatedMessageDetector.get();
+}
+
+IUserDataController *Application::getUserData()
+{
+    assertInGuiThread();
+
+    return this->userData.get();
+}
+
+ISoundController *Application::getSound()
+{
+    assertInGuiThread();
+
+    return this->sound.get();
+}
+
+ITwitchLiveController *Application::getTwitchLiveController()
+{
+    assertInGuiThread();
+    assert(this->twitchLiveController);
+
+    return this->twitchLiveController.get();
+}
+
+FirehoseManager *Application::getFirehose()
+{
+    assertInGuiThread();
+    assert(this->firehose);
+
+    return this->firehose.get();
+}
+
+TwitchBadges *Application::getTwitchBadges()
+{
+    assertInGuiThread();
+    assert(this->twitchBadges);
+
+    return this->twitchBadges.get();
+}
+
+IChatterinoBadges *Application::getChatterinoBadges()
+{
+    assertInGuiThread();
+    assert(this->chatterinoBadges);
+
+    return this->chatterinoBadges.get();
+}
+
+ImageUploader *Application::getImageUploader()
+{
+    assertInGuiThread();
+    assert(this->imageUploader);
+
+    return this->imageUploader.get();
+}
+
+SeventvAPI *Application::getSeventvAPI()
+{
+    assertInGuiThread();
+    assert(this->seventvAPI);
+
+    return this->seventvAPI.get();
+}
+
+#ifdef CHATTERINO_HAVE_PLUGINS
+PluginController *Application::getPlugins()
+{
+    assertInGuiThread();
+    assert(this->plugins);
+
+    return this->plugins.get();
+}
+#endif
+
+Updates &Application::getUpdates()
+{
+    assertInGuiThread();
+
+    return this->updates;
+}
+
+ITwitchIrcServer *Application::getTwitch()
+{
+    return this->twitch.get();
+}
+
+PubSub *Application::getTwitchPubSub()
+{
+    assertInGuiThread();
+
+    return this->twitchPubSub.get();
+}
+
+ILogging *Application::getChatLogger()
+{
+    assertInGuiThread();
+    assert(this->logging);
+
+    return this->logging.get();
+}
+
+ILinkResolver *Application::getLinkResolver()
+{
+    assertInGuiThread();
+
+    return this->linkResolver.get();
+}
+
+IStreamerMode *Application::getStreamerMode()
+{
+    return this->streamerMode.get();
+}
+
+ITwitchUsers *Application::getTwitchUsers()
+{
+    assertInGuiThread();
+    assert(this->twitchUsers);
+
+    return this->twitchUsers.get();
+}
+
+BttvEmotes *Application::getBttvEmotes()
+{
+    assertInGuiThread();
+    assert(this->bttvEmotes);
+
+    return this->bttvEmotes.get();
+}
+
+BttvLiveUpdates *Application::getBttvLiveUpdates()
+{
+    assertInGuiThread();
+
+    return this->bttvLiveUpdates.get();
+}
+
+FfzEmotes *Application::getFfzEmotes()
+{
+    assertInGuiThread();
+    assert(this->ffzEmotes);
+
+    return this->ffzEmotes.get();
+}
+
+SeventvEmotes *Application::getSeventvEmotes()
+{
+    assertInGuiThread();
+    assert(this->seventvEmotes);
+
+    return this->seventvEmotes.get();
+}
+
+SeventvPersonalEmotes *Application::getSeventvPersonalEmotes()
+{
+    assert(this->seventvPersonalEmotes);
+
+    return this->seventvPersonalEmotes.get();
+}
+
+SeventvPaints *Application::getSeventvPaints()
+{
+    assert(this->seventvPaints);
+
+    return this->seventvPaints.get();
+}
+
+SeventvEventAPI *Application::getSeventvEventAPI()
+{
+    assertInGuiThread();
+
+    return this->seventvEventAPI.get();
+}
+
+pronouns::Pronouns *Application::getPronouns()
+{
+    assert(this->pronouns);
+
+    return this->pronouns.get();
+}
+
+eventsub::IController *Application::getEventSub()
+{
+    assert(this->eventSub);
+
+    return this->eventSub.get();
+}
+
+SpellChecker *Application::getSpellChecker()
+{
+    assertInGuiThread();
+    assert(this->spellChecker);
+
+    return this->spellChecker.get();
+}
+
+KickChatServer *Application::getKickChatServer()
+{
+    assertInGuiThread();
+    assert(this->kickChatServer);
+
+    return this->kickChatServer.get();
+}
+
+YouTubeChatServer *Application::getYouTubeChatServer()
+{
+    assertInGuiThread();
+    assert(this->youTubeChatServer);
+
+    return this->youTubeChatServer.get();
+}
+
+void Application::aboutToQuit()
+{
+    ABOUT_TO_QUIT.store(true);
+
+    this->eventSub->setQuitting();
+
+    this->twitch->aboutToQuit();
+
+    this->hotkeys->save();
+    this->windows->save();
+
+    this->windows->closeAll();
+}
+
+void Application::stop()
+{
+#ifdef CHATTERINO_HAVE_PLUGINS
+    this->plugins.reset();
+#endif
+    this->pronouns.reset();
+    this->twitchUsers.reset();
+    this->firehose.reset();
+    this->streamerMode.reset();
+    this->linkResolver.reset();
+    this->seventvEventAPI.reset();
+    this->seventvEmotes.reset();
+    this->ffzEmotes.reset();
+    this->bttvLiveUpdates.reset();
+    this->bttvEmotes.reset();
+    this->chatterinoBadges.reset();
+    this->twitchBadges.reset();
+    this->twitchPubSub.reset();
+    this->twitchLiveController.reset();
+    this->sound.reset();
+    this->userData.reset();
+    this->seventvBadges.reset();
+    this->ffzBadges.reset();
+    this->homiesBadges.reset();
+    this->ffzApBadges.reset();
+    this->dankChatBadges.reset();
+    this->chatsenBadges.reset();
+    this->twitch.reset();
+    this->highlights.reset();
+    this->notifications.reset();
+    this->commands.reset();
+    this->crashHandler.reset();
+    this->seventvAPI.reset();
+    this->imageUploader.reset();
+    this->toasts.reset();
+    this->windows.reset();
+    this->hotkeys.reset();
+    this->eventSub.reset();
+    this->accounts.reset();
+    this->emotes.reset();
+    this->logging.reset();
+    this->fonts.reset();
+    this->themes.reset();
+    this->spellChecker.reset();
+
+    STOPPED.store(true);
+}
+
+void Application::initNm(const Modes &modes, const Paths &paths)
+{
+    (void)modes;
+    (void)paths;
+
+#if defined QT_NO_DEBUG || defined CHATTERINO_DEBUG_NM
+    registerNmHost(modes, paths);
+    this->nmServer->start();
+#endif
+}
+
+IApplication *getApp()
+{
+    assert(INSTANCE != nullptr);
+    assert(STOPPED.load() == false);
+
+    return INSTANCE;
+}
+
+IApplication *tryGetApp()
+{
+    return INSTANCE;
+}
+
+bool isAppAboutToQuit()
+{
+    return ABOUT_TO_QUIT.load();
+}
+
+}  // namespace chatterino

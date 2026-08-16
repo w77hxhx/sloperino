@@ -1,0 +1,28 @@
+// SPDX-FileCopyrightText: 2024 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "providers/pronouns/UserPronouns.hpp"
+
+#include <QString>
+
+#include <optional>
+
+namespace chatterino::pronouns {
+
+UserPronouns::UserPronouns(QString pronouns)
+    : representation{!pronouns.isEmpty() ? std::move(pronouns) : QString()}
+{
+}
+
+bool UserPronouns::isUnspecified() const
+{
+    return this->representation.isEmpty();
+}
+
+UserPronouns::operator bool() const
+{
+    return !this->isUnspecified();
+}
+
+}  // namespace chatterino::pronouns

@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: 2018 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "common/SignalVectorModel.hpp"
+
+#include <QObject>
+
+namespace chatterino {
+
+class CommandController;
+struct Command;
+
+class CommandModel : public SignalVectorModel<Command>
+{
+    explicit CommandModel(QObject *parent);
+
+    enum Column {
+        Trigger = 0,
+        CommandFunc = 1,
+        ShowInMessageContextMenu = 2,
+        COUNT,
+    };
+
+protected:
+    Command getItemFromRow(std::vector<QStandardItem *> &row,
+                           const Command &command) override;
+
+    void getRowFromItem(const Command &item,
+                        std::vector<QStandardItem *> &row) override;
+
+    friend class CommandController;
+};
+
+}  // namespace chatterino

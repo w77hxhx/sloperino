@@ -1,0 +1,271 @@
+#include "providers/seventv/SeventvPaints.hpp"
+
+#include "Application.hpp"
+#include "messages/Image.hpp"
+#include "providers/seventv/eventapi/Dispatch.hpp"
+#include "providers/seventv/paints/LinearGradientPaint.hpp"
+#include "providers/seventv/paints/PaintDropShadow.hpp"
+#include "providers/seventv/paints/RadialGradientPaint.hpp"
+#include "providers/seventv/paints/UrlPaint.hpp"
+#include "singletons/WindowManager.hpp"
+#include "util/DebugCount.hpp"
+#include "util/PostToThread.hpp"
+#include "util/Variant.hpp"
+
+#include <QUrlQuery>
+
+#include <chrono>
+
+namespace {
+using namespace chatterino;
+using namespace Qt::Literals::StringLiterals;
+
+constexpr std::chrono::minutes SEVENTV_PAINT_FRAME_CACHE_LIFETIME{4};
+
+QColor rgbaToQColor(const uint32_t color)
+{
+    auto red = (int)((color >> 24) & 0xFF);
+    auto green = (int)((color >> 16) & 0xFF);
+    auto blue = (int)((color >> 8) & 0xFF);
+    auto alpha = (int)(color & 0xFF);
+
+    return {red, green, blue, alpha};
+}
+
+std::optional<QColor> parsePaintColor(const QJsonValue &color)
+{
+    if (color.isNull())
+    {
+        return std::nullopt;
+    }
+
+    return rgbaToQColor(color.toInt());
+}
+
+QGradientStops parsePaintStops(const QJsonArray &stops)
+{
+    QGradientStops parsedStops;
+    double lastStop = -1;
+
+    for (const auto &stop : stops)
+    {
+        const auto stopObject = stop.toObject();
+
+        const auto rgbaColor = stopObject["color"].toInt();
+        auto position = stopObject["at"].toDouble();
+
+        if (position <= lastStop)
+        {
+            position = lastStop + 0.0000001;
+        }
+
+        lastStop = position;
+        parsedStops.append(QGradientStop(position, rgbaToQColor(rgbaColor)));
+    }
+
+    return parsedStops;
+}
+
+std::vector<PaintDropShadow> parseDropShadows(const QJsonArray &dropShadows)
+{
+    std::vector<PaintDropShadow> parsedDropShadows;
+
+    for (const auto &shadow : dropShadows)
+    {
+        const auto shadowObject = shadow.toObject();
+
+        const auto xOffset = shadowObject["x_offset"].toDouble();
+        const auto yOffset = shadowObject["y_offset"].toDouble();
+        const auto radius = shadowObject["radius"].toDouble();
+        const auto rgbaColor = shadowObject["color"].toInt();
+
+        parsedDropShadows.emplace_back(xOffset, yOffset, radius,
+                                       rgbaToQColor(rgbaColor));
+    }
+
+    return parsedDropShadows;
+}
+
+std::optional<std::shared_ptr<Paint>> parsePaint(const QJsonObject &paintJson)
+{
+    const QString name = paintJson["name"].toString();
+    const QString id = paintJson["id"].toString();
+
+    const auto color = parsePaintColor(paintJson["color"]);
+    const bool repeat = paintJson["repeat"].toBool();
+    const float angle = (float)paintJson["angle"].toDouble();
+
+    const QGradientStops stops = parsePaintStops(paintJson["stops"].toArray());
+
+    const auto shadows = parseDropShadows(paintJson["shadows"].toArray());
+
+    const QString function = paintJson["function"].toString();
+    if (function == "LINEAR_GRADIENT" || function == "linear-gradient")
+    {
+        return std::make_shared<LinearGradientPaint>(name, id, color, stops,
+                                                     repeat, angle, shadows);
+    }
+
+    if (function == "RADIAL_GRADIENT" || function == "radial-gradient")
+    {
+        return std::make_shared<RadialGradientPaint>(name, id, stops, repeat,
+                                                     shadows);
+    }
+
+    if (function == "URL" || function == "url")
+    {
+        const QString url = paintJson["image_url"].toString();
+        const ImagePtr image = Image::fromUrl({url}, 1);
+        if (image == nullptr)
+        {
+            return std::nullopt;
+        }
+        image->setFrameCacheLifetime(SEVENTV_PAINT_FRAME_CACHE_LIFETIME);
+
+        return std::make_shared<UrlPaint>(name, id, image, shadows);
+    }
+
+    return std::nullopt;
+}
+
+}  // namespace
+
+namespace chatterino {
+
+SeventvPaints::SeventvPaints() = default;
+
+std::shared_ptr<Paint> SeventvPaints::getPaint(const QString &userName,
+                                               bool kick) const
+{
+    std::shared_lock lock(this->mutex_);
+
+    if (kick)
+    {
+        const auto it = this->kickPaintMap_.find(userName);
+        if (it != this->kickPaintMap_.end())
+        {
+            return it->second;
+        }
+    }
+    else
+    {
+        const auto it = this->twitchPaintMap_.find(userName);
+        if (it != this->twitchPaintMap_.end())
+        {
+            return it->second;
+        }
+    }
+    return nullptr;
+}
+
+void SeventvPaints::addPaint(const QJsonObject &paintJson)
+{
+    const auto paintID = paintJson["id"].toString();
+
+    std::unique_lock lock(this->mutex_);
+
+    if (this->knownPaints_.contains(paintID))
+    {
+        return;
+    }
+
+    std::optional<std::shared_ptr<Paint>> paint = parsePaint(paintJson);
+    if (!paint)
+    {
+        return;
+    }
+
+    DebugCount::increase(DebugObject::SeventvPaints);
+    this->knownPaints_[paintID] = *paint;
+}
+
+void SeventvPaints::assignPaintToUsers(
+    const QString &paintID, std::span<const seventv::eventapi::User> users)
+{
+    std::unique_lock lock(this->mutex_);
+
+    const auto paintIt = this->knownPaints_.find(paintID);
+    if (paintIt == this->knownPaints_.end())
+    {
+        return;
+    }
+
+    bool changed = false;
+    int64_t nAdded = 0;
+    auto addToMap = [&](auto &map, const QString &username) {
+        auto it = map.find(username);
+        if (it == map.end())
+        {
+            map.emplace(username, paintIt->second);
+            changed = true;
+            nAdded++;
+        }
+        else if (it->second != paintIt->second)
+        {
+            it->second = paintIt->second;
+            changed = true;
+        }
+    };
+    for (const auto &user : users)
+    {
+        std::visit(variant::Overloaded{
+                       [&](const seventv::eventapi::TwitchUser &u) {
+                           addToMap(this->twitchPaintMap_, u.userName);
+                       },
+                       [&](const seventv::eventapi::KickUser &u) {
+                           addToMap(this->kickPaintMap_, u.userName);
+                       },
+                   },
+                   user);
+    }
+
+    if (nAdded > 0)
+    {
+        DebugCount::increase(DebugObject::SeventvPaintAssignments, nAdded);
+    }
+
+    if (changed)
+    {
+        postToThread([] {
+            getApp()->getWindows()->invalidateChannelViewBuffers();
+        });
+    }
+}
+
+void SeventvPaints::clearPaintFromUsers(
+    const QString &paintID, std::span<const seventv::eventapi::User> users)
+{
+    std::unique_lock lock(this->mutex_);
+
+    int64_t nRemoved = 0;
+    auto removeFromMap = [&](auto &map, const QString &username) {
+        const auto it = map.find(username);
+        if (it != map.end() && it->second->id == paintID)
+        {
+            map.erase(it);
+            nRemoved++;
+        }
+    };
+    for (const auto &user : users)
+    {
+        std::visit(variant::Overloaded{
+                       [&](const seventv::eventapi::TwitchUser &u) {
+                           removeFromMap(this->twitchPaintMap_, u.userName);
+                       },
+                       [&](const seventv::eventapi::KickUser &u) {
+                           removeFromMap(this->kickPaintMap_, u.userName);
+                       },
+                   },
+                   user);
+    }
+
+    if (nRemoved > 0)
+    {
+        DebugCount::decrease(DebugObject::SeventvPaintAssignments, nRemoved);
+        postToThread([] {
+            getApp()->getWindows()->invalidateChannelViewBuffers();
+        });
+    }
+}
+
+}  // namespace chatterino

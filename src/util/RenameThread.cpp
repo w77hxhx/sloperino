@@ -1,0 +1,31 @@
+// SPDX-FileCopyrightText: 2024 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "util/RenameThread.hpp"
+
+#include "common/QLogging.hpp"
+
+#ifdef Q_OS_WIN
+
+#    include <Windows.h>
+
+namespace chatterino::windows::detail {
+
+void renameThread(HANDLE hThread, const QString &threadName)
+{
+#    if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+
+    auto hr = SetThreadDescription(hThread, threadName.toStdWString().c_str());
+    if (!SUCCEEDED(hr))
+    {
+        qCWarning(chatterinoCommon).nospace()
+            << "Failed to set thread description, hresult=0x"
+            << QString::number(hr, 16);
+    }
+#    endif
+}
+
+}  // namespace chatterino::windows::detail
+
+#endif

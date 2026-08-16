@@ -1,0 +1,27 @@
+// SPDX-FileCopyrightText: 2018 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <QStyledItemDelegate>
+
+namespace chatterino {
+
+class ComboBoxItemDelegate : public QStyledItemDelegate
+{
+    Q_OBJECT
+
+public:
+    ComboBoxItemDelegate(QObject *parent = nullptr);
+    ~ComboBoxItemDelegate() override;
+
+    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option,
+                          const QModelIndex &index) const override;
+    void setEditorData(QWidget *editor,
+                       const QModelIndex &index) const override;
+    void setModelData(QWidget *editor, QAbstractItemModel *model,
+                      const QModelIndex &index) const override;
+};
+
+}  // namespace chatterino

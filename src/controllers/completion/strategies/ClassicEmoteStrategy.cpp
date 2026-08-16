@@ -1,0 +1,118 @@
+// SPDX-FileCopyrightText: 2023 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "controllers/completion/strategies/ClassicEmoteStrategy.hpp"
+
+#include "common/QLogging.hpp"
+#include "singletons/Settings.hpp"
+#include "util/Helpers.hpp"
+
+#include <algorithm>
+
+namespace chatterino::completion {
+
+namespace {
+
+const auto &LOG = chatterinoCompletion;
+
+}
+
+void ClassicEmoteStrategy::apply(const std::vector<EmoteItem> &items,
+                                 std::vector<EmoteItem> &output,
+                                 const QString &query) const
+{
+    qCDebug(LOG) << "ClassicEmoteStrategy apply" << query;
+    QString normalizedQuery = query;
+    bool zeroWidthOnly = false;
+    if (normalizedQuery.startsWith(':'))
+    {
+        normalizedQuery = normalizedQuery.mid(1);
+    }
+    if (normalizedQuery.startsWith('~'))
+    {
+        normalizedQuery = normalizedQuery.mid(1);
+        zeroWidthOnly = true;
+    }
+
+    for (const auto &item : items)
+    {
+        if (zeroWidthOnly && !item.emote->zeroWidth)
+        {
+            continue;
+        }
+
+        if (item.searchName.contains(normalizedQuery, Qt::CaseInsensitive))
+        {
+            output.push_back(item);
+        }
+    }
+
+    for (size_t i = 1; i < output.size(); i++)
+    {
+        auto emoteText = output.at(i).searchName;
+
+        if (emoteText.compare(normalizedQuery, Qt::CaseInsensitive) == 0 ||
+            emoteText.compare(":" + normalizedQuery, Qt::CaseInsensitive) == 0)
+        {
+            auto emote = output[i];
+            output.erase(output.begin() + int(i));
+            output.insert(output.begin(), emote);
+            break;
+        }
+    }
+}
+
+struct CompletionEmoteOrder {
+    bool operator()(const EmoteItem &a, const EmoteItem &b) const
+    {
+        return compareEmoteStrings(a.searchName, b.searchName);
+    }
+};
+
+void ClassicTabEmoteStrategy::apply(const std::vector<EmoteItem> &items,
+                                    std::vector<EmoteItem> &output,
+                                    const QString &query) const
+{
+    qCDebug(LOG) << "ClassicTabEmoteStrategy apply" << query;
+    bool colonStart = query.startsWith(':');
+    QStringView normalizedQuery = query;
+    if (colonStart)
+    {
+        normalizedQuery = normalizedQuery.mid(1);
+    }
+
+    std::set<EmoteItem, CompletionEmoteOrder> emotes;
+
+    for (const auto &item : items)
+    {
+        QStringView itemQuery;
+        if (item.isEmoji)
+        {
+            if (colonStart)
+            {
+                itemQuery = normalizedQuery;
+            }
+            else
+            {
+                continue;
+            }
+        }
+        else
+        {
+            itemQuery = query;
+        }
+
+        if (startsWithOrContains(item.searchName, itemQuery,
+                                 Qt::CaseInsensitive,
+                                 getSettings()->prefixOnlyEmoteCompletion))
+        {
+            emotes.insert(item);
+        }
+    }
+
+    output.reserve(emotes.size());
+    output.assign(emotes.begin(), emotes.end());
+}
+
+}  // namespace chatterino::completion

@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: 2022 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "messages/search/SubtierPredicate.hpp"
+
+#include "messages/Message.hpp"
+#include "providers/twitch/TwitchBadge.hpp"
+
+namespace chatterino {
+
+SubtierPredicate::SubtierPredicate(const QString &subtiers, bool negate)
+    : MessagePredicate(negate)
+{
+    for (const auto &subtier : subtiers.split(',', Qt::SkipEmptyParts))
+    {
+        this->subtiers_ << subtier;
+    }
+}
+
+bool SubtierPredicate::appliesToImpl(const Message &message)
+{
+    for (const TwitchBadge &badge : message.twitchBadges)
+    {
+        if (badge.key_ == "subscriber")
+        {
+            const auto &subTier =
+                badge.value_.length() > 3 ? badge.value_.at(0) : '1';
+
+            return this->subtiers_.contains(subTier);
+        }
+    }
+
+    return false;
+}
+
+}  // namespace chatterino

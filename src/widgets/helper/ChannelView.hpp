@@ -1,0 +1,540 @@
+// SPDX-FileCopyrightText: 2017 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "common/Common.hpp"
+#include "common/FlagsEnum.hpp"
+#include "messages/layouts/MessageLayoutContext.hpp"
+#include "messages/LimitedQueue.hpp"
+#include "messages/MessageFlag.hpp"
+#include "messages/Selection.hpp"
+#include "util/ThreadGuard.hpp"
+#include "widgets/BaseWidget.hpp"
+#include "widgets/TooltipWidget.hpp"
+
+#include <pajlada/signals/signal.hpp>
+#include <QColor>
+#include <QGestureEvent>
+#include <QMenu>
+#include <QPaintEvent>
+#include <QPointer>
+#include <QScroller>
+#include <QSet>
+#include <QTimer>
+#include <QVariantAnimation>
+#include <QWheelEvent>
+#include <QWidget>
+
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+
+namespace chatterino {
+
+class Channel;
+using ChannelPtr = std::shared_ptr<Channel>;
+
+enum class MessagePlatform : uint8_t;
+
+struct Message;
+using MessagePtr = std::shared_ptr<const Message>;
+
+class MessageLayout;
+using MessageLayoutPtr = std::shared_ptr<MessageLayout>;
+
+enum class MessageElementFlag : int64_t;
+using MessageElementFlags = FlagsEnum<MessageElementFlag>;
+
+class Scrollbar;
+class LabelButton;
+struct Link;
+class MessageLayoutElement;
+class Split;
+class FilterSet;
+using FilterSetPtr = std::shared_ptr<FilterSet>;
+
+class LinkInfo;
+
+enum class PauseReason {
+    Mouse,
+    Selection,
+    DoubleClick,
+    KeyboardModifier,
+};
+
+enum class FromTwitchLinkOpenChannelIn {
+    Split,
+    Tab,
+    BrowserPlayer,
+    Streamlink,
+    CustomPlayer,
+};
+
+using SteadyClock = std::chrono::steady_clock;
+
+class ChannelView final : public BaseWidget
+{
+    Q_OBJECT
+
+public:
+    enum class Context {
+        None,
+        UserCard,
+        ReplyThread,
+        Search,
+    };
+
+    /// Creates a channel view without a split.
+    /// In such a view, usercards and reply-threads can't be opened.
+    ///
+    /// @param parent The parent of this widget. Can be `nullptr`.
+    /// @param context The context in which this view is shown (e.g. as a usercard).
+    /// @param messagesLimit The maximum amount of messages this view will display.
+    explicit ChannelView(QWidget *parent, Context context = Context::None,
+                         size_t messagesLimit = 1000);
+
+    /// Creates a channel view in a split.
+    ///
+    /// @param parent The parent of this widget.
+    /// @param split The split containing this widget.
+    ///              @a split must be in the widget tree of @a parent.
+    /// @param context The context in which this view is shown (e.g. as a usercard).
+    /// @param messagesLimit The maximum amount of messages this view will display.
+    explicit ChannelView(QWidget *parent, Split *split,
+                         Context context = Context::None,
+                         size_t messagesLimit = 1000);
+
+    void queueUpdate();
+    void queueUpdate(const QRect &area);
+    Scrollbar &getScrollBar();
+
+    QString getSelectedText();
+    bool hasSelection();
+    void clearSelection();
+    /**
+     * Copies the currently selected text to the users clipboard.
+     *
+     * @see ::getSelectedText()
+     */
+    void copySelectedText();
+
+    void setEnableScrollingToBottom(bool);
+    bool getEnableScrollingToBottom() const;
+    void setOverrideFlags(std::optional<MessageElementFlags> value);
+    void setCollapseMessages(bool value);
+    void setOverrideSeparateMessages(std::optional<bool> value);
+    const std::optional<MessageElementFlags> &getOverrideFlags() const;
+    void updateLastReadMessage();
+
+    /**
+     * Attempts to scroll to a message in this channel.
+     * @return <code>true</code> if the message was found and highlighted.
+     */
+    bool scrollToMessage(const MessagePtr &message);
+    /**
+     * Attempts to scroll to a message id in this channel.
+     * @return <code>true</code> if the message was found and highlighted.
+     */
+    bool scrollToMessageId(const QString &id);
+
+    void setNukePreviewMessageIds(QSet<QString> messageIds);
+    void clearNukePreview();
+
+    /// Pausing
+    bool pausable() const;
+    void setPausable(bool value);
+    bool paused() const;
+    void pause(PauseReason reason,
+               std::optional<uint32_t> msecs = std::nullopt);
+    void unpause(PauseReason reason);
+
+    MessageElementFlags getFlags() const;
+
+    void setTransparentBackground(bool transparent);
+    bool getTransparentBackground() const;
+
+    void setOverrideImageScale(std::optional<float> value);
+    std::optional<float> getOverrideImageScale() const;
+    void setVerticalOffset(int offset);
+
+    void performLayout(bool causedByScrollbar = false,
+                       bool causedByShow = false);
+    void layoutVisibleMessages(const std::vector<MessageLayoutPtr> &messages);
+
+    void setOverrideEmoteScale(std::optional<float> value);
+    std::optional<float> getOverrideEmoteScale() const;
+
+    void setOverrideBadgeScale(std::optional<float> value);
+    std::optional<float> getOverrideBadgeScale() const;
+
+    void setCenterBadges(bool value);
+
+    /// @brief The virtual channel used to display messages
+    ///
+    /// This channel contains all messages in this view and respects the
+    /// filter settings. It will always be of type Channel, not TwitchChannel
+    /// nor IrcChannel.
+    /// It's **not** equal to the channel passed in #setChannel().
+    /// @see #underlyingChannel()
+    ChannelPtr channel() const;
+
+    /// @brief The channel this view displays messages for
+    ///
+    /// This channel potentially contains more messages than visible in this
+    /// view due to filter settings.
+    /// It's equal to the channel passed in #setChannel().
+    /// @see #channel()
+    ChannelPtr underlyingChannel() const;
+
+    /// Same as #underlyingChannel() except that it returns the active channel
+    /// for MultiChannels.
+    ChannelPtr selectedChannel() const;
+
+    enum class InferChannel : uint8_t {
+        UnderlyingOnly,
+        SourceChannelIfAvailable,
+        SearchParentIfAvailable,
+    };
+
+    /// Infer the channel this message originates from.
+    /// In MultiChannels, this uses the best matching channel.
+    ChannelPtr inferChannel(
+        const Message &msg,
+        InferChannel mode = InferChannel::SourceChannelIfAvailable) const;
+
+    /// @brief Set the channel this view is displaying
+    ///
+    /// @see #underlyingChannel()
+    void setChannel(const ChannelPtr &underlyingChannel);
+
+    void setFilters(const QList<QUuid> &ids);
+    QList<QUuid> getFilterIds() const;
+    FilterSetPtr getFilterSet() const;
+
+    /// @brief The channel this is derived from
+    ///
+    /// In case of "nested" channel views such as in user popups,
+    /// this channel is set to the original channel the messages came from,
+    /// which is used to open user popups from this view.
+    /// It's not always set.
+    /// @see #hasSourceChannel()
+    ChannelPtr sourceChannel() const;
+    /// Setter for #sourceChannel()
+    void setSourceChannel(ChannelPtr sourceChannel);
+    /// Checks if this view has a #sourceChannel
+    bool hasSourceChannel() const;
+
+    /// The platform channel this view derives its messages from.
+    ///
+    /// The currently active non-virtual source channel. In case of nested
+    /// views, this uses the #sourceChannel(), otherwise it uses the
+    /// #underlyingChannel().
+    ChannelPtr effectiveSourceChannel() const;
+
+    std::vector<MessageLayoutPtr> &getMessagesSnapshot();
+
+    void queueLayout();
+    void invalidateBuffers();
+
+    void clearMessages();
+
+    Context getContext() const;
+
+    /**
+     * @brief Creates and shows a UserInfoPopup dialog
+     *
+     * @param userName The login name of the user
+     * @param alternativePopoutChannel Optional parameter containing the channel name to use for context
+     **/
+    void showUserInfoPopup(const QString &userName, MessagePlatform platform,
+                           const QString &alternativePopoutChannel = {});
+
+    /**
+     * @brief This method is meant to be used when filtering out channels.
+     *        It <b>must</b> return true if a message belongs in this channel.
+     *        It <b>might</b> return true if a message doesn't belong in this channel.
+     */
+    bool mayContainMessage(const MessagePtr &message);
+
+    void updateColorTheme();
+
+    /// @brief Adjusts the colors this view uses
+    ///
+    /// If @a isOverlay is true, the overlay colors (as specified in the theme)
+    /// will be used. Otherwise, regular message-colors will be used.
+    void setIsOverlay(bool isOverlay);
+
+    Scrollbar *scrollbar();
+
+    using ChannelViewID = std::size_t;
+    ///
+    /// \brief Get the ID of this ChannelView
+    ///
+    /// The ID is made of the underlying channel's name
+    /// combined with the filter set IDs
+    ChannelViewID getID() const;
+
+    pajlada::Signals::Signal<QMouseEvent *> mouseDown;
+    pajlada::Signals::NoArgSignal selectionChanged;
+    pajlada::Signals::Signal<TabHighlight> tabHighlightRequested;
+    pajlada::Signals::NoArgSignal liveStatusChanged;
+    pajlada::Signals::Signal<const MessageLayoutElement *,
+                             Qt::KeyboardModifiers>
+        elementClicked;
+    pajlada::Signals::Signal<const Link &, Qt::KeyboardModifiers> linkClicked;
+    pajlada::Signals::Signal<QString, FromTwitchLinkOpenChannelIn>
+        openChannelIn;
+    pajlada::Signals::Signal<QMenu *, const MessageLayoutElement *>
+        messageMenuCreated;
+
+    /// This signal fires when a message passed filters and was added to the channel view
+    Q_SIGNAL void messageAddedToChannel(MessagePtr &message);
+
+protected:
+    void themeChangedEvent() override;
+    void scaleChangedEvent(float scale) override;
+
+    void resizeEvent(QResizeEvent * /*event*/) override;
+
+    void paintEvent(QPaintEvent * /*event*/) override;
+    void wheelEvent(QWheelEvent *event) override;
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    void enterEvent(QEnterEvent * /*event*/) override;
+#else
+    void enterEvent(QEvent * /*event*/) override;
+#endif
+    void leaveEvent(QEvent * /*event*/) override;
+
+    bool event(QEvent *event) override;
+    bool gestureEvent(const QGestureEvent *event);
+
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
+
+    void hideEvent(QHideEvent * /*event*/) override;
+    void showEvent(QShowEvent *event) override;
+
+    void handleLinkClick(QMouseEvent *event, const Link &link,
+                         MessageLayout *layout);
+
+    bool tryGetMessageAt(QPointF p, std::shared_ptr<MessageLayout> &message,
+                         QPointF &relativePos, int &index);
+
+private:
+    struct InternalCtor {
+    };
+
+    ChannelView(InternalCtor tag, QWidget *parent, Split *split,
+                Context context, size_t messagesLimit);
+
+    void initializeLayout();
+    void initializeScrollbar();
+    void initializeSignals();
+
+    void messageAppended(MessagePtr &message,
+                         std::optional<MessageFlags> overridingFlags);
+    void messageAddedAtStart(std::vector<MessagePtr> &messages);
+    void messageRemoveFromStart(MessagePtr &message);
+    void messageReplaced(size_t hint, const MessagePtr &prev,
+                         const MessagePtr &replacement);
+    void messagesUpdated();
+
+    void updateScrollbar(const std::vector<MessageLayoutPtr> &messages,
+                         bool causedByScrollbar, bool causedByShow);
+    void updateScrollWidgetGeometries();
+
+    void drawMessages(QPainter &painter, const QRect &area);
+    void setSelection(const SelectionItem &start, const SelectionItem &end);
+    void setSelection(const Selection &newSelection);
+    void selectWholeMessage(MessageLayout *layout, int &messageIndex);
+
+    void handleMouseClick(QMouseEvent *event,
+                          const MessageLayoutElement *hoveredElement,
+                          MessageLayoutPtr layout);
+    void addContextMenuItems(const MessageLayoutElement *hoveredElement,
+                             MessageLayoutPtr layout, QMouseEvent *event);
+    void addMessageContextMenuItems(QMenu *menu,
+                                    const MessageLayoutPtr &layout);
+    void addTwitchLinkContextMenuItems(
+        QMenu *menu, const MessageLayoutElement *hoveredElement);
+    void addCommandExecutionContextMenuItems(QMenu *menu,
+                                             const MessageLayoutPtr &layout);
+    void translateMessage(const MessagePtr &message);
+    void maybeAutoTranslateMessage(const MessagePtr &message);
+
+    int getLayoutWidth() const;
+    void updatePauses();
+    void unpaused();
+
+    void enableScrolling(const QPointF &scrollStart);
+    void disableScrolling();
+
+    /**
+     * Scrolls to a message layout that must be from this view.
+     *
+     * @param layout Must be from this channel.
+     * @param messageIdx Must be an index into this channel.
+     */
+    void scrollToMessageLayout(MessageLayout *layout, size_t messageIdx);
+
+    void setInputReply(const MessagePtr &message);
+    void showReplyThreadPopup(const MessagePtr &message);
+    bool canReplyToMessages() const;
+
+    /// Returns the selected channel as well as enabled flags.
+    std::pair<Channel *, MessageElementFlags> getMultiChannelInfo() const;
+
+    void updateID();
+    ChannelViewID id_{};
+
+    bool layoutQueued_ = false;
+    bool bufferInvalidationQueued_ = false;
+
+    bool lastMessageHasAlternateBackground_ = false;
+    bool lastMessageHasAlternateBackgroundReverse_ = true;
+
+    /// Tracks the area of animated elements in the last full repaint.
+    /// If this is empty (QRect::isEmpty()), no animated element is shown.
+    QRect animationArea_;
+
+    bool pausable_ = false;
+    QTimer pauseTimer_;
+    std::unordered_map<PauseReason, std::optional<SteadyClock::time_point>>
+        pauses_;
+    std::optional<SteadyClock::time_point> pauseEnd_;
+    int pauseScrollMinimumOffset_ = 0;
+    int pauseScrollMaximumOffset_ = 0;
+    // Keeps track how many message indices we need to offset the selection when we resume scrolling
+    uint32_t pauseSelectionOffset_ = 0;
+
+    std::optional<MessageElementFlags> overrideFlags_;
+    bool collapseMessages_{false};
+    MessageLayoutPtr lastReadMessage_;
+
+    ThreadGuard snapshotGuard_;
+    std::vector<MessageLayoutPtr> snapshot_;
+
+    /// @brief The backing (internal) channel
+    ///
+    /// This is a "virtual" channel where all filtered messages from
+    /// @a underlyingChannel_ are added to. It contains messages visible on
+    /// screen and will always be a @a Channel, or, it will never be a
+    /// TwitchChannel or IrcChannel, however, it will have the same type and
+    /// name as @a underlyingChannel_. It's not know to any registry/server.
+    ChannelPtr channel_;
+
+    /// @brief The channel receiving messages
+    ///
+    /// This channel is the one passed in #setChannel(). It's known to the
+    /// respective registry (e.g. TwitchIrcServer). For Twitch channels for
+    /// example, this will be an instance of TwitchChannel. This channel might
+    /// contain more messages than visible if filters are active.
+    ChannelPtr underlyingChannel_ = nullptr;
+
+    /// @brief The channel @a underlyingChannel_ is derived from
+    ///
+    /// In case of "nested" channel views such as in user popups,
+    /// this channel is set to the original channel the messages came from,
+    /// which is used to open user popups from this view.
+    ///
+    /// @see #sourceChannel()
+    /// @see #hasSourceChannel()
+    ChannelPtr sourceChannel_ = nullptr;
+    Split *split_;
+
+    Scrollbar *scrollBar_;
+    LabelButton *goToBottom_{};
+    bool showScrollBar_ = false;
+
+    FilterSetPtr channelFilters_;
+
+    // Returns true if message should be included
+    bool shouldIncludeMessage(const MessagePtr &message) const;
+
+    // Returns whether the scrollbar should have highlights
+    bool showScrollbarHighlights() const;
+    void refreshScrollbarHighlights();
+
+    // This variable can be used to decide whether or not we should render the
+    // "Show latest messages" button
+    bool showingLatestMessages_ = true;
+    bool enableScrollingToBottom_ = true;
+
+    bool onlyUpdateEmotes_ = false;
+
+    bool isOverlay_ = false;
+    bool transparentBackground_ = false;
+    std::optional<float> overrideImageScale_;
+    std::optional<float> overrideEmoteScale_;
+    std::optional<float> overrideBadgeScale_;
+    std::optional<bool> overrideSeparateMessages_;
+    bool centerBadges_ = false;
+
+    int verticalOffset_ = 0;
+
+    // Mouse event variables
+    bool isLeftMouseDown_ = false;
+    bool isRightMouseDown_ = false;
+    bool isDoubleClick_ = false;
+    QPointF lastLeftPressPosition_;
+    QPointF lastRightPressPosition_;
+    QPointF lastDoubleClickPosition_;
+    QTimer clickTimer_;
+
+    bool isScrolling_ = false;
+    bool isPanning_ = false;
+    QPointF lastMiddlePressPosition_;
+    QPointF currentMousePosition_;
+    QTimer scrollTimer_;
+
+    // We're only interested in the pointer, not the contents
+    MessageLayout *highlightedMessage_ = nullptr;
+    QVariantAnimation highlightAnimation_;
+    void setupHighlightAnimationColors();
+    QSet<QString> nukePreviewMessageIds_;
+
+    struct {
+        QCursor neutral;
+        QCursor up;
+        QCursor down;
+    } cursors_;
+
+    Selection selection_;
+    Selection doubleClickSelection_;
+
+    const Context context_;
+
+    LimitedQueue<MessageLayoutPtr> messages_;
+
+    pajlada::Signals::SignalHolder signalHolder_;
+
+    // channelConnections_ will be cleared when the underlying channel of the channelview changes
+    pajlada::Signals::SignalHolder channelConnections_;
+
+    std::unordered_set<std::shared_ptr<MessageLayout>> messagesOnScreen_;
+
+    MessageColors messageColors_;
+    MessagePreferences messagePreferences_;
+
+    void scrollUpdateRequested();
+
+    TooltipWidget *const tooltipWidget_{};
+
+    /// Pointer to a link info that hasn't loaded yet
+    QPointer<LinkInfo> pendingLinkInfo_;
+
+    /// @brief Sets the tooltip to contain the link info
+    ///
+    /// If the info isn't loaded yet, it's tracked until it's resolved or errored.
+    void setLinkInfoTooltip(LinkInfo *info);
+
+    /// Slot for the LinkInfo::stateChanged signal.
+    void pendingLinkInfoStateChanged();
+};
+
+}  // namespace chatterino

@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: 2018 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "controllers/commands/CommandModel.hpp"
+
+#include "common/SignalVector.hpp"
+#include "controllers/commands/Command.hpp"
+#include "util/StandardItemHelper.hpp"
+
+namespace chatterino {
+
+CommandModel::CommandModel(QObject *parent)
+    : SignalVectorModel<Command>(Column::COUNT, parent)
+{
+}
+
+Command CommandModel::getItemFromRow(std::vector<QStandardItem *> &row,
+                                     const Command &original)
+{
+    return Command(row[Column::Trigger]->data(Qt::EditRole).toString(),
+                   row[Column::CommandFunc]->data(Qt::EditRole).toString(),
+                   row[Column::ShowInMessageContextMenu]
+                       ->data(Qt::CheckStateRole)
+                       .toBool());
+}
+
+void CommandModel::getRowFromItem(const Command &item,
+                                  std::vector<QStandardItem *> &row)
+{
+    setStringItem(row[Column::Trigger], item.name);
+    setStringItem(row[Column::CommandFunc], item.func);
+    setBoolItem(row[Column::ShowInMessageContextMenu],
+                item.showInMsgContextMenu);
+}
+
+}  // namespace chatterino

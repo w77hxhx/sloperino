@@ -1,0 +1,655 @@
+// SPDX-FileCopyrightText: 2020 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#include "common/WindowDescriptors.hpp"
+
+#include "Application.hpp"
+#include "common/QLogging.hpp"
+#include "debug/AssertInGuiThread.hpp"
+#include "providers/kick/KickChatServer.hpp"
+#include "providers/twitch/TwitchIrcServer.hpp"
+#include "providers/youtube/YouTubeChatServer.hpp"
+#include "util/Backup.hpp"
+#include "util/Expected.hpp"
+#include "util/MultiChannel.hpp"
+#include "util/QMagicEnum.hpp"
+#include "widgets/Window.hpp"
+
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonParseError>
+
+using namespace Qt::Literals;
+
+namespace chatterino {
+
+namespace {
+
+ExpectedStr<QJsonArray> loadWindowArray(const QString &settingsPath)
+{
+    QFile file(settingsPath);
+    if (!file.exists())
+    {
+        return QJsonArray{};
+    }
+
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        return makeUnexpected(
+            QStringLiteral("Failed to open '%1'").arg(settingsPath));
+    }
+
+    QByteArray data = file.readAll();
+    QJsonParseError error;
+    QJsonDocument document = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError)
+    {
+        return makeUnexpected(QStringLiteral("Malformed JSON at offset %1: %2")
+                                  .arg(error.offset)
+                                  .arg(error.errorString()));
+    }
+
+    if (!document.isObject())
+    {
+        return makeUnexpected(
+            QStringLiteral("Window layout root is not a JSON object"));
+    }
+
+    const auto windowsValue = document.object().value("windows");
+    if (!windowsValue.isArray())
+    {
+        return makeUnexpected(
+            QStringLiteral("Window layout is missing the windows array"));
+    }
+
+    auto windows = windowsValue.toArray();
+    if (windows.isEmpty())
+    {
+        return makeUnexpected(
+            QStringLiteral("Window layout does not contain any windows"));
+    }
+
+    return windows;
+}
+
+QList<QUuid> loadFilters(const QJsonValue &val)
+{
+    QList<QUuid> filterIds;
+
+    if (!val.isUndefined())
+    {
+        const auto array = val.toArray();
+        filterIds.reserve(array.size());
+        for (const auto &id : array)
+        {
+            filterIds.append(QUuid::fromString(id.toString()));
+        }
+    }
+
+    return filterIds;
+}
+
+QJsonArray encodeFilters(std::span<const QUuid> filters)
+{
+    QJsonArray arr;
+    for (const auto &f : filters)
+    {
+        arr.append(f.toString(QUuid::WithoutBraces));
+    }
+    return arr;
+}
+
+}  // namespace
+
+ChildChannelDescriptor ChildChannelDescriptor::fromJson(const QJsonObject &obj)
+{
+    return {
+        .platform = obj["platform"].toString(),
+        .channelName = obj["channel"].toString(),
+    };
+}
+
+QJsonObject ChildChannelDescriptor::toJson() const
+{
+    return {
+        {QLatin1StringView("platform"), this->platform},
+        {QLatin1StringView("channel"), this->channelName},
+    };
+}
+
+SplitDescriptor SplitDescriptor::loadFromJSON(const QJsonObject &root)
+{
+    const QJsonObject data = root["data"].toObject();
+
+    SplitDescriptor descriptor;
+    descriptor.type_ = data.value("type").toString();
+    descriptor.server_ = data.value("server").toInt(-1);
+    descriptor.anonymous_ = data.value("anonymous").toBool(false);
+    descriptor.moderationMode_ = root.value("moderationMode").toBool();
+    if (data.contains("channel"))
+    {
+        descriptor.channelName_ = data.value("channel").toString();
+    }
+    else
+    {
+        descriptor.channelName_ = data.value("name").toString();
+    }
+    descriptor.filters_ = loadFilters(root.value("filters"));
+
+    auto spellOverride = root["checkSpelling"];
+    if (spellOverride.isBool())
+    {
+        descriptor.spellCheckOverride = spellOverride.toBool();
+    }
+    descriptor.perSplitHidePinnedMessage_ =
+        root.value(QStringLiteral("splitHidePinnedMessage")).toBool();
+    descriptor.perSplitHidePrediction_ =
+        root.value(QStringLiteral("splitHidePrediction")).toBool();
+    descriptor.perSplitHidePoll_ =
+        root.value(QStringLiteral("splitHidePoll")).toBool();
+    if (descriptor.type_ == u"kick")
+    {
+        descriptor.kickChannelID =
+            static_cast<uint64_t>(data["channelID"].toInt());
+        descriptor.kickUserID = static_cast<uint64_t>(data["userID"].toInt());
+        descriptor.kickRoomID = static_cast<uint64_t>(data["roomID"].toInt());
+    }
+    else if (descriptor.type_ == u"multi")
+    {
+        const auto children = data["children"].toArray();
+        for (const auto child : children)
+        {
+            descriptor.children.emplace_back(
+                ChildChannelDescriptor::fromJson(child.toObject()));
+        }
+        auto modeStr = data["indicatorMode"].toString();
+        descriptor.mcIndicator =
+            qmagicenum::enumCast<MultiChannelIndicatorMode>(modeStr).value_or(
+                MultiChannelIndicatorMode::PlatformBadgeIfUnselected);
+        descriptor.mcIndex = static_cast<uint32_t>(data["activeIndex"].toInt());
+        descriptor.mcTintByPlatform = data["tintByPlatform"].toBool();
+        descriptor.mcShowTwitchOverlays = data["showTwitchOverlays"].toBool();
+        descriptor.mcCombinedViewerCount = data["combinedViewerCount"].toBool();
+    }
+
+    return descriptor;
+}
+
+QJsonObject SplitDescriptor::toJson() const
+{
+    QJsonObject obj;
+
+    obj.insert("type", "split");
+    obj.insert("moderationMode", this->moderationMode_);
+
+    QJsonObject data{{"type"_L1, this->type_}};
+    if (!this->channelName_.isEmpty())
+    {
+        data.insert("name"_L1, this->channelName_);
+    }
+    if (this->anonymous_)
+    {
+        data.insert("anonymous"_L1, true);
+    }
+    if (this->type_ == u"kick")
+    {
+        data.insert("roomID", static_cast<qint64>(this->kickRoomID));
+        data.insert("userID", static_cast<qint64>(this->kickUserID));
+        data.insert("channelID", static_cast<qint64>(this->kickChannelID));
+    }
+    else if (this->type_ == u"multi")
+    {
+        QJsonArray children;
+        for (const auto &child : this->children)
+        {
+            children.append(child.toJson());
+        }
+        data.insert("children", children);
+        data.insert("indicatorMode",
+                    qmagicenum::enumNameString(this->mcIndicator));
+        data.insert("activeIndex", static_cast<int32_t>(this->mcIndex));
+        data.insert("tintByPlatform", this->mcTintByPlatform);
+        data.insert("showTwitchOverlays", this->mcShowTwitchOverlays);
+        data.insert("combinedViewerCount", this->mcCombinedViewerCount);
+    }
+    obj.insert("data", data);
+
+    obj.insert("filters", encodeFilters(this->filters_));
+
+    if (this->spellCheckOverride.has_value())
+    {
+        obj["checkSpelling"] = *this->spellCheckOverride;
+    }
+
+    if (this->perSplitHidePinnedMessage_)
+    {
+        obj.insert(QStringLiteral("splitHidePinnedMessage"), true);
+    }
+    if (this->perSplitHidePrediction_)
+    {
+        obj.insert(QStringLiteral("splitHidePrediction"), true);
+    }
+    if (this->perSplitHidePoll_)
+    {
+        obj.insert(QStringLiteral("splitHidePoll"), true);
+    }
+
+    return obj;
+}
+
+IndirectChannel SplitDescriptor::decodeChannel() const
+{
+    assertInGuiThread();
+
+    auto type = qmagicenum::enumCast<Channel::Type>(this->type_);
+    if (!type)
+    {
+        if (this->anonymous_)
+        {
+            return getApp()->getTwitch()->getOrAddAnonymousChannel(
+                this->channelName_);
+        }
+
+        return getApp()->getTwitch()->getOrAddChannel(this->channelName_);
+    }
+
+    switch (*type)
+    {
+        case Channel::Type::Twitch:
+            return getApp()->getTwitch()->getOrAddChannel(this->channelName_);
+        case Channel::Type::TwitchMentions:
+            return getApp()->getTwitch()->getMentionsChannel();
+        case Channel::Type::TwitchWatching:
+            return getApp()->getTwitch()->getWatchingChannel();
+        case Channel::Type::TwitchWhispers:
+            return getApp()->getTwitch()->getWhispersChannel();
+        case Channel::Type::TwitchLive:
+            return getApp()->getTwitch()->getLiveChannel();
+        case Channel::Type::TwitchAutomod:
+            return getApp()->getTwitch()->getAutomodChannel();
+        case Channel::Type::TwitchFirehose:
+            return getApp()->getTwitch()->getFirehoseChannel();
+        case Channel::Type::Misc:
+            return getApp()->getTwitch()->getChannelOrEmpty(this->channelName_);
+        case Channel::Type::Kick:
+            return getApp()->getKickChatServer()->getOrCreate(
+                this->channelName_, KickChannel::UserInit{
+                                        .roomID = this->kickRoomID,
+                                        .userID = this->kickUserID,
+                                        .channelID = this->kickChannelID,
+                                    });
+        case Channel::Type::YouTube:
+            return getApp()->getYouTubeChatServer()->getOrCreate(
+                this->channelName_);
+        case Channel::Type::Multi: {
+            QVarLengthArray<MultiChannel::Spec, 4> specs;
+            for (const auto &child : this->children)
+            {
+                auto spec = MultiChannel::Spec::fromDescriptor(child);
+                if (spec)
+                {
+                    specs.emplace_back(*std::move(spec));
+                }
+            }
+            auto ptr = std::make_shared<MultiChannel>(
+                specs, this->mcIndicator, this->mcTintByPlatform,
+                this->mcShowTwitchOverlays, this->mcCombinedViewerCount);
+            ptr->setActiveChannelIndex(this->mcIndex);
+            return {std::move(ptr)};
+        }
+        case Channel::Type::None:
+        case Channel::Type::Direct:
+        case Channel::Type::TwitchEnd:
+            break;  // FIXME: Remove these (#5703)
+    }
+
+    return Channel::getEmpty();
+}
+
+SplitNodeDescriptor::SplitNodeDescriptor(SplitDescriptor descriptor)
+    : SplitDescriptor(std::move(descriptor))
+{
+}
+
+SplitNodeDescriptor SplitNodeDescriptor::loadFromJSON(const QJsonObject &root)
+{
+    SplitNodeDescriptor descriptor(SplitDescriptor::loadFromJSON(root));
+    descriptor.flexH_ = root["flexh"].toDouble(1.0);
+    descriptor.flexV_ = root["flexv"].toDouble(1.0);
+    return descriptor;
+}
+
+QJsonObject SplitNodeDescriptor::toJson() const
+{
+    QJsonObject obj = SplitDescriptor::toJson();
+    obj.insert("flexh", this->flexH_);
+    obj.insert("flexv", this->flexV_);
+    return obj;
+}
+
+ContainerNodeDescriptor ContainerNodeDescriptor::loadFromJSON(
+    const QJsonObject &root)
+{
+    ContainerNodeDescriptor descriptor;
+
+    descriptor.flexH_ = root.value("flexh").toDouble(1.0);
+    descriptor.flexV_ = root.value("flexv").toDouble(1.0);
+
+    descriptor.vertical_ = root.value("type").toString() == "vertical";
+
+    const auto items = root.value("items").toArray();
+    for (const auto val : items)
+    {
+        const auto obj = val.toObject();
+        auto type = obj.value("type");
+        if (type.toString() == "split")
+        {
+            descriptor.items_.emplace_back(
+                SplitNodeDescriptor::loadFromJSON(obj));
+        }
+        else
+        {
+            descriptor.items_.emplace_back(
+                ContainerNodeDescriptor::loadFromJSON(obj));
+        }
+    }
+
+    return descriptor;
+}
+
+QJsonObject ContainerNodeDescriptor::toJson() const
+{
+    QJsonObject obj;
+    obj.insert("type", this->vertical_ ? "vertical" : "horizontal");
+    obj.insert("flexh", this->flexH_);
+    obj.insert("flexv", this->flexV_);
+
+    QJsonArray itemsArr;
+    for (const auto &n : this->items_)
+    {
+        itemsArr.append(std::visit(
+            [](auto &&it) {
+                return it.toJson();
+            },
+            n));
+    }
+    obj.insert("items", itemsArr);
+    return obj;
+}
+
+TabDescriptor TabDescriptor::loadFromJSON(const QJsonObject &tabObj)
+{
+    TabDescriptor tab;
+    // Load tab custom title
+    QJsonValue titleVal = tabObj.value("title");
+    if (titleVal.isString())
+    {
+        tab.customTitle_ = titleVal.toString();
+    }
+
+    // Load tab custom color
+    QJsonValue colorVal = tabObj.value("tabColor");
+    if (colorVal.isString())
+    {
+        tab.customTabColor_ = colorVal.toString();
+    }
+
+    // Load tab selected state
+    tab.selected_ = tabObj.value("selected").toBool(false);
+
+    // Load tab "highlightsEnabled" state
+    tab.highlightsEnabled_ = tabObj.value("highlightsEnabled").toBool(true);
+
+    QJsonObject splitRoot = tabObj.value("splits2").toObject();
+
+    // Load tab splits
+    if (!splitRoot.isEmpty())
+    {
+        // root type
+        auto nodeType = splitRoot.value("type").toString();
+        if (nodeType == "split")
+        {
+            tab.rootNode_ = SplitNodeDescriptor::loadFromJSON(splitRoot);
+        }
+        else if (nodeType == "horizontal" || nodeType == "vertical")
+        {
+            tab.rootNode_ = ContainerNodeDescriptor::loadFromJSON(splitRoot);
+        }
+    }
+
+    return tab;
+}
+
+WindowLayout WindowLayout::loadFromFile(const QString &path)
+{
+    WindowLayout layout;
+    QJsonArray windowsArr;
+    bool loaded = false;
+
+    const QFileInfo fileInfo(path);
+    backup::loadWithBackups(
+        backup::FileData{
+            .fileName = fileInfo.fileName(),
+            .directory = fileInfo.absolutePath(),
+            .fileKind = QStringLiteral("Window layout"),
+            .fileDescription =
+                QStringLiteral("This file contains your open windows, tabs, "
+                               "splits, and split sizes."),
+        },
+        [&]() -> ExpectedStr<void> {
+            auto maybeWindows = loadWindowArray(path);
+            if (!maybeWindows)
+            {
+                return makeUnexpected(maybeWindows.error());
+            }
+
+            windowsArr = maybeWindows.value();
+            loaded = true;
+            return {};
+        });
+
+    if (!loaded)
+    {
+        return layout;
+    }
+
+    bool hasSetAMainWindow = false;
+
+    // "deserialize"
+    for (const QJsonValue &windowVal : windowsArr)
+    {
+        const QJsonObject windowObj = windowVal.toObject();
+
+        WindowDescriptor window;
+
+        // Load window type
+        QString typeVal = windowObj.value("type").toString();
+        auto type = typeVal == "main" ? WindowType::Main : WindowType::Popup;
+
+        if (type == WindowType::Main)
+        {
+            if (hasSetAMainWindow)
+            {
+                qCDebug(chatterinoCommon)
+                    << "Window Layout file contains more than one Main window "
+                       "- demoting to Popup type";
+                type = WindowType::Popup;
+            }
+            hasSetAMainWindow = true;
+        }
+
+        window.type_ = type;
+
+        // Load window state
+        if (windowObj.value("state") == "minimized")
+        {
+            window.state_ = WindowDescriptor::State::Minimized;
+        }
+        else if (windowObj.value("state") == "maximized")
+        {
+            window.state_ = WindowDescriptor::State::Maximized;
+        }
+
+        // Load window geometry
+        {
+            int x = windowObj.value("x").toInt(-1);
+            int y = windowObj.value("y").toInt(-1);
+            int width = windowObj.value("width").toInt(-1);
+            int height = windowObj.value("height").toInt(-1);
+
+            window.geometry_ = QRect(x, y, width, height);
+        }
+
+        // Load popup ID
+        auto idVal = windowObj["popupID"];
+        if (idVal.isDouble())
+        {
+            window.popupID = idVal.toInt(1);
+        }
+
+        bool hasSetASelectedTab = false;
+
+        // Load window tabs
+        QJsonArray tabs = windowObj.value("tabs").toArray();
+        for (QJsonValue tabVal : tabs)
+        {
+            TabDescriptor tab = TabDescriptor::loadFromJSON(tabVal.toObject());
+            if (tab.selected_)
+            {
+                if (hasSetASelectedTab)
+                {
+                    qCDebug(chatterinoCommon)
+                        << "Window contains more than one selected tab - "
+                           "demoting to unselected";
+                    tab.selected_ = false;
+                }
+                hasSetASelectedTab = true;
+            }
+            window.tabs_.emplace_back(std::move(tab));
+        }
+
+        // Load emote popup position
+        {
+            auto emotePopup = windowObj["emotePopup"].toObject();
+            layout.emotePopupBounds_ = QRect{
+                emotePopup["x"].toInt(),
+                emotePopup["y"].toInt(),
+                emotePopup["width"].toInt(),
+                emotePopup["height"].toInt(),
+            };
+        }
+
+        layout.windows_.emplace_back(std::move(window));
+    }
+
+    return layout;
+}
+
+void WindowLayout::activateOrAddChannel(ProviderId provider,
+                                        const QString &name)
+{
+    if (provider != ProviderId::Twitch || name.startsWith(u'/') ||
+        name.startsWith(u'$'))
+    {
+        qCWarning(chatterinoWindowmanager)
+            << "Only twitch channels can be set as active";
+        return;
+    }
+
+    auto mainWindow = std::find_if(this->windows_.begin(), this->windows_.end(),
+                                   [](const auto &win) {
+                                       return win.type_ == WindowType::Main;
+                                   });
+
+    if (mainWindow == this->windows_.end())
+    {
+        this->windows_.emplace_back(WindowDescriptor{
+            .type_ = WindowType::Main,
+            .geometry_ = {-1, -1, -1, -1},
+            .tabs_ =
+                {
+                    TabDescriptor{
+                        .selected_ = true,
+                        .rootNode_ = SplitNodeDescriptor{{
+                            .type_ = "twitch",
+                            .channelName_ = name,
+                        }},
+                    },
+                },
+        });
+        return;
+    }
+
+    TabDescriptor *bestTab = nullptr;
+    // The tab score is calculated as follows:
+    // +2 for every split
+    // +1 if the desired split has filters
+    // Thus lower is better and having one split of a channel is preferred over multiple
+    size_t bestTabScore = std::numeric_limits<size_t>::max();
+
+    for (auto &tab : mainWindow->tabs_)
+    {
+        tab.selected_ = false;
+
+        if (!tab.rootNode_)
+        {
+            continue;
+        }
+
+        // recursive visitor
+        struct Visitor {
+            const QString &spec;
+            size_t score = 0;
+            bool hasChannel = false;
+
+            void operator()(const SplitNodeDescriptor &split)
+            {
+                this->score += 2;
+                if (split.channelName_ == this->spec)
+                {
+                    this->hasChannel = true;
+                    if (!split.filters_.empty())
+                    {
+                        this->score += 1;
+                    }
+                }
+            }
+
+            void operator()(const ContainerNodeDescriptor &container)
+            {
+                for (const auto &item : container.items_)
+                {
+                    std::visit(*this, item);
+                }
+            }
+        } visitor{name};
+
+        std::visit(visitor, *tab.rootNode_);
+
+        if (visitor.hasChannel && visitor.score < bestTabScore)
+        {
+            bestTab = &tab;
+            bestTabScore = visitor.score;
+        }
+    }
+
+    if (bestTab)
+    {
+        bestTab->selected_ = true;
+        return;
+    }
+
+    TabDescriptor tab{
+        .selected_ = true,
+        .rootNode_ = SplitNodeDescriptor{{
+            .type_ = "twitch",
+            .channelName_ = name,
+        }},
+    };
+    mainWindow->tabs_.emplace_back(tab);
+}
+
+}  // namespace chatterino

@@ -1,0 +1,54 @@
+// SPDX-FileCopyrightText: 2018 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <boost/container_hash/hash_fwd.hpp>
+#include <QHashFunctions>
+#include <QString>
+
+#include <cstddef>
+#include <functional>
+
+#define QStringAlias(name)                                      \
+    namespace chatterino {                                      \
+    struct name {                                               \
+        QString string;                                         \
+        bool operator==(const name &other) const                \
+        {                                                       \
+            return this->string == other.string;                \
+        }                                                       \
+        bool operator!=(const name &other) const                \
+        {                                                       \
+            return this->string != other.string;                \
+        }                                                       \
+    };                                                          \
+    }                                                           \
+    namespace std {                                             \
+    template <>                                                 \
+    struct hash<chatterino::name> {                             \
+        size_t operator()(const chatterino::name &s) const      \
+        {                                                       \
+            return qHash(s.string);                             \
+        }                                                       \
+    };                                                          \
+    }                                                           \
+    namespace boost {                                           \
+    template <>                                                 \
+    struct hash<chatterino::name> {                             \
+        std::size_t operator()(chatterino::name const &s) const \
+        {                                                       \
+            return qHash(s.string);                             \
+        }                                                       \
+    };                                                          \
+    }
+
+QStringAlias(UserName);
+QStringAlias(UserId);
+QStringAlias(Url);
+QStringAlias(Tooltip);
+QStringAlias(EmoteId);
+QStringAlias(EmoteSetId);
+QStringAlias(EmoteName);
+QStringAlias(EmoteAuthor);

@@ -1,0 +1,340 @@
+// SPDX-FileCopyrightText: 2024 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#ifdef CHATTERINO_HAVE_PLUGINS
+#    include "controllers/plugins/api/ChannelRef.hpp"
+
+#    include "Application.hpp"
+#    include "common/Channel.hpp"
+#    include "controllers/commands/CommandController.hpp"
+#    include "controllers/plugins/Plugin.hpp"
+#    include "controllers/plugins/SignalCallback.hpp"
+#    include "controllers/plugins/SolTypes.hpp"
+#    include "messages/Message.hpp"
+#    include "providers/twitch/TwitchChannel.hpp"
+#    include "providers/twitch/TwitchIrcServer.hpp"
+#    include "util/WeakPtrHelpers.hpp"
+
+#    include <sol/sol.hpp>
+
+#    include <memory>
+#    include <optional>
+
+namespace chatterino::lua::api {
+
+ChannelRef::ChannelRef(const std::shared_ptr<Channel> &chan)
+    : weak(chan)
+{
+}
+
+std::shared_ptr<Channel> ChannelRef::strong()
+{
+    auto c = this->weak.lock();
+    if (!c)
+    {
+        throw std::runtime_error(
+            "Expired c2.Channel used - use c2.Channel:is_valid() to "
+            "check validity");
+    }
+    return c;
+}
+
+std::shared_ptr<TwitchChannel> ChannelRef::twitch()
+{
+    auto c = std::dynamic_pointer_cast<TwitchChannel>(this->weak.lock());
+    if (!c)
+    {
+        throw std::runtime_error(
+            "Expired or non-twitch c2.Channel used - use "
+            "c2.Channel:is_valid() and c2.Channe:is_twitch_channel()");
+    }
+    return c;
+}
+
+bool ChannelRef::is_valid()
+{
+    return !this->weak.expired();
+}
+
+QString ChannelRef::get_name()
+{
+    return this->strong()->getName();
+}
+
+Channel::Type ChannelRef::get_type()
+{
+    return this->strong()->getType();
+}
+
+QString ChannelRef::get_display_name()
+{
+    return this->strong()->getDisplayName();
+}
+
+void ChannelRef::send_message(QString text, sol::variadic_args va)
+{
+    bool execCommands = [&] {
+        if (va.size() >= 1)
+        {
+            return va.get<bool>();
+        }
+        return false;
+    }();
+    text = text.replace('\n', ' ');
+    auto chan = this->strong();
+    if (execCommands)
+    {
+        text = getApp()->getCommands()->execCommand(text, chan, false);
+    }
+    chan->sendMessage(text);
+}
+
+void ChannelRef::add_system_message(QString text)
+{
+    text = text.replace('\n', ' ');
+    this->strong()->addSystemMessage(text);
+}
+
+void ChannelRef::add_message(std::shared_ptr<Message> &message,
+                             sol::variadic_args va)
+{
+    MessageContext ctx = [&] {
+        if (va.size() >= 1)
+        {
+            return va.get<MessageContext>();
+        }
+        return MessageContext::Original;
+    }();
+    auto overrideFlags = [&]() -> std::optional<MessageFlags> {
+        if (va.size() >= 2)
+        {
+            auto flags = va.get<std::optional<MessageFlag>>(1);
+            if (flags)
+            {
+                return MessageFlags{*flags};
+            }
+            return {};
+        }
+        return {};
+    }();
+
+    this->strong()->addMessage(message, ctx, overrideFlags);
+}
+
+std::vector<MessagePtrMut> ChannelRef::message_snapshot(size_t n_items)
+{
+    return this->strong()->getMessageSnapshotMut(n_items);
+}
+
+MessagePtrMut ChannelRef::last_message()
+{
+    return std::const_pointer_cast<Message>(this->strong()->getLastMessage());
+}
+
+void ChannelRef::replace_message(const MessagePtrMut &message,
+                                 const MessagePtrMut &replacement)
+{
+    if (!message || !replacement)
+    {
+        throw std::runtime_error("Invalid message");
+    }
+
+    this->strong()->replaceMessage(message, replacement);
+}
+
+void ChannelRef::replace_message_hint(const MessagePtrMut &message,
+                                      const MessagePtrMut &replacement,
+                                      size_t hint)
+{
+    if (!message || !replacement)
+    {
+        throw std::runtime_error("Invalid message");
+    }
+    if (hint == 0)
+    {
+        throw std::runtime_error("Invalid index");
+    }
+
+    this->strong()->replaceMessage(hint - 1, message, replacement);
+}
+
+void ChannelRef::replace_message_at(size_t index,
+                                    const MessagePtrMut &replacement)
+{
+    if (!replacement)
+    {
+        throw std::runtime_error("Invalid message");
+    }
+    if (index == 0)
+    {
+        throw std::runtime_error("Invalid index");
+    }
+
+    this->strong()->replaceMessage(index - 1, replacement);
+}
+
+void ChannelRef::clear_messages()
+{
+    this->strong()->clearMessages();
+}
+
+MessagePtrMut ChannelRef::find_message_by_id(const QString &id)
+{
+    return std::const_pointer_cast<Message>(
+        this->strong()->findMessageByID(id));
+}
+
+bool ChannelRef::has_messages()
+{
+    return this->strong()->hasMessages();
+}
+
+size_t ChannelRef::count_messages()
+{
+    return this->strong()->countMessages();
+}
+
+bool ChannelRef::is_twitch_channel()
+{
+    return this->strong()->isTwitchChannel();
+}
+
+sol::table ChannelRef::get_room_modes(sol::this_state state)
+{
+    return toTable(state.L, *this->twitch()->accessRoomModes());
+}
+
+sol::table ChannelRef::get_stream_status(sol::this_state state)
+{
+    return toTable(state.L, *this->twitch()->accessStreamStatus());
+}
+
+QString ChannelRef::get_twitch_id()
+{
+    return this->twitch()->roomId();
+}
+
+bool ChannelRef::is_broadcaster()
+{
+    return this->twitch()->isBroadcaster();
+}
+
+bool ChannelRef::is_mod()
+{
+    return this->twitch()->isMod();
+}
+
+bool ChannelRef::is_vip()
+{
+    return this->twitch()->isVip();
+}
+
+QString ChannelRef::to_string()
+{
+    auto chan = this->weak.lock();
+    if (!chan)
+    {
+        return "<c2.Channel expired>";
+    }
+    return QStringView(u"<c2.Channel %1>").arg(chan->getName());
+}
+
+bool ChannelRef::operator==(const ChannelRef &other) const noexcept
+{
+    return weakOwnerEquals(this->weak, other.weak);
+}
+
+api::ConnectionHandle ChannelRef::on_display_name_changed(
+    ThisPluginState state, sol::main_protected_function pfn)
+{
+    auto *plugin = state.plugin();
+    return plugin->connections.managedConnect(
+        this->strong()->displayNameChanged,
+        plugin->createCallback(std::move(pfn)));
+}
+
+std::optional<ChannelRef> ChannelRef::get_by_name(const QString &name)
+{
+    auto chan = getApp()->getTwitch()->getChannelOrEmpty(name);
+    if (chan->isEmpty())
+    {
+        return std::nullopt;
+    }
+    return chan;
+}
+
+std::optional<ChannelRef> ChannelRef::get_by_twitch_id(const QString &id)
+{
+    auto chan = getApp()->getTwitch()->getChannelOrEmptyByID(id);
+    if (chan->isEmpty())
+    {
+        return std::nullopt;
+    }
+    return chan;
+}
+
+void ChannelRef::createUserType(sol::table &c2)
+{
+    c2.new_usertype<ChannelRef>(
+        "Channel", sol::no_constructor,
+
+        sol::meta_method::to_string, &ChannelRef::to_string,
+
+        "is_valid", &ChannelRef::is_valid, "get_name", &ChannelRef::get_name,
+        "get_type", &ChannelRef::get_type, "get_display_name",
+        &ChannelRef::get_display_name, "is_twitch_channel",
+        &ChannelRef::is_twitch_channel,
+
+        "send_message", &ChannelRef::send_message, "add_system_message",
+        &ChannelRef::add_system_message, "add_message",
+        &ChannelRef::add_message, "message_snapshot",
+        &ChannelRef::message_snapshot, "last_message",
+        &ChannelRef::last_message, "replace_message",
+        sol::overload(&ChannelRef::replace_message,
+                      &ChannelRef::replace_message_hint),
+        "replace_message_at", &ChannelRef::replace_message_at, "clear_messages",
+        &ChannelRef::clear_messages, "find_message_by_id",
+        &ChannelRef::find_message_by_id, "has_messages",
+        &ChannelRef::has_messages, "count_messages",
+        &ChannelRef::count_messages,
+
+        "on_display_name_changed", &ChannelRef::on_display_name_changed,
+
+        "get_room_modes", &ChannelRef::get_room_modes, "get_stream_status",
+        &ChannelRef::get_stream_status, "get_twitch_id",
+        &ChannelRef::get_twitch_id, "is_broadcaster",
+        &ChannelRef::is_broadcaster, "is_mod", &ChannelRef::is_mod, "is_vip",
+        &ChannelRef::is_vip,
+
+        "by_name", &ChannelRef::get_by_name, "by_twitch_id",
+        &ChannelRef::get_by_twitch_id);
+}
+
+sol::table toTable(lua_State *L, const TwitchChannel::RoomModes &modes)
+{
+    auto maybe = [](int value) {
+        if (value >= 0)
+        {
+            return std::optional{value};
+        }
+        return std::optional<int>{};
+    };
+
+    return sol::table::create_with(
+        L, "subscriber_only", modes.submode, "unique_chat", modes.r9k,
+        "emotes_only", modes.emoteOnly, "follower_only",
+        maybe(modes.followerOnly), "slow_mode", maybe(modes.slowMode));
+}
+
+sol::table toTable(lua_State *L, const TwitchChannel::StreamStatus &status)
+{
+    return sol::table::create_with(
+        L, "live", status.live, "viewer_count", status.viewerCount, "title",
+        status.title, "game_name", status.game, "game_id", status.gameId,
+        "uptime", status.uptimeSeconds);
+}
+
+}  // namespace chatterino::lua::api
+
+#endif

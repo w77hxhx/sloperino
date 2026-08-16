@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: 2017 Contributors to Chatterino <https://chatterino.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <QColor>
+
+#include <memory>
+
+namespace chatterino {
+
+class ScrollbarHighlight
+{
+public:
+    enum Style : char { None, Default, Line };
+
+    ScrollbarHighlight();
+
+    ScrollbarHighlight(const std::shared_ptr<QColor> color,
+                       Style style = Default, bool isRedeemedHighlight = false,
+                       bool isFirstMessageHighlight = false);
+
+    QColor getColor() const;
+    Style getStyle() const;
+    bool isRedeemedHighlight() const;
+    bool isFirstMessageHighlight() const;
+    bool isNull() const;
+
+private:
+    std::shared_ptr<QColor> color_;
+    Style style_;
+    bool isRedeemedHighlight_{};
+    bool isFirstMessageHighlight_{};
+};
+
+}  // namespace chatterino

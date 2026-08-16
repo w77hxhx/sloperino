@@ -1,0 +1,105 @@
+---
+name: Test Ubuntu
+
+on:
+  pull_request:
+  workflow_dispatch:
+  merge_group:
+  push:
+    branches:
+      - master
+      - main
+
+env:
+  TWITCH_PUBSUB_SERVER_TAG: v1.0.12
+  HTTPBOX_TAG: v0.2.1
+  QT_QPA_PLATFORM: minimal
+
+concurrency:
+  group: test-ubuntu-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: false # Disabled
+    name: "Test Ubuntu"
+    runs-on: ubuntu-latest
+    container: ghcr.io/chatterino/chatterino2-build-ubuntu-26.04:latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Create build directory (Ubuntu)
+        run: mkdir build-test
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo DEBIAN_FRONTEND=noninteractive apt -y --no-install-recommends install \
+            cmake g++ git pkg-config \
+            libboost-dev libnotify-dev libssl-dev libsecret-1-dev \
+            hunspell libhunspell-dev \
+            libbenchmark-dev gcovr gnupg
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          cache: true
+          cache-key-prefix: ${{ runner.os }}-QtCache-${{ matrix.qt-version }}-v2
+          modules: qtimageformats qtcharts
+          version: ${{ matrix.qt-version }}
+
+      - name: Install httpbox
+        run: |
+          curl -L -o httpbox.tar.xz "https://github.com/Chatterino/httpbox/releases/download/${{ env.HTTPBOX_TAG }}/httpbox-x86_64-unknown-linux-gnu.tar.xz"
+          tar -xJf httpbox.tar.xz
+          mv ./httpbox-x86_64-unknown-linux-gnu/httpbox /usr/local/bin
+        working-directory: /tmp
+
+      - name: Build (Ubuntu)
+        run: |
+          cmake \
+            -DBUILD_TESTS=On \
+            -DBUILD_BENCHMARKS=On \
+            -DBUILD_APP=OFF \
+            -DCHATTERINO_GENERATE_COVERAGE=On \
+            -DCMAKE_BUILD_TYPE=Debug \
+            ..
+          cmake --build . -j $(nproc)
+        working-directory: build-test
+
+      - name: Download and extract Twitch PubSub Server Test
+        run: |
+          mkdir pubsub-server-test
+          curl -L -o pubsub-server.tar.gz "https://github.com/Chatterino/twitch-pubsub-server-test/releases/download/${{ env.TWITCH_PUBSUB_SERVER_TAG }}/server-${{ env.TWITCH_PUBSUB_SERVER_TAG }}-linux-amd64.tar.gz"
+          tar -xzf pubsub-server.tar.gz -C pubsub-server-test
+          rm pubsub-server.tar.gz
+          cd pubsub-server-test
+          cd ..
+
+      - name: Test
+        timeout-minutes: 30
+        run: |
+          httpbox --port 9051 &
+          cd ../pubsub-server-test
+          ./server 127.0.0.1:9050 127.0.0.1:9052 &
+          cd ../build-test
+          ctest --repeat until-pass:4 --output-on-failure
+        working-directory: build-test
+
+      - name: Run benchmark
+        timeout-minutes: 2
+        run: |
+          ./bin/chatterino-benchmark --benchmark_min_time=1x
+        working-directory: build-test
+
+      - name: Upload coverage reports to Codecov
+        if: github.repository_owner == 'Chatterino'
+        uses: codecov/codecov-action@v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          plugins: gcov
+          fail_ci_if_error: true
+          verbose: true

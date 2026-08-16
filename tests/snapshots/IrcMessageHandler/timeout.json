@@ -1,0 +1,91 @@
+{
+    "input": "@tmi-sent-ts=1729628658012;rm-received-ts=1729628658106;historical=1;ban-duration=1;room-id=11148817;target-user-id=129546453 :tmi.twitch.tv CLEARCHAT #pajlada nerixyz",
+    "output": [
+        {
+            "channelName": "",
+            "count": 1,
+            "displayName": "",
+            "elements": [
+                {
+                    "element": {
+                        "color": "System",
+                        "flags": "Timestamp",
+                        "link": {
+                            "type": "None",
+                            "value": ""
+                        },
+                        "style": "TimestampMedium",
+                        "tooltip": "",
+                        "trailingSpace": true,
+                        "type": "TextElement",
+                        "words": [
+                            "20:24"
+                        ]
+                    },
+                    "flags": "Timestamp",
+                    "format": "",
+                    "link": {
+                        "type": "None",
+                        "value": ""
+                    },
+                    "time": "20:24:18",
+                    "tooltip": "",
+                    "trailingSpace": true,
+                    "type": "TimestampElement"
+                },
+                {
+                    "color": "System",
+                    "flags": "Text",
+                    "link": {
+                        "type": "UserInfo",
+                        "value": "nerixyz"
+                    },
+                    "style": "ChatMedium",
+                    "tooltip": "",
+                    "trailingSpace": true,
+                    "type": "TextElement",
+                    "words": [
+                        "nerixyz"
+                    ]
+                },
+                {
+                    "color": "System",
+                    "flags": "Text",
+                    "link": {
+                        "type": "None",
+                        "value": ""
+                    },
+                    "style": "ChatMedium",
+                    "tooltip": "",
+                    "trailingSpace": true,
+                    "type": "TextElement",
+                    "words": [
+                        "has",
+                        "been",
+                        "timed",
+                        "out",
+                        "for",
+                        "1s."
+                    ]
+                }
+            ],
+            "externalBadges": [
+            ],
+            "flags": "System|Timeout|DoNotTriggerNotification|ModerationAction",
+            "frozen": false,
+            "id": "",
+            "localizedName": "",
+            "loginName": "",
+            "messageText": "nerixyz has been timed out for 1s. ",
+            "searchText": "nerixyz has been timed out for 1s. ",
+            "serverReceivedTime": "2024-10-22T20:24:18Z",
+            "timeoutUser": "nerixyz",
+            "twitchBadgeInfos": {
+            },
+            "twitchBadges": [
+            ],
+            "userID": "",
+            "usernameColor": "#ff000000"
+        }
+    ]
+}

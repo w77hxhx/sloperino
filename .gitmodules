@@ -1,0 +1,59 @@
+[submodule "cmake/sanitizers-cmake"]
+	path = cmake/sanitizers-cmake
+	url = https://github.com/arsenm/sanitizers-cmake
+[submodule "lib/libcommuni"]
+	path = lib/libcommuni
+	url = https://github.com/Chatterino/libcommuni
+	branch = chatterino-cmake
+[submodule "lib/WinToast"]
+	path = lib/WinToast
+	url = https://github.com/mohabouje/WinToast.git
+[submodule "lib/settings"]
+	path = lib/settings
+	url = https://github.com/pajlada/settings
+[submodule "lib/signals"]
+	path = lib/signals
+	url = https://github.com/pajlada/signals
+[submodule "lib/serialize"]
+	path = lib/serialize
+	url = https://github.com/pajlada/serialize
+[submodule "lib/rapidjson"]
+	path = lib/rapidjson
+	url = https://github.com/Tencent/rapidjson
+[submodule "lib/qtkeychain"]
+	path = lib/qtkeychain
+	url = https://github.com/frankosterfeld/qtkeychain
+[submodule "lib/magic_enum"]
+	path = lib/magic_enum
+	url = https://github.com/Neargye/magic_enum
+[submodule "lib/googletest"]
+	path = lib/googletest
+	url = https://github.com/google/googletest.git
+[submodule "lib/miniaudio"]
+	path = lib/miniaudio
+	url = https://github.com/mackron/miniaudio.git
+[submodule "lib/lua/src"]
+	path = lib/lua/src
+	url = https://github.com/lua/lua
+	branch = v5.4
+[submodule "lib/kimageformats"]
+	path = lib/kimageformats
+	url = https://github.com/KDE/kimageformats
+[submodule "tools/crash-handler"]
+	path = tools/crash-handler
+	url = https://github.com/Chatterino/crash-handler
+[submodule "lib/expected-lite"]
+	path = lib/expected-lite
+	url = https://github.com/martinmoene/expected-lite
+[submodule "lib/sol2"]
+	path = lib/sol2
+	url = https://github.com/ThePhD/sol2.git
+[submodule "lib/certify"]
+	path = lib/certify
+	url = https://github.com/Chatterino/certify
+[submodule "lib/twitch-eventsub-ws/lib/date"]
+	path = lib/twitch-eventsub-ws/lib/date
+	url = https://github.com/HowardHinnant/date.git
+[submodule "lib/twitch-eventsub-ws/lib/fmt"]
+	path = lib/twitch-eventsub-ws/lib/fmt
+	url = https://github.com/fmtlib/fmt
