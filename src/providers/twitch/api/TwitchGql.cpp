@@ -5651,4 +5651,143 @@ void TwitchGql::setBadgeModifierHidden(
         .execute();
 }
 
+void TwitchGql::getUserClips(
+    const QString &login, const QString &role, const QString &cursor,
+    int limit, const QString &oauthToken,
+    std::function<void(GqlClipPage)> successCallback,
+    std::function<void(const QString &)> failureCallback)
+{
+    QJsonObject criteria;
+    criteria.insert("period", "ALL_TIME");
+    criteria.insert("sort", "CREATED_AT_DESC");
+    criteria.insert("isFeatured", QJsonValue::Null);
+    criteria.insert("freeText", QJsonValue::Null);
+    criteria.insert("role", role);
+    criteria.insert("gameNames", QJsonArray());
+    criteria.insert("gameIDs", QJsonArray());
+
+    if (role == "BROADCASTER")
+    {
+        criteria.insert("curatorIDs", QJsonArray());
+    }
+    else
+    {
+        criteria.insert("broadcasterIDs", QJsonArray());
+    }
+
+    QJsonObject variables;
+    variables.insert("includeReferrals", false);
+    variables.insert("includeGuestsStarParticipants", true);
+    variables.insert("login", login);
+    variables.insert("limit", limit);
+    variables.insert("criteria", criteria);
+    if (!cursor.isEmpty())
+    {
+        variables.insert("cursor", cursor);
+    }
+
+    QJsonObject payload;
+    payload.insert("operationName",
+                   QStringLiteral("ContentClipsManager_User"));
+    payload.insert("variables", variables);
+
+    QJsonObject persistedQuery;
+    persistedQuery.insert("version", 1);
+    persistedQuery.insert(
+        "sha256Hash",
+        QStringLiteral("db3638d50482254d2db9b6cd0d4db05f3ac1426ea43a1b6ef960c"
+                       "3852c5afb5f"));
+
+    QJsonObject extensions;
+    extensions.insert("persistedQuery", persistedQuery);
+    payload.insert("extensions", extensions);
+
+    QJsonArray payloadArray;
+    payloadArray.append(payload);
+
+    auto request =
+        NetworkRequest("https://gql.twitch.tv/gql", NetworkRequestType::Post)
+            .timeout(TWITCH_GQL_TIMEOUT_MS)
+            .header("Client-Id", TWITCH_GQL_TV_CLIENT_ID)
+            .header("Origin", "https://dashboard.twitch.tv")
+            .header("Referer", "https://dashboard.twitch.tv/")
+            .json(payloadArray);
+
+    const auto normalizedToken = normalizeCustomTwitchAuthToken(oauthToken);
+    if (!normalizedToken.isEmpty())
+    {
+        request = std::move(request).header("Authorization",
+                                            "OAuth " + normalizedToken);
+    }
+
+    std::move(request)
+        .onSuccess([successCallback, failureCallback](
+                       const NetworkResult &result) {
+            const auto root = result.parseJsonValue();
+            const auto gqlError = extractFirstGqlErrorMessage(root);
+            if (!gqlError.isEmpty())
+            {
+                failureCallback("Twitch API Error: " + gqlError);
+                return;
+            }
+
+            const auto data = payloadDataObject(root);
+            const auto userObj = data.value("user").toObject();
+            const auto clipsObj = userObj.value("clips").toObject();
+            const auto edgesArr = clipsObj.value("edges").toArray();
+            const auto pageInfo = clipsObj.value("pageInfo").toObject();
+
+            GqlClipPage page;
+            page.hasNextPage =
+                pageInfo.value("hasNextPage").toBool(false);
+
+            for (const auto &edgeVal : edgesArr)
+            {
+                const auto edge = edgeVal.toObject();
+                const auto node = edge.value("node").toObject();
+
+                GqlClip clip;
+                clip.id = node.value("id").toString();
+                clip.slug = node.value("slug").toString();
+                clip.title = node.value("title").toString();
+                clip.thumbnailURL = node.value("thumbnailURL").toString();
+                clip.url = node.value("url").toString();
+                clip.viewCount = node.value("viewCount").toInt(0);
+                clip.durationSeconds =
+                    node.value("durationSeconds").toDouble(0.0);
+                clip.createdAt = node.value("createdAt").toString();
+
+                const auto gameObj = node.value("game").toObject();
+                clip.gameName = gameObj.value("name").toString();
+
+                const auto broadcasterObj =
+                    node.value("broadcaster").toObject();
+                clip.broadcasterLogin =
+                    broadcasterObj.value("login").toString();
+                clip.broadcasterDisplayName =
+                    broadcasterObj.value("displayName").toString();
+
+                const auto curatorObj = node.value("curator").toObject();
+                clip.curatorLogin = curatorObj.value("login").toString();
+                clip.curatorDisplayName =
+                    curatorObj.value("displayName").toString();
+
+                // Use edge cursor as the page cursor
+                const auto edgeCursor = edge.value("cursor").toString();
+                if (!edgeCursor.isEmpty())
+                {
+                    page.nextCursor = edgeCursor;
+                }
+
+                page.clips.append(std::move(clip));
+            }
+
+            successCallback(std::move(page));
+        })
+        .onError([failureCallback](const NetworkResult &result) {
+            failureCallback("Network Error: " + result.formatError());
+        })
+        .execute();
+}
+
 }  // namespace chatterino

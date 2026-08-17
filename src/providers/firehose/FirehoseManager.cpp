@@ -480,10 +480,19 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
 
     auto twitchChan = getApp()->getTwitch()->getChannelOrEmpty(targetChan);
     Channel *targetChannel = twitchChan.get();
-    Channel fallbackChan(targetChan, Channel::Type::Twitch);
     if (!targetChannel || targetChannel->isEmpty())
     {
-        targetChannel = &fallbackChan;
+        if (this->fallbackChannels_.size() > 1000)
+        {
+            this->fallbackChannels_.clear();
+        }
+        auto &cached = this->fallbackChannels_[targetChan];
+        if (!cached)
+        {
+            cached =
+                std::make_shared<Channel>(targetChan, Channel::Type::Twitch);
+        }
+        targetChannel = cached.get();
     }
 
     MessageParseArgs args;
@@ -497,29 +506,6 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
         targetChannel, privMsg, args, content, messageOffset);
 
     ircMsg->deleteLater();
-
-    if (!builtMsg)
-    {
-        return nullptr;
-    }
-
-    MessageBuilder::triggerHighlights(targetChannel, builtMsg, alert);
-
-    const auto highlighted = builtMsg->flags.has(MessageFlag::Highlighted);
-    const auto showInMentions =
-        builtMsg->flags.has(MessageFlag::ShowInMentions);
-
-    if (highlighted && showInMentions)
-    {
-        if (auto *app = tryGetApp())
-        {
-            if (auto *twitch = app->getTwitch())
-            {
-                twitch->getMentionsChannel()->addMessage(
-                    builtMsg, MessageContext::Original);
-            }
-        }
-    }
 
     return builtMsg;
 }

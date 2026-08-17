@@ -5,7 +5,7 @@
 #include "widgets/settingspages/SloperinoPage.hpp"
 
 #include "singletons/Settings.hpp"
-#include "widgets/BaseWindow.hpp"
+#include "widgets/BaseWidget.hpp"
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
@@ -45,7 +45,15 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
 {
     auto &s = *getSettings();
 
-    // 1. Firehose Category
+    // 1. Badges Category
+    layout.addTitle("Badges");
+    layout.addDescription("Toggle Sloperino badges.");
+
+    SettingWidget::checkbox("Show Sloperino badges", s.showSloperinoBadges)
+        ->addKeywords({"badges", "sloperino"})
+        ->addTo(layout);
+
+    // 2. Firehose Category
     layout.addTitle("Firehose");
     layout.addDescription(
         "Real-time Twitch chat firehose WebSocket streaming options.");
@@ -118,7 +126,7 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
         ->setTooltip("Enable or disable the Catquery firehose WebSocket feed.")
         ->addTo(layout);
 
-    // 2. Fun Category
+    // 3. Fun Category
     layout.addTitle("Fun");
     layout.addDescription("Fun and experimental chat options.");
 

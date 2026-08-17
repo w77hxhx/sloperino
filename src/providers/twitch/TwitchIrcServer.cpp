@@ -88,13 +88,27 @@ QString makeRandomClientNonce()
         case 0:
             // Web: 32 hex chars lowercase
             return makeWebClientNonce();
-        case 1:
+        case 1: {
             // iOS: UUIDv4 uppercase
-            return QUuid::createUuid().toString(QUuid::WithoutBraces).toUpper();
+            QString uuid =
+                QUuid::createUuid().toString(QUuid::WithoutBraces).toUpper();
+            if (uuid.size() == 36)
+            {
+                uuid[19] = QLatin1Char('A');
+            }
+            return uuid;
+        }
         case 2:
-        default:
+        default: {
             // Android: UUIDv4 lowercase
-            return QUuid::createUuid().toString(QUuid::WithoutBraces).toLower();
+            QString uuid =
+                QUuid::createUuid().toString(QUuid::WithoutBraces).toLower();
+            if (uuid.size() == 36)
+            {
+                uuid[19] = QLatin1Char('a');
+            }
+            return uuid;
+        }
     }
 }
 

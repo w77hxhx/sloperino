@@ -427,6 +427,9 @@ public:
                                           true};
     BoolSetting showBadgesMoltorino = {"/appearance/badges/moltorino", true};
     BoolSetting showBadgesFolhinha = {"/appearance/badges/folhinha", true};
+    BoolSetting showSloperinoBadges = {"/appearance/badges/sloperino", true};
+    BoolSetting showTechnorinoBadges = {"/appearance/badges/technorino", true};
+    BoolSetting showDonorBadges = {"/appearance/badges/donor", true};
     BoolSetting showBadgesFfzAp = {"/appearance/badges/ffzap", true};
     BoolSetting showBadgesDankChat = {"/appearance/badges/dankchat", true};
     BoolSetting showBadgesChatsen = {"/appearance/badges/chatsen", true};
@@ -976,6 +979,8 @@ public:
     BoolSetting showUsercardColor = {"/usercard/showColor", true};
     BoolSetting showUsercardSevenTVPaint = {"/usercard/showSevenTVPaint", true};
     BoolSetting showUsercardStatus = {"/usercard/showStatus", true};
+    BoolSetting showUsercardClipsButton = {"/usercard/showClipsButton", true};
+    BoolSetting showUsercardBadgesButton = {"/usercard/showBadgesButton", true};
     BoolSetting showSevenTVUsercardButton = {"/usercard/showSevenTVButton",
                                              true};
     BoolSetting showUsercardNameHistoryButton = {

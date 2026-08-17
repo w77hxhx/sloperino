@@ -174,6 +174,14 @@ MessagePtr Channel::getLastMessage() const
 void Channel::addMessage(MessagePtr message, MessageContext context,
                          std::optional<MessageFlags> overridingFlags)
 {
+    if (this->type_ == Type::TwitchMentions && !message->id.isEmpty())
+    {
+        if (this->findMessageByID(message->id))
+        {
+            return;
+        }
+    }
+
     message->freeze();
 
     MessagePtr deleted;

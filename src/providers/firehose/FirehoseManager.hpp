@@ -19,6 +19,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -88,6 +89,8 @@ private:
     // Statistics
     int messagesThisSecond_{0};
     int currentMsgPerSecond_{0};
+
+    std::unordered_map<QString, std::shared_ptr<Channel>> fallbackChannels_;
 
     pajlada::Signals::SignalHolder signalHolder_;
 };

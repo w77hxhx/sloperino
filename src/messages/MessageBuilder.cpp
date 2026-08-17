@@ -1931,14 +1931,17 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
 
     if (!args.skipClientDetection)
     {
-        if (tags.has("client-nonce") && getSettings()->nonceFuckeryEnabled)
+        if (tags.has("client-nonce"))
         {
-            QString nonceString = tags.getOrEmpty("client-nonce");
-            auto status = performClientDetection(nonceString);
-            if (status == Message::ClientDetectionStatus::Abnormal &&
+            const auto clientNonce = tags.getOrEmpty("client-nonce");
+            auto status = performClientDetection(clientNonce);
+            builder.message().clientDetection = status;
+
+            if (getSettings()->nonceFuckeryEnabled &&
+                status == Message::ClientDetectionStatus::Abnormal &&
                 getSettings()->abnormalNonceDetection)
             {
-                auto link = linkparser::parse(nonceString);
+                auto link = linkparser::parse(clientNonce);
 
                 builder.emplace<TimestampElement>(
                     builder->serverReceivedTime.time());
@@ -1947,25 +1950,17 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
                     MessageColor::System);
                 if (link)
                 {
-                    builder.addLink(*link, nonceString);
+                    builder.addLink(*link, clientNonce);
                 }
                 else
                 {
                     builder.emplace<TextElement>(
-                        nonceString, MessageElementFlag::ChannelPointReward,
+                        clientNonce, MessageElementFlag::ChannelPointReward,
                         MessageColor::Text);
                 }
                 builder.emplace<LinebreakElement>(
                     MessageElementFlag::ChannelPointReward);
             }
-            builder.message().clientDetection = status;
-        }
-
-        if (tags.has("client-nonce"))
-        {
-            const auto clientNonce = tags.getOrEmpty("client-nonce");
-            builder.message().clientDetection =
-                performClientDetection(clientNonce);
         }
     }
 

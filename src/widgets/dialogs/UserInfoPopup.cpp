@@ -55,6 +55,7 @@
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/EditUserNotesDialog.hpp"
 #include "widgets/dialogs/UserBadgesDialog.hpp"
+#include "widgets/dialogs/UserClipsDialog.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/InvisibleSizeGrip.hpp"
 #include "widgets/helper/Line.hpp"
@@ -1400,6 +1401,15 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                                  [this] {
                                      this->openBadgesDialog();
                                  });
+                auto clips =
+                    box.emplace<LabelButton>("clips", this, QSize{4, 0})
+                        .assign(&this->ui_.clipsLabel);
+                clips->setToolTip("View Twitch clips");
+                clips->hide();
+                QObject::connect(clips.getElement(), &Button::leftClicked,
+                                 [this] {
+                                     this->openClipsDialog();
+                                 });
                 box->addSpacing(5);
                 box->addStretch(1);
 
@@ -2143,6 +2153,16 @@ void UserInfoPopup::installEvents()
             this->updateNameHistoryButton();
         },
         this->signalHolder_);
+    getSettings()->showUsercardBadgesButton.connect(
+        [this](bool) {
+            this->updateBadgesButton();
+        },
+        this->signalHolder_);
+    getSettings()->showUsercardClipsButton.connect(
+        [this](bool) {
+            this->updateClipsButton();
+        },
+        this->signalHolder_);
     getSettings()->showFollowButtonInUsercard.connect(
         [this](bool enabled) {
             if (enabled && !this->isKick_ && !this->userId_.isEmpty())
@@ -2457,6 +2477,7 @@ void UserInfoPopup::setData(const QString &name,
     }
 
     this->updateBadgesButton();
+    this->updateClipsButton();
 }
 
 void UserInfoPopup::setYouTubeContext()
@@ -4656,7 +4677,8 @@ void UserInfoPopup::updateBadgesButton()
         return;
     }
 
-    bool canShow = !this->isKick_ && !this->isYouTube_ &&
+    bool canShow = getSettings()->showUsercardBadgesButton &&
+                   !this->isKick_ && !this->isYouTube_ &&
                    !this->userName_.isEmpty() && this->underlyingChannel_ &&
                    !this->underlyingChannel_->getName().isEmpty();
 
@@ -4680,6 +4702,41 @@ void UserInfoPopup::updateBadgesButton()
     }
 
     this->ui_.badgesLabel->setToolTip("View earned Twitch badges");
+}
+
+void UserInfoPopup::updateClipsButton()
+{
+    if (this->ui_.clipsLabel == nullptr)
+    {
+        return;
+    }
+
+    bool canShow = getSettings()->showUsercardClipsButton &&
+                   !this->isKick_ && !this->isYouTube_ &&
+                   !this->userName_.isEmpty();
+
+    this->ui_.clipsLabel->setVisible(canShow);
+    this->ui_.clipsLabel->setEnabled(canShow);
+    if (!canShow)
+    {
+        this->ui_.clipsLabel->setToolTip({});
+        return;
+    }
+
+    this->ui_.clipsLabel->setToolTip("View Twitch clips");
+}
+
+void UserInfoPopup::openClipsDialog()
+{
+    if (this->isKick_ || this->isYouTube_ || this->userName_.isEmpty())
+    {
+        return;
+    }
+
+    const auto displayName = this->ui_.nameLabel != nullptr
+                                 ? this->ui_.nameLabel->getText()
+                                 : this->userName_;
+    UserClipsDialog::showDialog(this->userName_, displayName, this);
 }
 
 void UserInfoPopup::openBadgesDialog()
