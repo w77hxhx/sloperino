@@ -273,6 +273,65 @@ void FirehoseManager::onRawMessageReceived(QByteArray data)
     this->rawQueue_.emplace_back(std::move(data));
 }
 
+static std::string extractRawMessageId(const QByteArray &data)
+{
+    const char *ptr = data.constData();
+    const char *end = ptr + data.size();
+
+    const char *trimmed = ptr;
+    while (trimmed < end && (*trimmed == ' ' || *trimmed == '\t' ||
+                             *trimmed == '\r' || *trimmed == '\n'))
+    {
+        trimmed++;
+    }
+
+    if (trimmed >= end)
+    {
+        return {};
+    }
+
+    if (*trimmed == '{')
+    {
+        int idPos = data.indexOf("\"id\":");
+        if (idPos != -1)
+        {
+            int start = data.indexOf('"', idPos + 5);
+            if (start != -1)
+            {
+                int finish = data.indexOf('"', start + 1);
+                if (finish != -1 && finish > start)
+                {
+                    return std::string(data.constData() + start + 1,
+                                       finish - start - 1);
+                }
+            }
+        }
+        return {};
+    }
+
+    if (*trimmed == '@')
+    {
+        int idPos = data.indexOf("id=");
+        if (idPos != -1 &&
+            (idPos == 1 || data[idPos - 1] == ';' || data[idPos - 1] == '@'))
+        {
+            int start = idPos + 3;
+            int finish = data.indexOf(';', start);
+            int space = data.indexOf(' ', start);
+            if (finish == -1 || (space != -1 && space < finish))
+            {
+                finish = space;
+            }
+            if (finish != -1 && finish > start)
+            {
+                return std::string(data.constData() + start, finish - start);
+            }
+        }
+    }
+
+    return {};
+}
+
 void FirehoseManager::processBatch()
 {
     std::vector<QByteArray> batch;
@@ -290,6 +349,24 @@ void FirehoseManager::processBatch()
 
     for (const auto &item : batch)
     {
+        std::string rawId = extractRawMessageId(item);
+        if (!rawId.empty())
+        {
+            if (this->seenIds_.find(rawId) != this->seenIds_.end())
+            {
+                continue;  // duplicate message: dropped immediately without allocations
+            }
+
+            this->seenIds_.insert(rawId);
+            this->seenQueue_.push_back(rawId);
+
+            if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
+            {
+                this->seenIds_.erase(this->seenQueue_.front());
+                this->seenQueue_.pop_front();
+            }
+        }
+
         QString msgId;
         auto msg = this->parseRawPayload(item, msgId);
         if (!msg)
@@ -297,22 +374,24 @@ void FirehoseManager::processBatch()
             continue;
         }
 
-        // Deduplication
-        std::string idStr = msgId.toStdString();
-        if (!idStr.empty())
+        if (rawId.empty())
         {
-            if (this->seenIds_.find(idStr) != this->seenIds_.end())
+            std::string idStr = msgId.toStdString();
+            if (!idStr.empty())
             {
-                continue;  // duplicate message
-            }
+                if (this->seenIds_.find(idStr) != this->seenIds_.end())
+                {
+                    continue;  // duplicate message
+                }
 
-            this->seenIds_.insert(idStr);
-            this->seenQueue_.push_back(idStr);
+                this->seenIds_.insert(idStr);
+                this->seenQueue_.push_back(idStr);
 
-            if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
-            {
-                this->seenIds_.erase(this->seenQueue_.front());
-                this->seenQueue_.pop_front();
+                if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
+                {
+                    this->seenIds_.erase(this->seenQueue_.front());
+                    this->seenQueue_.pop_front();
+                }
             }
         }
 
@@ -409,6 +488,7 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
 
     MessageParseArgs args;
     args.isAction = privMsg->isAction();
+    args.skipClientDetection = true;
 
     QString content = unescapeZeroWidthJoiner(privMsg->content());
     int messageOffset = stripLeadingReplyMention(tags, content);

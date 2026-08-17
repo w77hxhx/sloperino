@@ -41,6 +41,7 @@
 #include <QRandomGenerator>
 #include <QUuid>
 
+#include <atomic>
 #include <cassert>
 #include <functional>
 #include <mutex>
@@ -79,8 +80,9 @@ QString makeWebClientNonce()
 
 QString makeRandomClientNonce()
 {
-    // Pick randomly from 0: Web, 1: iOS, 2: Android
-    quint32 clientType = QRandomGenerator::global()->bounded(3);
+    // Rotate sequentially through 0: Web, 1: iOS, 2: Android so every outgoing message rotates client
+    static std::atomic<quint32> clientCounter{0};
+    quint32 clientType = clientCounter.fetch_add(1) % 3;
     switch (clientType)
     {
         case 0:

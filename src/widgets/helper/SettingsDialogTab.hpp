@@ -20,13 +20,13 @@ class SettingsDialog;
 enum class SettingsTabId {
     None,
     General,
-    Moltorino,
     Sloperino,
+    Leafyrino,
+    Moltorino,
+    Technorino,
     Accounts,
     Moderation,
     About,
-    Technorino,
-    Firehose,
 };
 
 class SettingsDialogTab : public BaseWidget

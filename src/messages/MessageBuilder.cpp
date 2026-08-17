@@ -1929,40 +1929,44 @@ std::pair<MessagePtrMut, HighlightAlert> MessageBuilder::makeIrcMessage(
     builder.appendChannelName(channel);
     builder->serverReceivedTime = calculateMessageTime(ircMessage);
 
-    if (tags.has("client-nonce") && getSettings()->nonceFuckeryEnabled)
+    if (!args.skipClientDetection)
     {
-        QString nonceString = tags.getOrEmpty("client-nonce");
-        auto status = performClientDetection(nonceString);
-        if (status == Message::ClientDetectionStatus::Abnormal &&
-            getSettings()->abnormalNonceDetection)
+        if (tags.has("client-nonce") && getSettings()->nonceFuckeryEnabled)
         {
-            auto link = linkparser::parse(nonceString);
+            QString nonceString = tags.getOrEmpty("client-nonce");
+            auto status = performClientDetection(nonceString);
+            if (status == Message::ClientDetectionStatus::Abnormal &&
+                getSettings()->abnormalNonceDetection)
+            {
+                auto link = linkparser::parse(nonceString);
 
-            builder.emplace<TimestampElement>(
-                builder->serverReceivedTime.time());
-            builder.emplace<TextElement>(
-                "Abnormal nonce:", MessageElementFlag::ChannelPointReward,
-                MessageColor::System);
-            if (link)
-            {
-                builder.addLink(*link, nonceString);
-            }
-            else
-            {
+                builder.emplace<TimestampElement>(
+                    builder->serverReceivedTime.time());
                 builder.emplace<TextElement>(
-                    nonceString, MessageElementFlag::ChannelPointReward,
-                    MessageColor::Text);
+                    "Abnormal nonce:", MessageElementFlag::ChannelPointReward,
+                    MessageColor::System);
+                if (link)
+                {
+                    builder.addLink(*link, nonceString);
+                }
+                else
+                {
+                    builder.emplace<TextElement>(
+                        nonceString, MessageElementFlag::ChannelPointReward,
+                        MessageColor::Text);
+                }
+                builder.emplace<LinebreakElement>(
+                    MessageElementFlag::ChannelPointReward);
             }
-            builder.emplace<LinebreakElement>(
-                MessageElementFlag::ChannelPointReward);
+            builder.message().clientDetection = status;
         }
-        builder.message().clientDetection = status;
-    }
 
-    if (tags.has("client-nonce"))
-    {
-        const auto clientNonce = tags.getOrEmpty("client-nonce");
-        builder.message().clientDetection = performClientDetection(clientNonce);
+        if (tags.has("client-nonce"))
+        {
+            const auto clientNonce = tags.getOrEmpty("client-nonce");
+            builder.message().clientDetection =
+                performClientDetection(clientNonce);
+        }
     }
 
     if (tags.has("rm-deleted"))
