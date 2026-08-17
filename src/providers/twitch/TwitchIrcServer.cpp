@@ -13,6 +13,7 @@
 #include "providers/bttv/BttvLiveUpdates.hpp"
 #include "providers/bttv/liveupdates/BttvLiveUpdateMessages.hpp"
 #include "providers/ffz/FfzEmotes.hpp"
+#include "providers/firehose/FirehoseManager.hpp"
 #include "providers/irc/IrcConnection2.hpp"
 #include "providers/moltorino/MoltorinoSupporterBadges.hpp"
 #include "providers/seventv/eventapi/Dispatch.hpp"

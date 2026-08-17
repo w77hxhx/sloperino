@@ -237,6 +237,13 @@ public:
         return nullptr;
     }
 
+    FirehoseManager *getFirehose() override
+    {
+        assert(false && "EmptyApplication::getFirehose was called without "
+                        "being initialized");
+        return nullptr;
+    }
+
     SeventvPersonalEmotes *getSeventvPersonalEmotes() override
     {
         assert(false && "EmptyApplication::getSeventvPersonalEmotes was called "
