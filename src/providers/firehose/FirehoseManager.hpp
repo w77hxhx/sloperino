@@ -10,6 +10,7 @@
 
 #include <pajlada/signals/signalholder.hpp>
 #include <QByteArray>
+#include <QHash>
 #include <QObject>
 #include <QString>
 #include <QTimer>
@@ -90,7 +91,7 @@ private:
     int messagesThisSecond_{0};
     int currentMsgPerSecond_{0};
 
-    std::unordered_map<QString, std::shared_ptr<Channel>> fallbackChannels_;
+    QHash<QString, std::shared_ptr<Channel>> fallbackChannels_;
 
     pajlada::Signals::SignalHolder signalHolder_;
 };
