@@ -63,11 +63,8 @@ modules:
       - PREFIX=/app
     sources:
       - type: archive
-        url: https://github.com/hunspell/hunspell/archive/refs/tags/v1.7.2.tar.gz
-        sha256: 69fa312d3586c988789266eaf7ffc9861d9f6396c31fc930a014d551b59bbd6e
-      - type: shell
-        commands:
-          - autoreconf -vfi
+        url: https://github.com/hunspell/hunspell/releases/download/v1.7.2/hunspell-1.7.2.tar.gz
+        sha256: 11ddfa39afe28c28539fe65fc4f1592d410c1e9b6dd7d8a91ca25d85e9ec65b8
   - name: chatterino
     buildsystem: cmake
     config-opts:
