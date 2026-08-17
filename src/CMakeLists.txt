@@ -1128,26 +1128,16 @@ endif()
 
 target_link_libraries(${LIBRARY_PROJECT}
         PUBLIC
-        Qt${
-    MAJOR_QT_VERSION}::Core
-        Qt${
-    MAJOR_QT_VERSION}::Widgets
-        Qt${
-    MAJOR_QT_VERSION}::WidgetsPrivate # for pixmap filters (paints)
-        Qt${
-    MAJOR_QT_VERSION}::Gui
-        Qt${
-    MAJOR_QT_VERSION}::Network
-        Qt${
-    MAJOR_QT_VERSION}::NetworkPrivate # for DELETE with a body (Kick)
-        Qt${
-    MAJOR_QT_VERSION}::Svg
-        Qt${
-    MAJOR_QT_VERSION}::SvgWidgets
-        Qt${
-    MAJOR_QT_VERSION}::Concurrent
-        Qt${
-    MAJOR_QT_VERSION}::Charts
+        Qt${MAJOR_QT_VERSION}::Core
+        Qt${MAJOR_QT_VERSION}::Widgets
+        Qt${MAJOR_QT_VERSION}::WidgetsPrivate # for pixmap filters (paints)
+        Qt${MAJOR_QT_VERSION}::Gui
+        Qt${MAJOR_QT_VERSION}::Network
+        Qt${MAJOR_QT_VERSION}::NetworkPrivate # for DELETE with a body (Kick)
+        Qt${MAJOR_QT_VERSION}::Svg
+        Qt${MAJOR_QT_VERSION}::SvgWidgets
+        Qt${MAJOR_QT_VERSION}::Concurrent
+        Qt${MAJOR_QT_VERSION}::Charts
 
         LibCommuni::LibCommuni
         Pajlada::Serialize
@@ -1170,8 +1160,7 @@ if (CHATTERINO_SPELLCHECK)
 endif()
 
 if (CHATTERINO_ALLOW_PRIVATE_QT_API)
-    target_link_libraries(${LIBRARY_PROJECT} PUBLIC Qt${
-    MAJOR_QT_VERSION}::GuiPrivate)
+    target_link_libraries(${LIBRARY_PROJECT} PUBLIC Qt${MAJOR_QT_VERSION}::GuiPrivate)
     target_compile_definitions(${LIBRARY_PROJECT} PUBLIC
         CHATTERINO_WITH_PRIVATE_QT_API)
 endif()
@@ -1251,12 +1240,10 @@ if (BUILD_APP)
 
         if (CMAKE_BUILD_TYPE STREQUAL "Debug")
             set(WINDEPLOYQT_MODE --debug)
-            get_target_property(QT_CORE_LOC Qt${
-    MAJOR_QT_VERSION}::Core LOCATION_DEBUG)
+            get_target_property(QT_CORE_LOC Qt${MAJOR_QT_VERSION}::Core LOCATION_DEBUG)
         else()
             set(WINDEPLOYQT_MODE --release)
-            get_target_property(QT_CORE_LOC Qt${
-    MAJOR_QT_VERSION}::Core LOCATION)
+            get_target_property(QT_CORE_LOC Qt${MAJOR_QT_VERSION}::Core LOCATION)
         endif()
         get_filename_component(QT_BIN_DIR ${QT_CORE_LOC} DIRECTORY)
 
@@ -1264,8 +1251,7 @@ if (BUILD_APP)
         set(WINDEPLOYQT_COMMAND_ARGV
             "${WINDEPLOYQT_PATH}"
             "$<TARGET_FILE:${EXECUTABLE_PROJECT}>"
-            ${
-    WINDEPLOYQT_MODE}
+            ${WINDEPLOYQT_MODE}
             --no-compiler-runtime
             --no-translations
             --no-opengl-sw
@@ -1368,8 +1354,7 @@ target_compile_definitions(${VERSION_PROJECT} PRIVATE
 #source group for IDEs
 source_group(TREE ${CMAKE_SOURCE_DIR} FILES ${VERSION_SOURCE_FILES})
 target_include_directories(${VERSION_PROJECT} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(${VERSION_PROJECT} PRIVATE Qt${
-    MAJOR_QT_VERSION}::Core)
+target_link_libraries(${VERSION_PROJECT} PRIVATE Qt${MAJOR_QT_VERSION}::Core)
 target_compile_definitions(${VERSION_PROJECT} PRIVATE
     CHATTERINO_GIT_HASH=\"${GIT_HASH}\"
     CHATTERINO_GIT_RELEASE=\"${GIT_RELEASE}\"
