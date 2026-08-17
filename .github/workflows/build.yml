@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  C2_ENABLE_LTO: ${{ github.ref == 'refs/heads/leafyrino' || startsWith(github.ref, 'refs/heads/bugfix-release') || startsWith(github.ref, 'refs/heads/release/')}}
+  C2_ENABLE_LTO: false
   CHATTERINO_REQUIRE_CLEAN_GIT: On
   CHATTERINO_BUILD_TYPE: ${{ case(inputs.buildType != '', inputs.buildType, 'auto') }}
   CONAN_VERSION: 2.28.1
@@ -206,19 +206,19 @@ jobs:
           # Windows
           - os: windows-latest
             qt-version: 6.9.3
-            force-lto: true
+            force-lto: false
             skip-artifact: false
             skip-crashpad: false
           # Windows on ARM
           - os: windows-11-arm
             qt-version: 6.9.3
-            force-lto: true
+            force-lto: false
             skip-artifact: false
             skip-crashpad: false
           # macOS (ARM)
           - os: macos-latest
             qt-version: 6.9.3
-            force-lto: true
+            force-lto: false
             skip-artifact: false
             skip-crashpad: false
 
