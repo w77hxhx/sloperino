@@ -399,7 +399,13 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
                        .arg(targetChan, privMsg->nick(), privMsg->content());
     }
 
-    Channel chan(targetChan, Channel::Type::Twitch);
+    auto twitchChan = getApp()->getTwitch()->getChannelOrEmpty(targetChan);
+    Channel *targetChannel = twitchChan.get();
+    Channel fallbackChan(targetChan, Channel::Type::Twitch);
+    if (!targetChannel || targetChannel->isEmpty())
+    {
+        targetChannel = &fallbackChan;
+    }
 
     MessageParseArgs args;
     args.isAction = privMsg->isAction();
@@ -408,7 +414,7 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
     int messageOffset = stripLeadingReplyMention(tags, content);
 
     auto [builtMsg, alert] = MessageBuilder::makeIrcMessage(
-        &chan, privMsg, args, content, messageOffset);
+        targetChannel, privMsg, args, content, messageOffset);
 
     ircMsg->deleteLater();
 

@@ -485,10 +485,13 @@ QString stylizeUsername(const QString &username, const Message &message)
 std::optional<EmotePtr> getTwitchBadge(const TwitchBadge &badge,
                                        const TwitchChannel *twitchChannel)
 {
-    if (auto channelBadge =
-            twitchChannel->twitchBadge(badge.key_, badge.value_))
+    if (twitchChannel != nullptr)
     {
-        return channelBadge;
+        if (auto channelBadge =
+                twitchChannel->twitchBadge(badge.key_, badge.value_))
+        {
+            return channelBadge;
+        }
     }
 
     if (auto globalBadge =
@@ -505,11 +508,6 @@ void appendBadges(MessageBuilder *builder,
                   const std::unordered_map<QString, QString> &badgeInfos,
                   const TwitchChannel *twitchChannel)
 {
-    if (twitchChannel == nullptr)
-    {
-        return;
-    }
-
     for (const auto &badge : badges)
     {
         auto badgeEmote = getTwitchBadge(badge, twitchChannel);
@@ -527,26 +525,32 @@ void appendBadges(MessageBuilder *builder,
         else if (badge.key_ == "moderator" &&
                  getSettings()->useCustomFfzModeratorBadges)
         {
-            if (auto customModBadge = twitchChannel->ffzCustomModBadge())
+            if (twitchChannel != nullptr)
             {
-                auto *modBadgeEl = builder->emplace<ModBadgeElement>(
-                    *customModBadge, MessageElementFlag::BadgeChannelAuthority);
-                modBadgeEl->setTooltip((*customModBadge)->tooltip.string);
-                modBadgeEl->setTwitchBadge(badge.key_, badge.value_);
-                // early out, since we have to add a custom badge element here
-                continue;
+                if (auto customModBadge = twitchChannel->ffzCustomModBadge())
+                {
+                    auto *modBadgeEl = builder->emplace<ModBadgeElement>(
+                        *customModBadge, MessageElementFlag::BadgeChannelAuthority);
+                    modBadgeEl->setTooltip((*customModBadge)->tooltip.string);
+                    modBadgeEl->setTwitchBadge(badge.key_, badge.value_);
+                    // early out, since we have to add a custom badge element here
+                    continue;
+                }
             }
         }
         else if (badge.key_ == "vip" && getSettings()->useCustomFfzVipBadges)
         {
-            if (auto customVipBadge = twitchChannel->ffzCustomVipBadge())
+            if (twitchChannel != nullptr)
             {
-                auto *vipBadgeEl = builder->emplace<VipBadgeElement>(
-                    *customVipBadge, MessageElementFlag::BadgeChannelAuthority);
-                vipBadgeEl->setTooltip((*customVipBadge)->tooltip.string);
-                vipBadgeEl->setTwitchBadge(badge.key_, badge.value_);
-                // early out, since we have to add a custom badge element here
-                continue;
+                if (auto customVipBadge = twitchChannel->ffzCustomVipBadge())
+                {
+                    auto *vipBadgeEl = builder->emplace<VipBadgeElement>(
+                        *customVipBadge, MessageElementFlag::BadgeChannelAuthority);
+                    vipBadgeEl->setTooltip((*customVipBadge)->tooltip.string);
+                    vipBadgeEl->setTwitchBadge(badge.key_, badge.value_);
+                    // early out, since we have to add a custom badge element here
+                    continue;
+                }
             }
         }
         else if (badge.flag_ == MessageElementFlag::BadgeSubscription)
@@ -3191,7 +3195,7 @@ void MessageBuilder::appendMoltorinoBadges(const QString &userID)
 Outcome MessageBuilder::tryAppendCheermote(TextState &state,
                                            const QString &string)
 {
-    if (state.bitsLeft == 0)
+    if (state.bitsLeft == 0 || state.twitchChannel == nullptr)
     {
         return Failure;
     }
