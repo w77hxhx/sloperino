@@ -530,7 +530,8 @@ void appendBadges(MessageBuilder *builder,
                 if (auto customModBadge = twitchChannel->ffzCustomModBadge())
                 {
                     auto *modBadgeEl = builder->emplace<ModBadgeElement>(
-                        *customModBadge, MessageElementFlag::BadgeChannelAuthority);
+                        *customModBadge,
+                        MessageElementFlag::BadgeChannelAuthority);
                     modBadgeEl->setTooltip((*customModBadge)->tooltip.string);
                     modBadgeEl->setTwitchBadge(badge.key_, badge.value_);
                     // early out, since we have to add a custom badge element here
@@ -545,7 +546,8 @@ void appendBadges(MessageBuilder *builder,
                 if (auto customVipBadge = twitchChannel->ffzCustomVipBadge())
                 {
                     auto *vipBadgeEl = builder->emplace<VipBadgeElement>(
-                        *customVipBadge, MessageElementFlag::BadgeChannelAuthority);
+                        *customVipBadge,
+                        MessageElementFlag::BadgeChannelAuthority);
                     vipBadgeEl->setTooltip((*customVipBadge)->tooltip.string);
                     vipBadgeEl->setTwitchBadge(badge.key_, badge.value_);
                     // early out, since we have to add a custom badge element here

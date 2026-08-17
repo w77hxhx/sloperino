@@ -579,9 +579,8 @@ bool Toasts::sendLibnotifyHighlightNotification(const QString &channelName,
         return false;
     }
 
-    notify_notification_set_hint(
-        notif, "desktop-entry",
-        g_variant_new_string("com.w77hxhx.sloperino"));
+    notify_notification_set_hint(notif, "desktop-entry",
+                                 g_variant_new_string("com.w77hxhx.sloperino"));
     notify_notification_set_timeout(notif, 10000);
     notify_notification_set_urgency(notif, NOTIFY_URGENCY_NORMAL);
 
@@ -621,9 +620,8 @@ void Toasts::sendLibnotify(const QString &channelName,
     NotifyNotification *notif = notify_notification_new(
         str.toUtf8().constData(), channelTitle.toUtf8().constData(), nullptr);
 
-    notify_notification_set_hint(
-        notif, "desktop-entry",
-        g_variant_new_string("com.w77hxhx.sloperino"));
+    notify_notification_set_hint(notif, "desktop-entry",
+                                 g_variant_new_string("com.w77hxhx.sloperino"));
 
     auto *channelNameHeap = new QString(channelName);
 

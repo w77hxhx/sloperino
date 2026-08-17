@@ -64,8 +64,8 @@ void FirehosePage::initLayout(GeneralPageView &layout)
             "the Firehose tab title.")
         ->addTo(layout);
 
-    SettingWidget::intInput("Max stored messages", s.firehoseMaxMessages,
-                            100, 50000, 500)
+    SettingWidget::intInput("Max stored messages", s.firehoseMaxMessages, 100,
+                            50000, 500)
         ->addKeywords({"firehose", "buffer", "limit", "messages"})
         ->setTooltip("Maximum number of messages to retain in the "
                      "Firehose channel.")
