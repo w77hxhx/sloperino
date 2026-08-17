@@ -22,6 +22,7 @@
 #include <pajlada/signals/signalholder.hpp>
 #include <QAction>
 #include <QCursor>
+#include <QDateTime>
 #include <QDesktopServices>
 #include <QEvent>
 #include <QFrame>
@@ -32,6 +33,7 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPointer>
 #include <QPushButton>
 #include <QResizeEvent>
