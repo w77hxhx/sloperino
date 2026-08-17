@@ -188,6 +188,9 @@ void LeafyrinoPage::initLayout(GeneralPageView &layout)
     layout.addTitle("Badges");
     layout.addDescription("Toggle custom and third-party badges.");
 
+    SettingWidget::checkbox("Show Sloperino badges", s.showSloperinoBadges)
+        ->addKeywords({"badges", "sloperino"})
+        ->addTo(layout);
     SettingWidget::checkbox("Show Folhinha badges", s.showBadgesFolhinha)
         ->addKeywords({"badges", "folhinha"})
         ->addTo(layout);
@@ -199,31 +202,23 @@ void LeafyrinoPage::initLayout(GeneralPageView &layout)
                             s.showBadgesHomiesCustom)
         ->addKeywords({"badges", "homies", "custom"})
         ->addTo(layout);
+    SettingWidget::checkbox("Show Moltorino badges", s.showBadgesMoltorino)
+        ->addKeywords({"badges", "moltorino"})
+        ->addTo(layout);
+    SettingWidget::checkbox("Show Technorino badges", s.showTechnorinoBadges)
+        ->addKeywords({"badges", "technorino"})
+        ->addTo(layout);
     SettingWidget::checkbox("Show donor badges", s.showDonorBadges)
         ->addKeywords({"badges", "donor"})
         ->addTo(layout);
     SettingWidget::checkbox("Show 7TV badges", s.showBadgesSevenTV)
         ->addKeywords({"badges", "7tv", "seventv"})
         ->addTo(layout);
-    SettingWidget::checkbox("Show animated badges", s.showAnimatedBadges)
-        ->addKeywords({"badges", "animated"})
-        ->addTo(layout);
     SettingWidget::checkbox("Animate 7TV badges", s.animateSevenTVBadges)
         ->addKeywords({"badges", "7tv", "animated"})
         ->addTo(layout);
 
-    // 3. YouTube Category
-    layout.addTitle("YouTube");
-    SettingWidget::checkbox("Enable playback controls for YouTube videos",
-                            s.youtubePlaybackControls)
-        ->addKeywords({"youtube", "playback", "controls"})
-        ->addTo(layout);
-    SettingWidget::checkbox("Automatically play YouTube videos on hover",
-                            s.youtubeAutoplay)
-        ->addKeywords({"youtube", "autoplay", "hover"})
-        ->addTo(layout);
-
-    // 4. Messages per second
+    // 3. Messages per second
     layout.addTitle("Messages per second");
     SettingWidget::checkbox("Show messages-per-second (mps) overlay in splits",
                             s.showSplitMps)
