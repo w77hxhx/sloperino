@@ -206,12 +206,6 @@ jobs:
             force-lto: false
             skip-artifact: false
             skip-crashpad: false
-          # Windows on ARM
-          - os: windows-11-arm
-            qt-version: 6.9.3
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
           # macOS (ARM / Universal)
           - os: macos-latest
             qt-version: 6.9.3
@@ -270,26 +264,53 @@ jobs:
         with:
           arch: ${{env.C2_ARCH == 'arm' && 'arm64' || 'x64' }}
 
-      - name: Setup Conan (Windows)
+      - name: Setup sccache (Windows)
+        uses: hendrikmuhs/ccache-action@v1.2.23
         if: startsWith(matrix.os, 'windows')
-        id: conan
-        uses: turtlebrowser/get-conan@v1.2
         with:
-          version: ${{ env.CONAN_VERSION }}
+          variant: sccache
+          save: ${{ github.event_name == 'push' }}
+          key: sccache-build-${{ matrix.os }}-${{ runner.arch }}-${{ matrix.qt-version }}-${{ matrix.skip-crashpad }}
+          restore-keys: |
+            sccache-build-${{ matrix.os }}-${{ runner.arch }}-${{ matrix.qt-version }}
 
-      - name: Conan - create default profile (Windows)
+      - name: Cache conan packages (Windows)
         if: startsWith(matrix.os, 'windows')
-        run: conan profile detect
+        uses: actions/cache@v6
+        with:
+          key: ${{ runner.os }}-${{ runner.arch }}-conan-user-${{ hashFiles('**/conanfile.py') }}-QT6
+          path: ~/.conan2/
+
+      - name: Setup Python (Windows)
+        uses: actions/setup-python@v6
+        if: startsWith(matrix.os, 'windows')
+        with:
+          python-version: "3.13"
+
+      - name: Install Clang (Windows)
+        uses: Nerixyz/install-llvm-action@4af87402e075801cb1ba829dcee5bfafdc733616
+        if: startsWith(matrix.os, 'windows')
+        with:
+          version: 22
+
+      - name: Install and Setup Conan (Windows)
+        if: startsWith(matrix.os, 'windows')
+        run: |
+          pip install conan==${{env.CONAN_VERSION}}
+          conan --version
+          conan profile detect -f
         shell: bash
 
-      - name: Conan - install dependencies (Windows)
+      - name: Install dependencies (Windows)
         if: startsWith(matrix.os, 'windows')
         run: |
           mkdir build
           cd build
           conan install .. \
-              --build=missing \
               -s build_type=RelWithDebInfo \
+              -c tools.cmake.cmaketoolchain:generator="Ninja" \
+              -b missing \
+              --output-folder=. \
               -s compiler=clang \
               -s compiler.version=19 \
               -s compiler.runtime=dynamic \
