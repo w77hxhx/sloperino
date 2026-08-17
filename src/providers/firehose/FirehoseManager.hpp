@@ -78,9 +78,9 @@ private:
     std::mutex queueMutex_;
     std::vector<QByteArray> rawQueue_;
 
-    // Deduplication ring-buffer cache
-    std::unordered_set<std::string> seenIds_;
-    std::deque<std::string> seenQueue_;
+    // Deduplication ring-buffer cache using 64-bit hashes (zero string allocations)
+    std::unordered_set<uint64_t> seenHashes_;
+    std::deque<uint64_t> seenQueue_;
     static constexpr size_t MAX_DEDUP_CACHE_SIZE = 50000;
 
     // Timers

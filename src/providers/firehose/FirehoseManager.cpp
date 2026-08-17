@@ -273,7 +273,18 @@ void FirehoseManager::onRawMessageReceived(QByteArray data)
     this->rawQueue_.emplace_back(std::move(data));
 }
 
-static std::string extractRawMessageId(const QByteArray &data)
+static inline uint64_t hashBytes64(const char *data, size_t len) noexcept
+{
+    uint64_t hash = 14695981039346656037ull;
+    for (size_t i = 0; i < len; ++i)
+    {
+        hash ^= static_cast<uint8_t>(data[i]);
+        hash *= 1099511628211ull;
+    }
+    return hash;
+}
+
+static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
 {
     const char *ptr = data.constData();
     const char *end = ptr + data.size();
@@ -287,7 +298,7 @@ static std::string extractRawMessageId(const QByteArray &data)
 
     if (trimmed >= end)
     {
-        return {};
+        return false;
     }
 
     if (*trimmed == '{')
@@ -301,12 +312,13 @@ static std::string extractRawMessageId(const QByteArray &data)
                 int finish = data.indexOf('"', start + 1);
                 if (finish != -1 && finish > start)
                 {
-                    return std::string(data.constData() + start + 1,
-                                       finish - start - 1);
+                    outHash = hashBytes64(data.constData() + start + 1,
+                                          finish - start - 1);
+                    return true;
                 }
             }
         }
-        return {};
+        return false;
     }
 
     if (*trimmed == '@')
@@ -324,12 +336,13 @@ static std::string extractRawMessageId(const QByteArray &data)
             }
             if (finish != -1 && finish > start)
             {
-                return std::string(data.constData() + start, finish - start);
+                outHash = hashBytes64(data.constData() + start, finish - start);
+                return true;
             }
         }
     }
 
-    return {};
+    return false;
 }
 
 void FirehoseManager::processBatch()
@@ -349,20 +362,21 @@ void FirehoseManager::processBatch()
 
     for (const auto &item : batch)
     {
-        std::string rawId = extractRawMessageId(item);
-        if (!rawId.empty())
+        uint64_t rawHash = 0;
+        bool hasHash = extractRawMessageHash(item, rawHash);
+        if (hasHash)
         {
-            if (this->seenIds_.find(rawId) != this->seenIds_.end())
+            if (this->seenHashes_.find(rawHash) != this->seenHashes_.end())
             {
                 continue;  // duplicate message: dropped immediately without allocations
             }
 
-            this->seenIds_.insert(rawId);
-            this->seenQueue_.push_back(rawId);
+            this->seenHashes_.insert(rawHash);
+            this->seenQueue_.push_back(rawHash);
 
             if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
             {
-                this->seenIds_.erase(this->seenQueue_.front());
+                this->seenHashes_.erase(this->seenQueue_.front());
                 this->seenQueue_.pop_front();
             }
         }
@@ -374,24 +388,22 @@ void FirehoseManager::processBatch()
             continue;
         }
 
-        if (rawId.empty())
+        if (!hasHash && !msgId.isEmpty())
         {
-            std::string idStr = msgId.toStdString();
-            if (!idStr.empty())
+            QByteArray utf8 = msgId.toUtf8();
+            uint64_t idHash = hashBytes64(utf8.constData(), utf8.size());
+            if (this->seenHashes_.find(idHash) != this->seenHashes_.end())
             {
-                if (this->seenIds_.find(idStr) != this->seenIds_.end())
-                {
-                    continue;  // duplicate message
-                }
+                continue;  // duplicate message
+            }
 
-                this->seenIds_.insert(idStr);
-                this->seenQueue_.push_back(idStr);
+            this->seenHashes_.insert(idHash);
+            this->seenQueue_.push_back(idHash);
 
-                if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
-                {
-                    this->seenIds_.erase(this->seenQueue_.front());
-                    this->seenQueue_.pop_front();
-                }
+            if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
+            {
+                this->seenHashes_.erase(this->seenQueue_.front());
+                this->seenQueue_.pop_front();
             }
         }
 
@@ -458,14 +470,14 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
 
     if (ircMsg->command() != QStringLiteral("PRIVMSG"))
     {
-        ircMsg->deleteLater();
+        delete ircMsg;
         return nullptr;
     }
 
     auto *privMsg = dynamic_cast<Communi::IrcPrivateMessage *>(ircMsg);
     if (!privMsg)
     {
-        ircMsg->deleteLater();
+        delete ircMsg;
         return nullptr;
     }
 
@@ -505,7 +517,7 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
     auto [builtMsg, alert] = MessageBuilder::makeIrcMessage(
         targetChannel, privMsg, args, content, messageOffset);
 
-    ircMsg->deleteLater();
+    delete ircMsg;
 
     return builtMsg;
 }

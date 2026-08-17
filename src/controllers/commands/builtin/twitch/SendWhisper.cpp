@@ -21,7 +21,12 @@
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Theme.hpp"
+#include "singletons/WindowManager.hpp"
 #include "util/Twitch.hpp"
+#include "widgets/Notebook.hpp"
+#include "widgets/splits/Split.hpp"
+#include "widgets/splits/SplitContainer.hpp"
+#include "widgets/Window.hpp"
 
 namespace {
 
@@ -179,9 +184,30 @@ bool appendWhisperMessageWordsLocally(const QStringList &words)
         !(getSettings()->streamerModeSuppressInlineWhispers &&
           getApp()->getStreamerMode()->isEnabled()))
     {
-        app->getTwitch()->forEachChannel([&messagexD](ChannelPtr _channel) {
-            _channel->addMessage(messagexD, MessageContext::Repost);
-        });
+        if (auto *windowManager = getApp()->getWindows())
+        {
+            if (auto *window = windowManager->getLastSelectedWindow())
+            {
+                if (auto *page = window->getNotebook().getSelectedPage())
+                {
+                    auto whispersChan =
+                        getApp()->getTwitch()->getWhispersChannel();
+                    std::set<Channel *> added;
+                    for (auto *split : page->getSplits())
+                    {
+                        if (auto chan = split->getChannel())
+                        {
+                            if (chan != whispersChan &&
+                                added.insert(chan.get()).second)
+                            {
+                                chan->addMessage(messagexD,
+                                                 MessageContext::Repost);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     return true;

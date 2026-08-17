@@ -29,6 +29,10 @@
 #include "util/FormatTime.hpp"
 #include "util/Helpers.hpp"
 #include "util/IrcHelpers.hpp"
+#include "widgets/Notebook.hpp"
+#include "widgets/splits/Split.hpp"
+#include "widgets/splits/SplitContainer.hpp"
+#include "widgets/Window.hpp"
 
 #include <IrcMessage>
 #include <QLocale>
@@ -751,10 +755,29 @@ void IrcMessageHandler::handleWhisperMessage(Communi::IrcMessage *ircMessage)
         !(getSettings()->streamerModeSuppressInlineWhispers &&
           getApp()->getStreamerMode()->isEnabled()))
     {
-        getApp()->getTwitch()->forEachChannel([&message, overrideFlags](
-                                                  ChannelPtr channel) {
-            channel->addMessage(message, MessageContext::Repost, overrideFlags);
-        });
+        if (auto *windowManager = getApp()->getWindows())
+        {
+            if (auto *window = windowManager->getLastSelectedWindow())
+            {
+                if (auto *page = window->getNotebook().getSelectedPage())
+                {
+                    std::set<Channel *> added;
+                    for (auto *split : page->getSplits())
+                    {
+                        if (auto chan = split->getChannel())
+                        {
+                            if (chan.get() != c &&
+                                added.insert(chan.get()).second)
+                            {
+                                chan->addMessage(message,
+                                                 MessageContext::Repost,
+                                                 overrideFlags);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
