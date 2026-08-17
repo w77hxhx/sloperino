@@ -467,11 +467,10 @@ void setBadgeModifierHidden(
     bool hidden, const QString &oauthToken,
     std::function<void(bool)> successCallback,
     std::function<void(const QString &)> failureCallback);
-void getUserClips(
-    const QString &login, const QString &role, const QString &cursor,
-    int limit, const QString &oauthToken,
-    std::function<void(GqlClipPage)> successCallback,
-    std::function<void(const QString &)> failureCallback);
+void getUserClips(const QString &login, const QString &role,
+                  const QString &cursor, int limit, const QString &oauthToken,
+                  std::function<void(GqlClipPage)> successCallback,
+                  std::function<void(const QString &)> failureCallback);
 
 }  // namespace TwitchGql
 

@@ -133,8 +133,7 @@ public:
 
         if (!clip.thumbnailURL.isEmpty())
         {
-            this->image_ =
-                Image::fromUrl(Url{clip.thumbnailURL}, 1, {w, h});
+            this->image_ = Image::fromUrl(Url{clip.thumbnailURL}, 1, {w, h});
         }
 
         this->connections_.managedConnect(
@@ -180,7 +179,8 @@ protected:
         // Draw duration overlay badge at bottom-right
         if (this->clip_.durationSeconds > 0.0)
         {
-            const auto durationText = formatDuration(this->clip_.durationSeconds);
+            const auto durationText =
+                formatDuration(this->clip_.durationSeconds);
             auto font = getApp()->getFonts()->getFont(FontStyle::UiMedium,
                                                       this->scale_ * 0.75F);
             painter.setFont(font);
@@ -276,9 +276,9 @@ public:
             auto *curatorLabel = new QLabel(
                 QStringLiteral("✂ %1").arg(clip.curatorDisplayName), this);
             curatorLabel->setObjectName("ClipCardInfo");
-            curatorLabel->setToolTip(QStringLiteral("Clipped by %1 (%2)")
-                                         .arg(clip.curatorDisplayName,
-                                              clip.curatorLogin));
+            curatorLabel->setToolTip(
+                QStringLiteral("Clipped by %1 (%2)")
+                    .arg(clip.curatorDisplayName, clip.curatorLogin));
             infoLayout->addWidget(curatorLabel);
         }
         else if (!clip.broadcasterDisplayName.isEmpty())
@@ -286,9 +286,9 @@ public:
             auto *broadcasterLabel = new QLabel(
                 QStringLiteral("📺 %1").arg(clip.broadcasterDisplayName), this);
             broadcasterLabel->setObjectName("ClipCardInfo");
-            broadcasterLabel->setToolTip(QStringLiteral("Streamer: %1 (%2)")
-                                             .arg(clip.broadcasterDisplayName,
-                                                  clip.broadcasterLogin));
+            broadcasterLabel->setToolTip(
+                QStringLiteral("Streamer: %1 (%2)")
+                    .arg(clip.broadcasterDisplayName, clip.broadcasterLogin));
             infoLayout->addWidget(broadcasterLabel);
         }
 
@@ -473,9 +473,10 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     tabRow->addStretch(1);
     this->mainLayout_->addLayout(tabRow);
 
-    QObject::connect(this->broadcasterTab_, &QPushButton::clicked, this, [this] {
-        this->setActiveRole("BROADCASTER");
-    });
+    QObject::connect(this->broadcasterTab_, &QPushButton::clicked, this,
+                     [this] {
+                         this->setActiveRole("BROADCASTER");
+                     });
     QObject::connect(this->curatorTab_, &QPushButton::clicked, this, [this] {
         this->setActiveRole("CURATOR");
     });
@@ -483,7 +484,8 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     // Search input
     this->searchInput_ = new QLineEdit(container);
     this->searchInput_->setObjectName("UserClipsSearch");
-    this->searchInput_->setPlaceholderText("Search clips by title, game, curator...");
+    this->searchInput_->setPlaceholderText(
+        "Search clips by title, game, curator...");
     this->searchInput_->setClearButtonEnabled(true);
     QObject::connect(this->searchInput_, &QLineEdit::textChanged, this,
                      [this](const QString &text) {
@@ -513,21 +515,20 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     this->mainLayout_->addWidget(this->scrollArea_, 1);
 
     // Auto-pagination on scroll
-    QObject::connect(
-        this->scrollArea_->verticalScrollBar(), &QScrollBar::valueChanged,
-        this, [this](int value) {
-            auto *bar = this->scrollArea_->verticalScrollBar();
-            if (bar == nullptr)
-            {
-                return;
-            }
-            // Load more when within 150px of the bottom
-            if (bar->maximum() - value < 150 && this->hasNextPage_ &&
-                !this->clipsLoading_)
-            {
-                this->loadNextPage();
-            }
-        });
+    QObject::connect(this->scrollArea_->verticalScrollBar(),
+                     &QScrollBar::valueChanged, this, [this](int value) {
+                         auto *bar = this->scrollArea_->verticalScrollBar();
+                         if (bar == nullptr)
+                         {
+                             return;
+                         }
+                         // Load more when within 150px of the bottom
+                         if (bar->maximum() - value < 150 &&
+                             this->hasNextPage_ && !this->clipsLoading_)
+                         {
+                             this->loadNextPage();
+                         }
+                     });
 
     this->contentWidget_ = new QWidget();
     this->contentWidget_->setObjectName("UserClipsDialogContent");
@@ -825,7 +826,8 @@ void UserClipsDialog::rebuildContent()
             continue;
         }
 
-        auto *card = new ClipCardWidget(clip, this->scale(), this->contentWidget_);
+        auto *card =
+            new ClipCardWidget(clip, this->scale(), this->contentWidget_);
         this->contentLayout_->addWidget(card);
         matchCount++;
     }
@@ -853,7 +855,8 @@ void UserClipsDialog::rebuildContent()
 
     if (this->clipsLoading_)
     {
-        auto *loadingLabel = new QLabel("Loading more clips...", this->contentWidget_);
+        auto *loadingLabel =
+            new QLabel("Loading more clips...", this->contentWidget_);
         loadingLabel->setObjectName("UserClipsStatus");
         loadingLabel->setAlignment(Qt::AlignCenter);
         this->contentLayout_->addWidget(loadingLabel);
@@ -962,10 +965,10 @@ void UserClipsDialog::refreshStyle()
         theme->isLightTheme()
             ? theme->splits.input.background.darker(104).name()
             : theme->splits.input.background.lighter(108).name();
-    const auto cardBg = theme->isLightTheme()
-                            ? theme->splits.header.background.name()
-                            : theme->splits.header.background.lighter(110)
-                                  .name();
+    const auto cardBg =
+        theme->isLightTheme()
+            ? theme->splits.header.background.name()
+            : theme->splits.header.background.lighter(110).name();
     const auto cardHoverBg =
         theme->isLightTheme()
             ? theme->splits.header.background.darker(105).name()
@@ -1082,15 +1085,14 @@ void UserClipsDialog::refreshStyle()
             background: %17;
         }
     )")
-            .arg(bg, text, border, muted, inputBg, QString::number(radius),
-                 QString::number(inputPaddingX),
-                 QString::number(scrollbarWidth),
-                 QString::number(scrollbarRadius),
-                 QString::number(scrollbarMinHeight),
-                 QString::number(inputMinHeight), hoverBg, focusedBorder,
-                 cardBg, QString::number(cardRadius),
-                 QString::number(CLIP_CARD_PADDING), cardHoverBg, tabActiveBg,
-                 tabActiveText, tabInactiveBg));
+            .arg(
+                bg, text, border, muted, inputBg, QString::number(radius),
+                QString::number(inputPaddingX), QString::number(scrollbarWidth),
+                QString::number(scrollbarRadius),
+                QString::number(scrollbarMinHeight),
+                QString::number(inputMinHeight), hoverBg, focusedBorder, cardBg,
+                QString::number(cardRadius), QString::number(CLIP_CARD_PADDING),
+                cardHoverBg, tabActiveBg, tabActiveText, tabInactiveBg));
 }
 
 QString UserClipsDialog::authTokenOrMessage()

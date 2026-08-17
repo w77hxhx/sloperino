@@ -50,12 +50,14 @@ void LeafyrinoPage::initLayout(GeneralPageView &layout)
     layout.addDescription("Customize usercard buttons, details, and widgets.");
 
     SettingWidget::checkbox("Show clips button", s.showUsercardClipsButton)
-        ->setTooltip("Show a button on usercards to view and search the user's Twitch clips.")
+        ->setTooltip("Show a button on usercards to view and search the user's "
+                     "Twitch clips.")
         ->addKeywords({"usercard", "clips", "twitch", "button", "video"})
         ->addTo(layout);
 
     SettingWidget::checkbox("Show badges button", s.showUsercardBadgesButton)
-        ->setTooltip("Show a button on usercards to view earned Twitch badges in the channel.")
+        ->setTooltip("Show a button on usercards to view earned Twitch badges "
+                     "in the channel.")
         ->addKeywords({"usercard", "badges", "twitch", "button"})
         ->addTo(layout);
 
@@ -152,7 +154,8 @@ void LeafyrinoPage::initLayout(GeneralPageView &layout)
 
     SettingWidget::checkbox("Show name history button",
                             s.showUsercardNameHistoryButton)
-        ->setTooltip("Show previous Twitch usernames (aka button) on usercards.")
+        ->setTooltip(
+            "Show previous Twitch usernames (aka button) on usercards.")
         ->addKeywords({"usercard", "aka", "history", "names"})
         ->addTo(layout);
 
@@ -164,7 +167,8 @@ void LeafyrinoPage::initLayout(GeneralPageView &layout)
 
     SettingWidget::checkbox("Always load more messages automatically",
                             s.alwaysLoadMoreUsercardMessages)
-        ->setTooltip("Automatically fetch full message history on opening usercard.")
+        ->setTooltip(
+            "Automatically fetch full message history on opening usercard.")
         ->addKeywords({"usercard", "messages", "auto", "load"})
         ->addTo(layout);
 
@@ -187,10 +191,12 @@ void LeafyrinoPage::initLayout(GeneralPageView &layout)
     SettingWidget::checkbox("Show Folhinha badges", s.showBadgesFolhinha)
         ->addKeywords({"badges", "folhinha"})
         ->addTo(layout);
-    SettingWidget::checkbox("Show Homies supporter badges", s.showBadgesHomiesSupporter)
+    SettingWidget::checkbox("Show Homies supporter badges",
+                            s.showBadgesHomiesSupporter)
         ->addKeywords({"badges", "homies", "supporter"})
         ->addTo(layout);
-    SettingWidget::checkbox("Show Homies custom badges", s.showBadgesHomiesCustom)
+    SettingWidget::checkbox("Show Homies custom badges",
+                            s.showBadgesHomiesCustom)
         ->addKeywords({"badges", "homies", "custom"})
         ->addTo(layout);
     SettingWidget::checkbox("Show donor badges", s.showDonorBadges)

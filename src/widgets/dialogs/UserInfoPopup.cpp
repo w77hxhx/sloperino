@@ -4677,9 +4677,9 @@ void UserInfoPopup::updateBadgesButton()
         return;
     }
 
-    bool canShow = getSettings()->showUsercardBadgesButton &&
-                   !this->isKick_ && !this->isYouTube_ &&
-                   !this->userName_.isEmpty() && this->underlyingChannel_ &&
+    bool canShow = getSettings()->showUsercardBadgesButton && !this->isKick_ &&
+                   !this->isYouTube_ && !this->userName_.isEmpty() &&
+                   this->underlyingChannel_ &&
                    !this->underlyingChannel_->getName().isEmpty();
 
     if (canShow && this->channel_)
@@ -4711,9 +4711,8 @@ void UserInfoPopup::updateClipsButton()
         return;
     }
 
-    bool canShow = getSettings()->showUsercardClipsButton &&
-                   !this->isKick_ && !this->isYouTube_ &&
-                   !this->userName_.isEmpty();
+    bool canShow = getSettings()->showUsercardClipsButton && !this->isKick_ &&
+                   !this->isYouTube_ && !this->userName_.isEmpty();
 
     this->ui_.clipsLabel->setVisible(canShow);
     this->ui_.clipsLabel->setEnabled(canShow);

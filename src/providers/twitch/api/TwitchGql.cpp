@@ -5652,9 +5652,8 @@ void TwitchGql::setBadgeModifierHidden(
 }
 
 void TwitchGql::getUserClips(
-    const QString &login, const QString &role, const QString &cursor,
-    int limit, const QString &oauthToken,
-    std::function<void(GqlClipPage)> successCallback,
+    const QString &login, const QString &role, const QString &cursor, int limit,
+    const QString &oauthToken, std::function<void(GqlClipPage)> successCallback,
     std::function<void(const QString &)> failureCallback)
 {
     QJsonObject criteria;
@@ -5687,8 +5686,7 @@ void TwitchGql::getUserClips(
     }
 
     QJsonObject payload;
-    payload.insert("operationName",
-                   QStringLiteral("ContentClipsManager_User"));
+    payload.insert("operationName", QStringLiteral("ContentClipsManager_User"));
     payload.insert("variables", variables);
 
     QJsonObject persistedQuery;
@@ -5721,69 +5719,68 @@ void TwitchGql::getUserClips(
     }
 
     std::move(request)
-        .onSuccess([successCallback, failureCallback](
-                       const NetworkResult &result) {
-            const auto root = result.parseJsonValue();
-            const auto gqlError = extractFirstGqlErrorMessage(root);
-            if (!gqlError.isEmpty())
-            {
-                failureCallback("Twitch API Error: " + gqlError);
-                return;
-            }
-
-            const auto data = payloadDataObject(root);
-            const auto userObj = data.value("user").toObject();
-            const auto clipsObj = userObj.value("clips").toObject();
-            const auto edgesArr = clipsObj.value("edges").toArray();
-            const auto pageInfo = clipsObj.value("pageInfo").toObject();
-
-            GqlClipPage page;
-            page.hasNextPage =
-                pageInfo.value("hasNextPage").toBool(false);
-
-            for (const auto &edgeVal : edgesArr)
-            {
-                const auto edge = edgeVal.toObject();
-                const auto node = edge.value("node").toObject();
-
-                GqlClip clip;
-                clip.id = node.value("id").toString();
-                clip.slug = node.value("slug").toString();
-                clip.title = node.value("title").toString();
-                clip.thumbnailURL = node.value("thumbnailURL").toString();
-                clip.url = node.value("url").toString();
-                clip.viewCount = node.value("viewCount").toInt(0);
-                clip.durationSeconds =
-                    node.value("durationSeconds").toDouble(0.0);
-                clip.createdAt = node.value("createdAt").toString();
-
-                const auto gameObj = node.value("game").toObject();
-                clip.gameName = gameObj.value("name").toString();
-
-                const auto broadcasterObj =
-                    node.value("broadcaster").toObject();
-                clip.broadcasterLogin =
-                    broadcasterObj.value("login").toString();
-                clip.broadcasterDisplayName =
-                    broadcasterObj.value("displayName").toString();
-
-                const auto curatorObj = node.value("curator").toObject();
-                clip.curatorLogin = curatorObj.value("login").toString();
-                clip.curatorDisplayName =
-                    curatorObj.value("displayName").toString();
-
-                // Use edge cursor as the page cursor
-                const auto edgeCursor = edge.value("cursor").toString();
-                if (!edgeCursor.isEmpty())
+        .onSuccess(
+            [successCallback, failureCallback](const NetworkResult &result) {
+                const auto root = result.parseJsonValue();
+                const auto gqlError = extractFirstGqlErrorMessage(root);
+                if (!gqlError.isEmpty())
                 {
-                    page.nextCursor = edgeCursor;
+                    failureCallback("Twitch API Error: " + gqlError);
+                    return;
                 }
 
-                page.clips.append(std::move(clip));
-            }
+                const auto data = payloadDataObject(root);
+                const auto userObj = data.value("user").toObject();
+                const auto clipsObj = userObj.value("clips").toObject();
+                const auto edgesArr = clipsObj.value("edges").toArray();
+                const auto pageInfo = clipsObj.value("pageInfo").toObject();
 
-            successCallback(std::move(page));
-        })
+                GqlClipPage page;
+                page.hasNextPage = pageInfo.value("hasNextPage").toBool(false);
+
+                for (const auto &edgeVal : edgesArr)
+                {
+                    const auto edge = edgeVal.toObject();
+                    const auto node = edge.value("node").toObject();
+
+                    GqlClip clip;
+                    clip.id = node.value("id").toString();
+                    clip.slug = node.value("slug").toString();
+                    clip.title = node.value("title").toString();
+                    clip.thumbnailURL = node.value("thumbnailURL").toString();
+                    clip.url = node.value("url").toString();
+                    clip.viewCount = node.value("viewCount").toInt(0);
+                    clip.durationSeconds =
+                        node.value("durationSeconds").toDouble(0.0);
+                    clip.createdAt = node.value("createdAt").toString();
+
+                    const auto gameObj = node.value("game").toObject();
+                    clip.gameName = gameObj.value("name").toString();
+
+                    const auto broadcasterObj =
+                        node.value("broadcaster").toObject();
+                    clip.broadcasterLogin =
+                        broadcasterObj.value("login").toString();
+                    clip.broadcasterDisplayName =
+                        broadcasterObj.value("displayName").toString();
+
+                    const auto curatorObj = node.value("curator").toObject();
+                    clip.curatorLogin = curatorObj.value("login").toString();
+                    clip.curatorDisplayName =
+                        curatorObj.value("displayName").toString();
+
+                    // Use edge cursor as the page cursor
+                    const auto edgeCursor = edge.value("cursor").toString();
+                    if (!edgeCursor.isEmpty())
+                    {
+                        page.nextCursor = edgeCursor;
+                    }
+
+                    page.clips.append(std::move(clip));
+                }
+
+                successCallback(std::move(page));
+            })
         .onError([failureCallback](const NetworkResult &result) {
             failureCallback("Network Error: " + result.formatError());
         })

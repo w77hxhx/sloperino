@@ -30,8 +30,7 @@ class SvgButton;
 class UserClipsDialog : public DraggablePopup
 {
 public:
-    UserClipsDialog(const QString &userLogin,
-                    const QString &displayName = {},
+    UserClipsDialog(const QString &userLogin, const QString &displayName = {},
                     QWidget *parent = nullptr);
 
     static void showDialog(const QString &userLogin,
