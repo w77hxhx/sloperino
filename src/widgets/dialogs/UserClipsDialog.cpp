@@ -361,7 +361,7 @@ private:
             });
 
             menu->addAction("Open in Incognito Browser", this, [this] {
-                openUrlIncognito(QUrl(this->clip_.url));
+                openLinkIncognito(this->clip_.url);
             });
 
             menu->addSeparator();
