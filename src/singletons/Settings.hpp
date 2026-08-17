@@ -912,6 +912,7 @@ public:
     QStringSetting androidColor = {"/misc/androidColor", "#3F25D300"};
     QStringSetting iosColor = {"/misc/iosColor", "#3FFF69B4"};
     BoolSetting fakeWebChat = {"/misc/fakeWebChat", false};
+    BoolSetting randomClientNonce = {"/misc/randomClientNonce", false};
 #ifdef Q_OS_LINUX
     BoolSetting useKeyring = {"/misc/useKeyring", true};
 #endif

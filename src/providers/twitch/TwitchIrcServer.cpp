@@ -39,6 +39,7 @@
 #include <QCoreApplication>
 #include <QMetaEnum>
 #include <QRandomGenerator>
+#include <QUuid>
 
 #include <cassert>
 #include <functional>
@@ -76,6 +77,25 @@ QString makeWebClientNonce()
     return nonce.toLower();
 }
 
+QString makeRandomClientNonce()
+{
+    // Pick randomly from 0: Web, 1: iOS, 2: Android
+    quint32 clientType = QRandomGenerator::global()->bounded(3);
+    switch (clientType)
+    {
+        case 0:
+            // Web: 32 hex chars lowercase
+            return makeWebClientNonce();
+        case 1:
+            // iOS: UUIDv4 uppercase
+            return QUuid::createUuid().toString(QUuid::WithoutBraces).toUpper();
+        case 2:
+        default:
+            // Android: UUIDv4 lowercase
+            return QUuid::createUuid().toString(QUuid::WithoutBraces).toLower();
+    }
+}
+
 thread_local bool preferAnonymousTwitchChannels = false;
 
 class ScopedAnonymousTwitchLookup
@@ -98,7 +118,11 @@ private:
 
 QStringList makeIrcTags(QStringList tags = {})
 {
-    if (getSettings()->fakeWebChat)
+    if (getSettings()->randomClientNonce)
+    {
+        tags.prepend(QStringLiteral("client-nonce=") + makeRandomClientNonce());
+    }
+    else if (getSettings()->fakeWebChat)
     {
         tags.prepend(QStringLiteral("client-nonce=") + makeWebClientNonce());
     }

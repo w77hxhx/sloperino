@@ -997,8 +997,6 @@ set(SOURCE_FILES
         widgets/settingspages/GeneralPage.hpp
         widgets/settingspages/GeneralPageView.cpp
         widgets/settingspages/GeneralPageView.hpp
-        widgets/settingspages/FirehosePage.cpp
-        widgets/settingspages/FirehosePage.hpp
         widgets/settingspages/HighlightingPage.cpp
         widgets/settingspages/HighlightingPage.hpp
         widgets/settingspages/IgnoresPage.cpp

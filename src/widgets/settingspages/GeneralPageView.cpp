@@ -130,6 +130,7 @@ TitleLabel *GeneralPageView::addTitle(const QString &title)
     {
         navLabel = new NavigationLabel(title);
         navLabel->setCursor(Qt::PointingHandCursor);
+        navLabel->setStyleSheet("color: #999999;");
         this->navigationLayout_->addWidget(navLabel);
 
         QObject::connect(
@@ -340,15 +341,20 @@ void GeneralPageView::updateNavigationHighlighting()
 
     for (auto &&group : this->groups_)
     {
+        if (group.navigationLink == nullptr)
+        {
+            continue;
+        }
+
         if (first && (group.title->geometry().bottom() > scrollY ||
                       &group == &this->groups_.back()))
         {
             first = false;
-            group.navigationLink->setStyleSheet("color: #00ABF4");
+            group.navigationLink->setStyleSheet("color: #00ABF4;");
         }
         else
         {
-            group.navigationLink->setStyleSheet("");
+            group.navigationLink->setStyleSheet("color: #999999;");
         }
     }
 }

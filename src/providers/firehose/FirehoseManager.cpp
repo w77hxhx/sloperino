@@ -423,6 +423,24 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
         return nullptr;
     }
 
+    MessageBuilder::triggerHighlights(targetChannel, builtMsg, alert);
+
+    const auto highlighted = builtMsg->flags.has(MessageFlag::Highlighted);
+    const auto showInMentions =
+        builtMsg->flags.has(MessageFlag::ShowInMentions);
+
+    if (highlighted && showInMentions)
+    {
+        if (auto *app = tryGetApp())
+        {
+            if (auto *twitch = app->getTwitch())
+            {
+                twitch->getMentionsChannel()->addMessage(
+                    builtMsg, MessageContext::Original);
+            }
+        }
+    }
+
     return builtMsg;
 }
 

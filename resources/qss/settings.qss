@@ -69,5 +69,5 @@ QLabel#description {
 chatterino--NavigationLabel {
     font-family: "Segoe UI light";
     font-size: 15px;
-    color: #A6DDF4;
+    color: #999999;
 }
