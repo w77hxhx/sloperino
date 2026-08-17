@@ -18,7 +18,8 @@ FirehoseChannel::FirehoseChannel()
 
     getSettings()->firehoseMaxMessages.connect(
         [this](int limit) {
-            this->messages_.setLimit(static_cast<size_t>(std::max(1000, limit)));
+            this->messages_.setLimit(
+                static_cast<size_t>(std::max(1000, limit)));
         },
         false);
 }

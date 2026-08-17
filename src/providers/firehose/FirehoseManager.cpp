@@ -223,7 +223,8 @@ void FirehoseManager::connectEndpoint(size_t index)
     };
 
     auto listener = std::make_unique<FirehoseWsListener>(this, index);
-    ep.handle = this->wsPool_.createSocket(std::move(options), std::move(listener));
+    ep.handle =
+        this->wsPool_.createSocket(std::move(options), std::move(listener));
     ep.isConnected = true;
 }
 
@@ -351,7 +352,7 @@ void FirehoseManager::updateStats()
 }
 
 MessagePtr FirehoseManager::parseRawPayload(const QByteArray &data,
-                                           QString &outMsgId)
+                                            QString &outMsgId)
 {
     const char *trimmed = data.constData();
     while (*trimmed == ' ' || *trimmed == '\t' || *trimmed == '\r' ||
@@ -371,7 +372,7 @@ MessagePtr FirehoseManager::parseRawPayload(const QByteArray &data,
 }
 
 MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
-                                        QString &outMsgId)
+                                         QString &outMsgId)
 {
     auto *ircMsg = Communi::IrcMessage::fromData(data, nullptr);
     if (!ircMsg)
@@ -461,10 +462,12 @@ MessagePtr FirehoseManager::parseJsonPayload(const QByteArray &data,
         {
             tagStr += QLatin1Char(';');
         }
-        tagStr += it.key() + QLatin1Char('=') + it.value().toVariant().toString();
+        tagStr +=
+            it.key() + QLatin1Char('=') + it.value().toVariant().toString();
     }
 
-    if (!tagsObj.contains(QStringLiteral("display-name")) && !displayName.isEmpty())
+    if (!tagsObj.contains(QStringLiteral("display-name")) &&
+        !displayName.isEmpty())
     {
         if (!tagStr.isEmpty())
         {
@@ -482,8 +485,9 @@ MessagePtr FirehoseManager::parseJsonPayload(const QByteArray &data,
         tagStr += QStringLiteral("id=") + outMsgId;
     }
 
-    QString rawIrc = QStringLiteral("@%1 :%2!%2@%2.tmi.twitch.tv PRIVMSG #%3 :%4\r\n")
-                         .arg(tagStr, username, channel, text);
+    QString rawIrc =
+        QStringLiteral("@%1 :%2!%2@%2.tmi.twitch.tv PRIVMSG #%3 :%4\r\n")
+            .arg(tagStr, username, channel, text);
 
     return this->parseIrcLine(rawIrc.toUtf8(), outMsgId);
 }

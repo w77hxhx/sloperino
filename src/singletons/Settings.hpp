@@ -1349,16 +1349,20 @@ public:
     void disableAutoTranslateChannel(const QString &channelName);
 
     /// Sloperino & Firehose
-    BoolSetting firehoseAutoReconnect{"/sloperino/firehose/autoReconnect", true};
-    IntSetting firehoseBatchIntervalMs{"/sloperino/firehose/batchIntervalMs", 250};
+    BoolSetting firehoseAutoReconnect{"/sloperino/firehose/autoReconnect",
+                                      true};
+    IntSetting firehoseBatchIntervalMs{"/sloperino/firehose/batchIntervalMs",
+                                       250};
     IntSetting firehoseMaxMessages{"/sloperino/firehose/maxMessages", 10000};
-    BoolSetting firehoseShowRateInTitle{"/sloperino/firehose/showRateInTitle", true};
+    BoolSetting firehoseShowRateInTitle{"/sloperino/firehose/showRateInTitle",
+                                        true};
     BoolSetting firehoseEnableSpanix{"/sloperino/firehose/enableSpanix", true};
     BoolSetting firehoseEnableSupa{"/sloperino/firehose/enableSupa", true};
     BoolSetting firehoseEnableSusgee{"/sloperino/firehose/enableSusgee", true};
     BoolSetting firehoseEnableNadeko{"/sloperino/firehose/enableNadeko", true};
     BoolSetting firehoseEnableLogxx{"/sloperino/firehose/enableLogxx", true};
-    BoolSetting firehoseEnableCatquery{"/sloperino/firehose/enableCatquery", true};
+    BoolSetting firehoseEnableCatquery{"/sloperino/firehose/enableCatquery",
+                                       true};
 
 private:
     void updateModerationActions();
