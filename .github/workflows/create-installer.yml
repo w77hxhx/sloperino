@@ -83,7 +83,7 @@ jobs:
         if: ${{ contains(steps.build-installer.outputs.C2_INSTALLER_BASE_NAME, 'Nightly') && env.RELEASE_NIGHTLY_INSTALLER == 'ON' }}
         uses: ncipollo/release-action@v1.14.0
         with:
-          replacesArtifacts: true
+          replacesArtifacts: false
           allowUpdates: true
           omitBodyDuringUpdate: true
           omitNameDuringUpdate: true
