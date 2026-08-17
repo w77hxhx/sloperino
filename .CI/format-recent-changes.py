@@ -29,7 +29,11 @@ def create_artifacts_table(artifact_dir: str, include_installer: bool):
         "macOS": {
             "Universal (x86_64, ARM64)": get(r"\.dmg$"),
         },
-        "Linux": {"x86_64": get(r"\.flatpak")},
+        "Linux": {
+            "x86_64": get(r"\.AppImage$")
+            + get(r"\.deb$")
+            + get(r"\.flatpak$")
+        },
     }
 
     # Cleanup

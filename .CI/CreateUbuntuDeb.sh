@@ -67,7 +67,7 @@ cat >> "$packaging_dir/DEBIAN/control" << EOF
 Package: chatterino
 Version: $chatterino_version
 Architecture: amd64
-Maintainer: Sloperino <https://github.com/leafyzito>
+Maintainer: Sloperino <https://github.com/w77hxhx/sloperino>
 Depends: $dependencies
 Section: net
 Priority: optional
@@ -78,8 +78,8 @@ cat "$packaging_dir/DEBIAN/control"
 breakline
 
 
-echo "Running make install"
-make install
+echo "Running cmake install"
+cmake --install . --prefix "$install_prefix"
 find "$install_prefix"
 breakline
 
