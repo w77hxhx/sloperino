@@ -26,7 +26,7 @@ enum class SettingsTabId {
     Moderation,
     About,
     Technorino,
-    Sloperino
+    Firehose,
 };
 
 class SettingsDialogTab : public BaseWidget

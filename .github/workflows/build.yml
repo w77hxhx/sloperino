@@ -316,7 +316,6 @@ jobs:
               -s compiler.runtime=dynamic \
               -s compiler.cppstd=20 \
               -s arch=${{ env.C2_ARCH == 'arm' && 'armv8' || 'x86_64' }} \
-              -o with_crashpad=${{ env.C2_ENABLE_CRASHPAD }} \
               -o with_openssl3=True
           conan cache clean --source --build --download "*"
         shell: bash
