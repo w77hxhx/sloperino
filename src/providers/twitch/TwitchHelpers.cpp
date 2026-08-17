@@ -58,4 +58,3 @@ int stripLeadingReplyMention(Communi::TagsRef tags, QString &content)
 }
 
 }  // namespace chatterino
-
