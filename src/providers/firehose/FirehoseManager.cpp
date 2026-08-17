@@ -9,6 +9,7 @@
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "providers/twitch/IrcMessageHandler.hpp"
+#include "providers/twitch/TwitchHelpers.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Settings.hpp"
 #include "util/Helpers.hpp"
@@ -20,11 +21,10 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 
+#include <algorithm>
 #include <chrono>
 
 namespace chatterino {
-
-namespace {
 
 class FirehoseWsListener final : public WebSocketListener
 {
@@ -39,7 +39,7 @@ public:
     {
         QMetaObject::invokeMethod(
             this->mgr_,
-            [mgr = this->mgr_, idx = this->index_] {
+            [mgr = this->mgr_] {
                 // Endpoint connected
             },
             Qt::QueuedConnection);
@@ -69,8 +69,6 @@ private:
     FirehoseManager *mgr_;
     size_t index_;
 };
-
-}  // namespace
 
 FirehoseManager::FirehoseManager()
     : channel_(std::make_shared<FirehoseChannel>())
@@ -116,38 +114,34 @@ void FirehoseManager::initEndpoints()
 {
     auto &s = *getSettings();
 
-    this->endpoints_ = {
-        Endpoint{
-            .name = QStringLiteral("Spanix"),
-            .url = QUrl(QStringLiteral("wss://logs.spanix.team/firehose")),
-            .enabledSetting = &s.firehoseEnableSpanix,
-        },
-        Endpoint{
-            .name = QStringLiteral("Supa"),
-            .url = QUrl(QStringLiteral("wss://logs.supa.codes/firehose")),
-            .enabledSetting = &s.firehoseEnableSupa,
-        },
-        Endpoint{
-            .name = QStringLiteral("Susgee"),
-            .url = QUrl(QStringLiteral("wss://logs.susgee.dev/firehose")),
-            .enabledSetting = &s.firehoseEnableSusgee,
-        },
-        Endpoint{
-            .name = QStringLiteral("Nadeko"),
-            .url = QUrl(QStringLiteral("wss://logs.nadeko.net/firehose")),
-            .enabledSetting = &s.firehoseEnableNadeko,
-        },
-        Endpoint{
-            .name = QStringLiteral("Logxx"),
-            .url = QUrl(QStringLiteral("wss://logxx.dev/firehose")),
-            .enabledSetting = &s.firehoseEnableLogxx,
-        },
-        Endpoint{
-            .name = QStringLiteral("Catquery"),
-            .url = QUrl(QStringLiteral("wss://firehose.catquery.com")),
-            .enabledSetting = &s.firehoseEnableCatquery,
-        },
+    this->endpoints_.clear();
+
+    auto addEndpoint = [this](QString name, QUrl url, BoolSetting *setting) {
+        Endpoint ep;
+        ep.name = std::move(name);
+        ep.url = std::move(url);
+        ep.enabledSetting = setting;
+        this->endpoints_.push_back(std::move(ep));
     };
+
+    addEndpoint(QStringLiteral("Spanix"),
+                QUrl(QStringLiteral("wss://logs.spanix.team/firehose")),
+                &s.firehoseEnableSpanix);
+    addEndpoint(QStringLiteral("Supa"),
+                QUrl(QStringLiteral("wss://logs.supa.codes/firehose")),
+                &s.firehoseEnableSupa);
+    addEndpoint(QStringLiteral("Susgee"),
+                QUrl(QStringLiteral("wss://logs.susgee.dev/firehose")),
+                &s.firehoseEnableSusgee);
+    addEndpoint(QStringLiteral("Nadeko"),
+                QUrl(QStringLiteral("wss://logs.nadeko.net/firehose")),
+                &s.firehoseEnableNadeko);
+    addEndpoint(QStringLiteral("Logxx"),
+                QUrl(QStringLiteral("wss://logxx.dev/firehose")),
+                &s.firehoseEnableLogxx);
+    addEndpoint(QStringLiteral("Catquery"),
+                QUrl(QStringLiteral("wss://firehose.catquery.com")),
+                &s.firehoseEnableCatquery);
 
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
@@ -383,7 +377,7 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
     auto tags = ircMsg->tags();
     outMsgId = tags.getOrEmpty("id");
 
-    if (ircMsg->command() != u"PRIVMSG"_s)
+    if (ircMsg->command() != QStringLiteral("PRIVMSG"))
     {
         ircMsg->deleteLater();
         return nullptr;

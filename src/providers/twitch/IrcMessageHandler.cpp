@@ -127,40 +127,6 @@ MessagePtr generateBannedMessage(bool confirmedBan)
     return builder.release();
 }
 
-int stripLeadingReplyMention(Communi::TagsRef tags, QString &content)
-{
-    if (!getSettings()->stripReplyMention)
-    {
-        return 0;
-    }
-    if (getSettings()->hideReplyContext)
-    {
-        // Never strip reply mentions if reply contexts are hidden
-        return 0;
-    }
-
-    if (auto optDisplayName = tags.get("reply-parent-display-name"))
-    {
-        auto displayName = parseTagString(*optDisplayName);
-
-        if (content.length() <= 1 + displayName.length())
-        {
-            // The reply contains no content
-            return 0;
-        }
-
-        if (content.startsWith('@') &&
-            content.at(1 + displayName.length()) == ' ' &&
-            content.indexOf(displayName, 1) == 1)
-        {
-            int messageOffset = 1 + displayName.length() + 1;
-            content.remove(0, messageOffset);
-            return messageOffset;
-        }
-    }
-    return 0;
-}
-
 void checkThreadSubscription(Communi::TagsRef tags, const QString &senderLogin,
                              std::shared_ptr<MessageThread> &thread)
 {

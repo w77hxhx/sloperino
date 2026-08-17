@@ -26,10 +26,13 @@ namespace chatterino {
 
 class Channel;
 using ChannelPtr = std::shared_ptr<Channel>;
+class FirehoseWsListener;
 
 class FirehoseManager final : public QObject
 {
     Q_OBJECT
+
+    friend class FirehoseWsListener;
 
 public:
     FirehoseManager();
