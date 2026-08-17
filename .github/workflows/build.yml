@@ -34,169 +34,6 @@ env:
   C2_APP_BUNDLE: Sloperino.app
 
 jobs:
-  build-ubuntu:
-    name: "Build Ubuntu ${{ matrix.os }}, Qt ${{ matrix.qt-version }}"
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-22.04
-            qt-version: 6.7.2
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
-            build-appimage: true
-            build-deb: true
-            plugins: true
-          - os: ubuntu-24.04
-            qt-version: 6.9.3
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
-            build-appimage: false
-            build-deb: true
-            plugins: true
-          - os: ubuntu-26.04
-            qt-version: 6.9.3
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
-            build-appimage: false
-            build-deb: true
-            plugins: true
-    env:
-      C2_ENABLE_LTO: ${{ matrix.force-lto }}
-      C2_ENABLE_CRASHPAD: ${{ matrix.skip-crashpad == false }}
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: recursive
-          fetch-depth: 0 # allows for tags access
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          PACKAGES="cmake g++ git pkg-config libboost-dev libnotify-dev libssl-dev libsecret-1-dev hunspell libhunspell-dev file fuse libfuse2 patchelf"
-          if [ "${{ matrix.os }}" = "ubuntu-24.04" ] || [ "${{ matrix.os }}" = "ubuntu-26.04" ]; then
-            PACKAGES="$PACKAGES libboost-json-dev"
-          fi
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $PACKAGES
-
-      - name: Cache Boost (Ubuntu 22.04)
-        if: matrix.os == 'ubuntu-22.04'
-        uses: actions/cache@v4
-        id: boost-cache
-        with:
-          path: ~/boost-1.83.0
-          key: boost-1.83.0-ubuntu-22.04-v1
-
-      - name: Install Boost with JSON (Ubuntu 22.04)
-        if: matrix.os == 'ubuntu-22.04' && steps.boost-cache.outputs.cache-hit != 'true'
-        run: |
-          BOOST_VER=1.83.0
-          BOOST_PREFIX="$HOME/boost-${BOOST_VER}"
-          BUILD_DIR="$(mktemp -d)"
-          cd "$BUILD_DIR"
-          wget -q "https://archives.boost.io/release/${BOOST_VER}/source/boost_1_83_0.tar.gz"
-          tar xf boost_1_83_0.tar.gz
-          cd boost_1_83_0
-          ./bootstrap.sh --prefix="${BOOST_PREFIX}"
-          ./b2 install --with-json --prefix="${BOOST_PREFIX}" -j"$(nproc)"
-
-      - name: Install Qt6
-        uses: jurplel/install-qt-action@v4.3.1
-        with:
-          cache: true
-          cache-key-prefix: ${{ runner.os }}-QtCache-${{ matrix.qt-version }}-v2
-          modules: qtimageformats qtcharts
-          version: ${{ matrix.qt-version }}
-
-      - name: Determine build type
-        id: build-type
-        shell: bash
-        run: |
-          if [ "${CHATTERINO_BUILD_TYPE}" = "auto" ]; then
-            if git describe --exact-match --match 'v*'; then
-              echo "Auto - found release tag format"
-              echo "NIGHTLY_BUILD=Off" >> "$GITHUB_OUTPUT"
-            else
-              echo "Auto - did not find release tag format"
-              echo "NIGHTLY_BUILD=On" >> "$GITHUB_OUTPUT"
-            fi
-          elif [ "${CHATTERINO_BUILD_TYPE}" = "nightly" ]; then
-            echo "Override to nightly"
-            echo "NIGHTLY_BUILD=On" >> "$GITHUB_OUTPUT"
-          elif [ "${CHATTERINO_BUILD_TYPE}" = "stable" ]; then
-            echo "Override to stable"
-            echo "NIGHTLY_BUILD=Off" >> "$GITHUB_OUTPUT"
-          else
-            echo "Error: no build type variable set"
-            exit 1
-          fi
-
-      - name: Build
-        run: |
-          mkdir build
-          cd build
-          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            export CMAKE_PREFIX_PATH="$HOME/boost-1.83.0${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
-          fi
-          CXXFLAGS=-fno-sized-deallocation cmake \
-            -DCMAKE_INSTALL_PREFIX=appdir/usr/ \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DPAJLADA_SETTINGS_USE_BOOST_FILESYSTEM=On \
-            -DUSE_PRECOMPILED_HEADERS=OFF \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=On \
-            -DCHATTERINO_LTO="$C2_ENABLE_LTO" \
-            -DCHATTERINO_NIGHTLY_BUILD=${{ steps.build-type.outputs.NIGHTLY_BUILD }} \
-            -DFORCE_JSON_GENERATION=Off \
-            -DCHATTERINO_PLUGINS=${{ case(matrix.plugins, 'On', 'Off') }} \
-            ..
-          cmake --build . -j"$(nproc)"
-
-      - name: Package - AppImage (Ubuntu)
-        if: matrix.build-appimage
-        run: |
-          cd build
-          sh ./../.CI/CreateAppImage.sh
-
-      - name: Upload artifact - AppImage (Ubuntu)
-        if: matrix.build-appimage
-        uses: actions/upload-artifact@v7
-        with:
-          name: Leafyrino-x86_64-Qt-${{ matrix.qt-version }}.AppImage
-          path: build/Leafyrino-x86_64.AppImage
-
-      - name: Package - .deb (Ubuntu)
-        if: matrix.build-deb
-        run: |
-          cd build
-          sh ./../.CI/CreateUbuntuDeb.sh
-
-      - name: Upload artifact - .deb (Ubuntu)
-        if: matrix.build-deb
-        uses: actions/upload-artifact@v7
-        with:
-          name: Chatterino-${{ matrix.os }}.deb
-          path: build/Chatterino-${{ matrix.os }}-x86_64.deb
-
-  build-flatpak:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.10
-      options: --privileged
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: recursive
-          fetch-depth: 0 # tag access
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-        with:
-          bundle: chatterino.flatpak
-          manifest-path: .CI/com.chatterino.chatterino.yml
-          cache-key: flatpak-builder-${{ github.sha }}
-
   build:
     name: "Build ${{ matrix.os }}, Qt ${{ matrix.qt-version }} (LTO:${{ matrix.force-lto }}, crashpad:${{ case(matrix.skip-crashpad, 'off', 'on') }})"
     runs-on: ${{ matrix.os }}
@@ -205,18 +42,6 @@ jobs:
         include:
           # Windows
           - os: windows-latest
-            qt-version: 6.9.3
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
-          # Windows on ARM
-          - os: windows-11-arm
-            qt-version: 6.9.3
-            force-lto: false
-            skip-artifact: false
-            skip-crashpad: false
-          # macOS (ARM)
-          - os: macos-latest
             qt-version: 6.9.3
             force-lto: false
             skip-artifact: false
@@ -492,7 +317,7 @@ jobs:
           path: build/chatterino-macos-Qt-${{ matrix.qt-version }}-universal.dmg
 
   create-release:
-    needs: [build-ubuntu, build-flatpak, build]
+    needs: [build]
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/leafyrino')
     permissions:
@@ -513,9 +338,13 @@ jobs:
         run: |
           ls -l
           # Rename the macos build to indicate that it's for macOS 13.0 users
-          mv chatterino-macos-Qt-6.9.3-universal.dmg Chatterino-macOS-13.0-universal.dmg
+          if [ -f chatterino-macos-Qt-6.9.3-universal.dmg ]; then
+            mv chatterino-macos-Qt-6.9.3-universal.dmg Chatterino-macOS-13.0-universal.dmg
+          fi
           # Rename Windows ARM64 to indicate that it's not well tested
-          mv chatterino-windows-arm-Qt-6.9.3.zip Experimental-ARM64-chatterino-windows-Qt-6.9.3.zip
+          if [ -f chatterino-windows-arm-Qt-6.9.3.zip ]; then
+            mv chatterino-windows-arm-Qt-6.9.3.zip Experimental-ARM64-chatterino-windows-Qt-6.9.3.zip
+          fi
         working-directory: release-artifacts
         shell: bash
 
@@ -554,7 +383,7 @@ jobs:
         shell: bash
 
   collect:
-    needs: [build, build-ubuntu, build-flatpak]
+    needs: [build]
     runs-on: ubuntu-latest
     if: always()
     steps:
