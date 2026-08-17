@@ -59,7 +59,7 @@ bool hasAvatarForChannel(const QString &channelName)
 bool isRunningFromBuildTree()
 {
     const QFileInfo appFile(QCoreApplication::applicationFilePath());
-    if (appFile.fileName().compare(u"Leafyrino.exe"_s, Qt::CaseInsensitive) !=
+    if (appFile.fileName().compare(u"Sloperino.exe"_s, Qt::CaseInsensitive) !=
         0)
     {
         return false;
@@ -420,7 +420,7 @@ void Toasts::ensureInitialized()
     this->initialized_ = true;
 
     auto *instance = WinToast::instance();
-    instance->setAppName(L"Leafyrino");
+    instance->setAppName(L"Sloperino");
     instance->setAppUserModelId(Version::instance().appUserModelID());
     if (isRunningFromBuildTree() || !getSettings()->createShortcutForToasts)
     {
@@ -552,7 +552,7 @@ void Toasts::ensureInitialized()
     {
         return;
     }
-    auto result = notify_init("Leafyrino");
+    auto result = notify_init("Sloperino");
 
     if (result == 0)
     {
@@ -581,7 +581,7 @@ bool Toasts::sendLibnotifyHighlightNotification(const QString &channelName,
 
     notify_notification_set_hint(
         notif, "desktop-entry",
-        g_variant_new_string("com.leafyzito.leafyrino"));
+        g_variant_new_string("com.w77hxhx.sloperino"));
     notify_notification_set_timeout(notif, 10000);
     notify_notification_set_urgency(notif, NOTIFY_URGENCY_NORMAL);
 
@@ -623,7 +623,7 @@ void Toasts::sendLibnotify(const QString &channelName,
 
     notify_notification_set_hint(
         notif, "desktop-entry",
-        g_variant_new_string("com.leafyzito.leafyrino"));
+        g_variant_new_string("com.w77hxhx.sloperino"));
 
     auto *channelNameHeap = new QString(channelName);
 

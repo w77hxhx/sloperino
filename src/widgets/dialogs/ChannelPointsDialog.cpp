@@ -2188,7 +2188,7 @@ void ChannelPointsDialog::selectReward(const GqlChannelPointReward &reward)
         return;
     }
 
-    this->setStatus("This power-up is not supported by Leafyrino yet.", true);
+    this->setStatus("This power-up is not supported by Sloperino yet.", true);
 }
 
 void ChannelPointsDialog::redeemCustomReward(

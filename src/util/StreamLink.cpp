@@ -39,7 +39,7 @@ QString getStreamlinkPath()
 void showStreamlinkNotFoundError()
 {
     static auto *msg = new QErrorMessage;
-    msg->setWindowTitle("Leafyrino - streamlink not found");
+    msg->setWindowTitle("Sloperino - streamlink not found");
 
     if (getSettings()->streamlinkUseCustomPath)
     {

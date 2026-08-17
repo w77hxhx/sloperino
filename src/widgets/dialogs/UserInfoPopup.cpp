@@ -130,7 +130,7 @@ constexpr QStringView SEVENTV_KICK_USER_API =
     u"https://7tv.io/v3/users/kick/%1";
 constexpr QStringView SEVENTV_USER_PAGE = u"https://7tv.app/users/";
 constexpr QStringView SUSGEE_PAINT_PAGE =
-    u"https://susgee.dev/paint/%1?utm_source=leafyrino";
+    u"https://susgee.dev/paint/%1?utm_source=sloperino";
 
 using namespace chatterino;
 
@@ -2884,7 +2884,7 @@ void UserInfoPopup::fetchMoreUsercardMessages(int emptyPageSkipsLeft,
     {
         this->usercardMessagesError_ =
             authError.isEmpty()
-                ? QStringLiteral("No saved Leafyrino moderator login found.")
+                ? QStringLiteral("No saved Sloperino moderator login found.")
                 : authError;
         this->usercardMessagesLazyLoadEnabled_ = false;
         this->usercardMessagesLoading_ = false;

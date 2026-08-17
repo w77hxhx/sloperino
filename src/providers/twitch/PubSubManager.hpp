@@ -44,7 +44,7 @@ public:
     } pointReward;
 
     struct {
-        /// leafyrino: full pin payload for system messages / GQL pin state
+        /// sloperino: full pin payload for system messages / GQL pin state
         Signal<const QJsonObject &> updated;
     } pinnedChat;
 

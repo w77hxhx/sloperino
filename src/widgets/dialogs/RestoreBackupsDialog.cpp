@@ -128,7 +128,7 @@ RestoreBackupsDialog::RestoreBackupsDialog(backup::FileData fileData,
     });
     QObject::connect(ignoreBtn, &QAbstractButton::clicked, this, [this] {
         auto res = QMessageBox::question(
-            this, u"Leafyrino - Discard Backup?"_s,
+            this, u"Sloperino - Discard Backup?"_s,
             u"Are you sure you want to discard the backup? Doing so will "_s
             "overwrite and discard any previous settings.");
         if (res == QMessageBox::Yes)

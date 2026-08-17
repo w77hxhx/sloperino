@@ -481,13 +481,13 @@ void OverlayWindow::triggerFirstActivation()
         welcomeText +=
             u"To toggle the click-through mode, "
             "add a hotkey for \"Toggle overlay click-through\" in the split "
-            "category to press while any Leafyrino window is focused."_s;
+            "category to press while any Sloperino window is focused."_s;
     }
     else
     {
         welcomeText +=
             u"To toggle the click-through mode, press %1 (customizable "_s
-            "in the settings) while any Leafyrino window is focused.".arg(
+            "in the settings) while any Sloperino window is focused.".arg(
                 actualShortcut.toString());
     }
 
@@ -498,7 +498,7 @@ void OverlayWindow::triggerFirstActivation()
                    "discussions\">on GitHub</a>.";
 
     auto *box =
-        new QMessageBox(QMessageBox::Information, u"Leafyrino - Overlay"_s,
+        new QMessageBox(QMessageBox::Information, u"Sloperino - Overlay"_s,
                         welcomeText, QMessageBox::Ok, this);
     box->open();
 }

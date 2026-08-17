@@ -1,8 +1,8 @@
-app-id: com.leafyzito.leafyrino
+app-id: com.w77hxhx.sloperino
 runtime: org.kde.Platform
 runtime-version: "6.10"
 sdk: org.kde.Sdk
-command: Leafyrino
+command: Sloperino
 finish-args:
   - --socket=wayland
   - --socket=fallback-x11
@@ -84,5 +84,5 @@ modules:
       - type: dir
         path: ..
     post-install:
-      - install -Dm755 ./resources/icon.png /app/share/icons/hicolor/256x256/apps/com.leafyzito.leafyrino.png
-      - install -Dm755 ./resources/com.chatterino.chatterino.appdata.xml /app/share/metainfo/com.leafyzito.leafyrino.xml
+      - install -Dm755 ./resources/icon.png /app/share/icons/hicolor/256x256/apps/com.w77hxhx.sloperino.png
+      - install -Dm755 ./resources/com.chatterino.chatterino.appdata.xml /app/share/metainfo/com.w77hxhx.sloperino.xml

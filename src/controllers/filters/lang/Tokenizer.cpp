@@ -64,7 +64,7 @@ const QMap<QString, QString> VALID_IDENTIFIERS_MAP{
     {"reward.cost", "point reward cost"},
     {"reward.id", "point reward id"},
     {"flags.webchat_detected", "legacy webchat detected"},
-    {"leafyrino.client_detection",
+    {"sloperino.client_detection",
      "client detection status (Unknown, Webchat, Android, IOS, Abnormal)"},
 };
 

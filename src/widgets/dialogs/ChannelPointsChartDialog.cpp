@@ -254,7 +254,7 @@ void ChannelPointsChartDialog::refreshHeader()
         QStringLiteral("%1's channel points")
             .arg(channelDisplayName(this->channel_)));
     this->headerSubtitleLabel_->setText(
-        QStringLiteral("Only logged while Leafyrino is open. Dates are shown "
+        QStringLiteral("Only logged while Sloperino is open. Dates are shown "
                        "in UTC."));
 }
 

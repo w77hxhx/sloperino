@@ -46,7 +46,7 @@ Version::Version()
 
 #ifdef Q_OS_WIN
     // keep in sync with .CI/chatterino-installer.iss
-    this->appUserModelID_ = L"leafyzito.Leafyrino";
+    this->appUserModelID_ = L"Sloperino.Sloperino";
 #endif
 }
 
@@ -142,7 +142,7 @@ void Version::generateBuildString()
 
     s +=
         QString(
-            R"( (commit <a href="https://github.com/leafyzito/leafyrino/commit/%1">%1</a>)")
+            R"( (commit <a href="https://github.com/w77hxhx/sloperino/commit/%1">%1</a>)")
             .arg(this->commitHash());
     if (this->isModified())
     {

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Contributors to leafyrino
+// SPDX-FileCopyrightText: 2026 Contributors to sloperino
 //
 // SPDX-License-Identifier: MIT
 
@@ -211,7 +211,7 @@ private:
         layout->setSpacing(8);
 
         auto *description = new QLabel(
-            "Sign in with Device Login. Leafyrino will open Twitch Activate "
+            "Sign in with Device Login. Sloperino will open Twitch Activate "
             "and copy an 8-character code for you to paste there.",
             tab);
         description->setWordWrap(true);
@@ -489,7 +489,7 @@ private:
         if (!opened)
         {
             box.setInformativeText(
-                "Leafyrino could not open Twitch automatically. Open "
+                "Sloperino could not open Twitch automatically. Open "
                 "https://www.twitch.tv/ yourself, then follow the same steps.");
         }
         box.exec();
@@ -602,7 +602,7 @@ private:
                     box.setWindowTitle("Browser Error");
                     box.setIcon(QMessageBox::Warning);
                     box.setText(
-                        "Leafyrino could not open your browser automatically.");
+                        "Sloperino could not open your browser automatically.");
                     box.setInformativeText("Please go to " + verificationUri +
                                            " and enter the code displayed.");
                     box.exec();
@@ -716,7 +716,7 @@ private:
         {
             this->devicePollIntervalMs_ += 5000;
             setLabelStatus(this->deviceStatusLabel_,
-                           "Twitch asked Leafyrino to poll more slowly. "
+                           "Twitch asked Sloperino to poll more slowly. "
                            "Still waiting for approval...");
             this->devicePollTimer_->start(this->devicePollIntervalMs_);
             return;

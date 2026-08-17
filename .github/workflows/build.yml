@@ -194,7 +194,7 @@ jobs:
           ninja chatterino-crash-handler
           mkdir Chatterino2/crashpad
           cp bin/crashpad/crashpad-handler.exe Chatterino2/crashpad/crashpad-handler.exe
-          7z a bin/leafyrino-${{ env.C2_ARCH }}-Qt-${{ matrix.qt-version }}.pdb.7z bin/${{ env.C2_APP_EXECUTABLE }}.pdb
+          7z a bin/sloperino-${{ env.C2_ARCH }}-Qt-${{ matrix.qt-version }}.pdb.7z bin/${{ env.C2_APP_EXECUTABLE }}.pdb
 
       - name: Prepare build dir (windows)
         if: startsWith(matrix.os, 'windows')
@@ -221,8 +221,8 @@ jobs:
         if: startsWith(matrix.os, 'windows') && !matrix.skip-artifact
         uses: actions/upload-artifact@v7
         with:
-          name: leafyrino-windows-${{ env.C2_ARCH }}-Qt-${{ matrix.qt-version }}-symbols.pdb.7z
-          path: build/bin/leafyrino-${{ env.C2_ARCH }}-Qt-${{ matrix.qt-version }}.pdb.7z
+          name: sloperino-windows-${{ env.C2_ARCH }}-Qt-${{ matrix.qt-version }}-symbols.pdb.7z
+          path: build/bin/sloperino-${{ env.C2_ARCH }}-Qt-${{ matrix.qt-version }}.pdb.7z
 
       # MACOS
       - name: Install dependencies (MacOS)

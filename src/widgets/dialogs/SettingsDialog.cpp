@@ -18,16 +18,17 @@
 #include "widgets/settingspages/CommandPage.hpp"
 #include "widgets/settingspages/ExternalToolsPage.hpp"
 #include "widgets/settingspages/FiltersPage.hpp"
+#include "widgets/settingspages/FirehosePage.hpp"
 #include "widgets/settingspages/GeneralPage.hpp"
 #include "widgets/settingspages/HighlightingPage.hpp"
 #include "widgets/settingspages/IgnoresPage.hpp"
 #include "widgets/settingspages/KeyboardSettingsPage.hpp"
-#include "widgets/settingspages/LeafyrinoPage.hpp"
 #include "widgets/settingspages/ModerationPage.hpp"
 #include "widgets/settingspages/MoltorinoPage.hpp"
 #include "widgets/settingspages/NicknamesPage.hpp"
 #include "widgets/settingspages/NotificationPage.hpp"
 #include "widgets/settingspages/PluginsPage.hpp"
+#include "widgets/settingspages/SettingsPage.hpp"
 #include "widgets/settingspages/SloperinoPage.hpp"
 #include "widgets/settingspages/TechnorinoPage.hpp"
 
@@ -253,10 +254,10 @@ void SettingsDialog::addTabs()
 
     // clang-format off
     this->addTab([]{return new GeneralPage;},          "General",        ":/settings/about.svg", SettingsTabId::General);
-    this->addTab([]{return new LeafyrinoPage;},        "Leafyrino",      ":/settings/leafyrino.png", SettingsTabId::Leafyrino);
+    this->addTab([]{return new SloperinoPage;},        "Sloperino",      ":/settings/sloperino.svg", SettingsTabId::Sloperino);
     this->addTab([]{return new MoltorinoPage;},        "Moltorino",      ":/settings/moltorino.svg", SettingsTabId::Moltorino);
     this->addTab([]{return new TechnorinoPage;},       "Technorino",     technorinoIconPath, SettingsTabId::Technorino);
-    this->addTab([]{return new SloperinoPage;},        "Sloperino",      ":/settings/sloperino.svg", SettingsTabId::Sloperino);
+    this->addTab([]{return new FirehosePage;},         "Firehose",       ":/settings/sloperino.svg");
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new AccountsPage;},         "Accounts",       ":/settings/accounts.svg", SettingsTabId::Accounts);
     this->addTab([]{return new NicknamesPage;},        "Nicknames",      ":/settings/accounts.svg");

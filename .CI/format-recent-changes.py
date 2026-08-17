@@ -9,8 +9,8 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "w77hxhx/sloperino")
 ROOT_DOWNLOAD_URL = (
     f"https://github.{'com'}/{REPO}/releases/download/nightly-build"
 )
-WIN_X64_INSTALLERS = ["Leafyrino.Nightly.Installer.exe"]
-WIN_ARM64_INSTALLERS = ["Experimental-ARM64-Leafyrino.Nightly.Installer.exe"]
+WIN_X64_INSTALLERS = ["Sloperino.Nightly.Installer.exe"]
+WIN_ARM64_INSTALLERS = ["Experimental-ARM64-Sloperino.Nightly.Installer.exe"]
 
 
 def create_artifacts_table(artifact_dir: str, include_installer: bool):

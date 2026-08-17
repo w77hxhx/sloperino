@@ -21,7 +21,7 @@ enum class SettingsTabId {
     None,
     General,
     Moltorino,
-    Leafyrino,
+    Sloperino,
     Accounts,
     Moderation,
     About,

@@ -406,7 +406,7 @@ const AccessorMap &accessorMap()
             },
         },
         {
-            u"leafyrino.client_detection"_s,
+            u"sloperino.client_detection"_s,
             {
                 Type::String,
                 [](RunContext ctx) {

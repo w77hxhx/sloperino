@@ -997,20 +997,14 @@ set(SOURCE_FILES
         widgets/settingspages/GeneralPage.hpp
         widgets/settingspages/GeneralPageView.cpp
         widgets/settingspages/GeneralPageView.hpp
-        widgets/settingspages/LeafyrinoPage.cpp
-        widgets/settingspages/LeafyrinoPage.hpp
-        widgets/settingspages/TechnorinoPage.cpp
-        widgets/settingspages/TechnorinoPage.hpp
-        widgets/settingspages/SloperinoPage.cpp
-        widgets/settingspages/SloperinoPage.hpp
+        widgets/settingspages/FirehosePage.cpp
+        widgets/settingspages/FirehosePage.hpp
         widgets/settingspages/HighlightingPage.cpp
         widgets/settingspages/HighlightingPage.hpp
         widgets/settingspages/IgnoresPage.cpp
         widgets/settingspages/IgnoresPage.hpp
         widgets/settingspages/KeyboardSettingsPage.cpp
         widgets/settingspages/KeyboardSettingsPage.hpp
-        widgets/settingspages/LeafyrinoPage.cpp
-        widgets/settingspages/LeafyrinoPage.hpp
         widgets/settingspages/ModerationPage.cpp
         widgets/settingspages/ModerationPage.hpp
         widgets/settingspages/MoltorinoPage.cpp
@@ -1025,6 +1019,10 @@ set(SOURCE_FILES
         widgets/settingspages/SettingsPage.hpp
         widgets/settingspages/SettingWidget.cpp
         widgets/settingspages/SettingWidget.hpp
+        widgets/settingspages/SloperinoPage.cpp
+        widgets/settingspages/SloperinoPage.hpp
+        widgets/settingspages/TechnorinoPage.cpp
+        widgets/settingspages/TechnorinoPage.hpp
 
         widgets/splits/ClosedSplits.cpp
         widgets/splits/ClosedSplits.hpp
@@ -1308,12 +1306,12 @@ if (BUILD_APP)
                 )
 
         install(FILES ${CMAKE_SOURCE_DIR}/resources/com.chatterino.chatterino.desktop
-                RENAME com.leafyzito.leafyrino.desktop
+                RENAME com.w77hxhx.sloperino.desktop
                 DESTINATION share/applications
                 )
 
         install(FILES ${CMAKE_SOURCE_DIR}/resources/icon.png
-                RENAME com.leafyzito.leafyrino.png
+                RENAME com.w77hxhx.sloperino.png
                 DESTINATION share/icons/hicolor/256x256/apps
                 )
     endif ()
@@ -1414,8 +1412,8 @@ if (APPLE AND BUILD_APP)
     set_target_properties(${EXECUTABLE_PROJECT} PROPERTIES MACOSX_BUNDLE TRUE)
     set_target_properties(${EXECUTABLE_PROJECT}
         PROPERTIES
-        MACOSX_BUNDLE_BUNDLE_NAME "Leafyrino"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.leafyzito.leafyrino"
+        MACOSX_BUNDLE_BUNDLE_NAME "Sloperino"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.w77hxhx.sloperino"
         MACOSX_BUNDLE_LONG_VERSION_STRING "${PROJECT_VERSION}"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
         MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"

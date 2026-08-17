@@ -1636,7 +1636,7 @@ void SplitNotebook::addCustomButtons()
             }
         });
 
-    // currentUserChanged is boost::signals2 (leafyrino), not pajlada
+    // currentUserChanged is boost::signals2 (sloperino), not pajlada
     this->currentUserChangedConnection_ =
         getApp()->getAccounts()->twitch.currentUserChanged.connect(
             [this, userBtn, normalAccountSrc] {

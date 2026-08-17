@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Contributors to leafyrino
+// SPDX-FileCopyrightText: 2026 Contributors to sloperino
 //
 // SPDX-License-Identifier: MIT
 

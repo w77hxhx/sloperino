@@ -154,7 +154,7 @@ MoltorinoPage::MoltorinoPage()
 
     view->addTitle("Authentication");
     view->addDescription(
-        "Logging in enables Leafyrino features like pins, polls, "
+        "Logging in enables Sloperino features like pins, polls, "
         "predictions, and channel points.");
 
     auto *tokenControls = new QFrame(view);
@@ -168,7 +168,7 @@ MoltorinoPage::MoltorinoPage()
 
     this->addAuthAccountButton_ = new QPushButton("Log In", tokenControls);
     this->addAuthAccountButton_->setToolTip(
-        "Log in or manage saved Leafyrino accounts.");
+        "Log in or manage saved Sloperino accounts.");
     this->refreshAuthAccountsButton_ =
         new QPushButton("Refresh Accounts", tokenControls);
     this->refreshAuthAccountsButton_->setToolTip(
@@ -523,11 +523,11 @@ MoltorinoPage::MoltorinoPage()
 
     SettingWidget::checkbox("Show predictions", s.enablePredictions)
         ->setTooltip(
-            "Show prediction banners and open prediction menus from Leafyrino.")
+            "Show prediction banners and open prediction menus from Sloperino.")
         ->addTo(*view);
 
     SettingWidget::checkbox("Show polls", s.enablePolls)
-        ->setTooltip("Show poll banners and open poll menus from Leafyrino.")
+        ->setTooltip("Show poll banners and open poll menus from Sloperino.")
         ->addTo(*view);
 
     addBannerScaleDropdown("Prediction banner content scale",
@@ -987,7 +987,7 @@ MoltorinoPage::MoltorinoPage()
     SettingWidget::checkbox("Show load more messages button",
                             s.showUsercardLoadMoreMessagesButton)
         ->setTooltip("Show a usercard button for loading older messages when "
-                     "your saved Leafyrino login can moderate the channel.")
+                     "your saved Sloperino login can moderate the channel.")
         ->addTo(*view);
     SettingWidget::checkbox("Always load more messages when possible",
                             s.alwaysLoadMoreUsercardMessages)
@@ -1011,7 +1011,7 @@ MoltorinoPage::MoltorinoPage()
 #ifndef Q_OS_MACOS
     view->addTitle("Tray");
     view->addDescription(
-        "Keep Leafyrino running in the tray after closing the window.");
+        "Keep Sloperino running in the tray after closing the window.");
 
     const bool trayAvailable = QSystemTrayIcon::isSystemTrayAvailable();
     const bool notificationAvailable =
@@ -1030,9 +1030,9 @@ MoltorinoPage::MoltorinoPage()
     }
 
     auto *hideToTrayWidget =
-        SettingWidget::checkbox("Hide to tray when closing Leafyrino",
+        SettingWidget::checkbox("Hide to tray when closing Sloperino",
                                 s.trayHideOnClose)
-            ->setTooltip("Closing the main window hides Leafyrino to the "
+            ->setTooltip("Closing the main window hides Sloperino to the "
                          "system tray instead of disconnecting from chat.");
     hideToTrayWidget->setEnabled(trayAvailable);
     hideToTrayWidget->addTo(*view);
@@ -1043,7 +1043,7 @@ MoltorinoPage::MoltorinoPage()
             s.trayNotifyOnSoundHighlights)
             ->setTooltip("Only highlight rules with Play sound enabled "
                          "will show a notification while "
-                         "Leafyrino is hidden.");
+                         "Sloperino is hidden.");
     notifyWidget->setEnabled(notificationAvailable);
     notifyWidget->addTo(*view);
 #endif
@@ -1083,7 +1083,7 @@ MoltorinoPage::MoltorinoPage()
 
     view->addTitle("Miscellaneous");
     auto *miscDesc = new SignalLabel(this);
-    miscDesc->setText("General Leafyrino tweaks and interface adjustments.");
+    miscDesc->setText("General Sloperino tweaks and interface adjustments.");
     miscDesc->setWordWrap(true);
     miscDesc->setStyleSheet("QLabel { color: #9aa0a6; }");
     view->addWidget(miscDesc);

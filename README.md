@@ -1,4 +1,4 @@
-just a fork of features i like from other forks + [my own features](https://leafyrino.leafyzito.dev/) :)
+just a fork of features i like from other forks + [my own features](https://sloperino.leafyzito.dev/) :)
 
 Features taken from:
 
