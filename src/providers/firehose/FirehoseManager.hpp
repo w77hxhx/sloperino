@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "common/ChatterinoSetting.hpp"
 #include "common/websockets/WebSocketPool.hpp"
 #include "providers/firehose/FirehoseChannel.hpp"
 
@@ -23,7 +24,6 @@
 
 namespace chatterino {
 
-class BoolSetting;
 class Channel;
 using ChannelPtr = std::shared_ptr<Channel>;
 
