@@ -40,6 +40,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
 
 using namespace Qt::StringLiterals;
 

@@ -28,6 +28,8 @@
 #include "widgets/splits/SplitContainer.hpp"
 #include "widgets/Window.hpp"
 
+#include <set>
+
 namespace {
 
 using namespace chatterino;
