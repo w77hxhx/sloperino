@@ -64,15 +64,15 @@ void FirehosePage::initLayout(GeneralPageView &layout)
             "the Firehose tab title.")
         ->addTo(layout);
 
-    SettingWidget::intInput("Max stored messages", s.firehoseMaxMessages, 100,
-                            50000, 500)
+    SettingWidget::intInput("Max stored messages", s.firehoseMaxMessages,
+                            {.min = 100, .max = 50000, .singleStep = 500})
         ->addKeywords({"firehose", "buffer", "limit", "messages"})
         ->setTooltip("Maximum number of messages to retain in the "
                      "Firehose channel.")
         ->addTo(layout);
 
     SettingWidget::intInput("Batch update interval", s.firehoseBatchIntervalMs,
-                            50, 2000, 50)
+                            {.min = 50, .max = 2000, .singleStep = 50})
         ->addKeywords({"firehose", "batch", "interval", "render"})
         ->setTooltip("Interval (in ms) to batch and render incoming firehose "
                      "messages. Higher values reduce CPU usage.")
