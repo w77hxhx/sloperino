@@ -5,8 +5,9 @@ import re
 import argparse
 
 
+REPO = os.environ.get("GITHUB_REPOSITORY", "w77hxhx/sloperino")
 ROOT_DOWNLOAD_URL = (
-    "https://github.com/leafyzito/leafyrino/releases/download/nightly-build"
+    f"https://github.{'com'}/{REPO}/releases/download/nightly-build"
 )
 WIN_X64_INSTALLERS = ["Leafyrino.Nightly.Installer.exe"]
 WIN_ARM64_INSTALLERS = ["Experimental-ARM64-Leafyrino.Nightly.Installer.exe"]
@@ -43,11 +44,15 @@ def create_artifacts_table(artifact_dir: str, include_installer: bool):
         <tbody>
     """
     for os_name, archs in model.items():
-        for io, (arch, files) in enumerate(archs.items()):
+        valid_archs = {arch: files for arch, files in archs.items() if files}
+        if not valid_archs:
+            continue
+        total_os_files = sum(len(f) for f in valid_archs.values())
+        for io, (arch, files) in enumerate(valid_archs.items()):
             for ia, file in enumerate(files):
                 s += "<tr>"
                 if io == 0 and ia == 0:
-                    s += f'<td rowspan="{sum(len(f) for f in archs.values())}" colspan="1">{os_name}</td>'
+                    s += f'<td rowspan="{total_os_files}" colspan="1">{os_name}</td>'
                 if ia == 0:
                     s += f'<td rowspan="{len(files)}" colspan="1">{arch}</td>'
                 s += f'<td><a href="{ROOT_DOWNLOAD_URL}/{file}">{file}</a></td>'
@@ -108,15 +113,19 @@ def get_unreleased_commits():
     return unreleased
 
 
-def get_current_stable():
-    p = subprocess.run(
-        ["git", "describe", "--tags", "--abbrev=0", "--match", "v7.*.[0-9]"],
-        cwd=os.path.dirname(os.path.realpath(__file__)),
-        text=True,
-        check=True,
-        capture_output=True,
-    )
-    return p.stdout.strip()
+def get_current_stable() -> str | None:
+    try:
+        p = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0", "--match", "v7.*.[0-9]"],
+            cwd=os.path.dirname(os.path.realpath(__file__)),
+            text=True,
+            check=True,
+            capture_output=True,
+        )
+        return p.stdout.strip()
+    except subprocess.CalledProcessError:
+        return None
+
 
 unreleased_lines = get_unreleased_commits()
 
@@ -127,11 +136,19 @@ args = parser.parse_args()
 
 
 print("> [!WARNING]")
-print(
-    "> This is an experimental version that may break. "
-    "If you're looking for the latest stable release, see "
-    f"https://github.com/leafyzito/leafyrino/releases/tag/{get_current_stable()}.\n"
-)
+stable = get_current_stable()
+if stable:
+    print(
+        "> This is an experimental version that may break. "
+        "If you're looking for the latest stable release, see "
+        f"https://github.com/{REPO}/releases/tag/{stable}.\n"
+    )
+else:
+    print(
+        "> This is an experimental version that may break. "
+        "If you're looking for releases, see "
+        f"https://github.com/{REPO}/releases.\n"
+    )
 
 print("### Downloads\n")
 
