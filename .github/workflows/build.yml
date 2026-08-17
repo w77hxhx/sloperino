@@ -357,7 +357,6 @@ jobs:
               -DFORCE_JSON_GENERATION=${{ env.C2_ARCH == 'arm' && 'Off' || 'On' }} `
               -DSKIP_JSON_GENERATION=${{ env.C2_ARCH == 'arm' && 'On' || 'Off' }} `
               -DCHATTERINO_NIGHTLY_BUILD="${{ steps.build-type.outputs.NIGHTLY_BUILD }}" `
-              -DFORCE_JSON_GENERATION=Off `
               -DCHATTERINO_SPELLCHECK=On `
               ..
           ninja
