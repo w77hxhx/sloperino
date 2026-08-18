@@ -439,13 +439,13 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
     modeRow->setSpacing(8);
     modeRow->setContentsMargins(0, 0, 0, 0);
 
-    this->channelModeTab_ = new LabelButton(this);
-    this->channelModeTab_->setText("Channel");
+    this->channelModeTab_ =
+        new LabelButton(QStringLiteral("Channel"), this, QSize{8, 4});
     this->channelModeTab_->setCursor(Qt::PointingHandCursor);
     modeRow->addWidget(this->channelModeTab_);
 
-    this->userModeTab_ = new LabelButton(this);
-    this->userModeTab_->setText("User");
+    this->userModeTab_ =
+        new LabelButton(QStringLiteral("User"), this, QSize{8, 4});
     this->userModeTab_->setCursor(Qt::PointingHandCursor);
     modeRow->addWidget(this->userModeTab_);
 
@@ -466,8 +466,7 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
 
     auto createRoleTab = [this, roleRow](const QString &roleKey,
                                          const QString &label) {
-        auto *tab = new LabelButton(this);
-        tab->setText(label);
+        auto *tab = new LabelButton(label, this, QSize{6, 3});
         tab->setCursor(Qt::PointingHandCursor);
         QObject::connect(tab, &Button::leftClicked, [this, roleKey] {
             this->setRole(roleKey);
@@ -962,7 +961,7 @@ void UserRolesDialog::refreshStyle()
         sep->setFixedHeight(scaledSeparatorHeight(rawScale));
     }
 
-    const auto *fonts = getApp()->getFonts();
+    auto *fonts = getApp()->getFonts();
     const auto effectiveScale = rawScale;
     const auto *theme = this->theme;
     auto textColor = theme->window.text;
