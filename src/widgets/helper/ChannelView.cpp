@@ -3028,6 +3028,12 @@ void ChannelView::enterEvent(QEvent * /*event*/)
 
 void ChannelView::leaveEvent(QEvent * /*event*/)
 {
+    if (this->hoveredMessageIndex_ != -1)
+    {
+        this->hoveredMessageIndex_ = -1;
+        this->queueUpdate();
+    }
+
     this->tooltipWidget_->hide();
 
     this->unpause(PauseReason::Mouse);
@@ -3088,16 +3094,6 @@ bool ChannelView::gestureEvent(const QGestureEvent *event)
     }
 
     return false;
-}
-
-void ChannelView::leaveEvent(QEvent * /*event*/)
-{
-    if (this->hoveredMessageIndex_ != -1)
-    {
-        this->hoveredMessageIndex_ = -1;
-        this->queueUpdate();
-    }
-    this->tooltipWidget_->hide();
 }
 
 void ChannelView::mouseMoveEvent(QMouseEvent *event)
