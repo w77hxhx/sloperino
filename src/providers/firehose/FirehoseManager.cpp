@@ -77,6 +77,7 @@ FirehoseManager::FirehoseManager()
     this->initEndpoints();
 
     // 16ms batch processing timer (≈60fps-like throughput)
+    this->batchTimer_.setTimerType(Qt::PreciseTimer);
     this->batchTimer_.setInterval(
         getSettings()->firehoseBatchIntervalMs.getValue());
     QObject::connect(&this->batchTimer_, &QTimer::timeout, this,
@@ -90,6 +91,7 @@ FirehoseManager::FirehoseManager()
         this->signalHolder_);
 
     // 1-second statistics timer
+    this->statsTimer_.setTimerType(Qt::PreciseTimer);
     this->statsTimer_.setInterval(1000);
     QObject::connect(&this->statsTimer_, &QTimer::timeout, this,
                      &FirehoseManager::updateStats);
@@ -326,23 +328,27 @@ static inline uint64_t hashBytes64(const char *data, size_t len) noexcept
 static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
 {
     const char *ptr = data.constData();
-    const char *end = ptr + data.size();
-
-    const char *trimmed = ptr;
-    while (trimmed < end && (*trimmed == ' ' || *trimmed == '\t' ||
-                             *trimmed == '\r' || *trimmed == '\n'))
-    {
-        trimmed++;
-    }
-
-    if (trimmed >= end)
+    const int size = data.size();
+    if (size < 4)
     {
         return false;
     }
 
-    if (*trimmed == '{')
+    int i = 0;
+    while (i < size && (ptr[i] == ' ' || ptr[i] == '\t' || ptr[i] == '\r' ||
+                        ptr[i] == '\n'))
     {
-        int idPos = data.indexOf("\"id\":");
+        i++;
+    }
+
+    if (i >= size)
+    {
+        return false;
+    }
+
+    if (ptr[i] == '{')
+    {
+        int idPos = data.indexOf("\"id\":", i);
         if (idPos != -1)
         {
             int start = data.indexOf('"', idPos + 5);
@@ -351,8 +357,7 @@ static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
                 int finish = data.indexOf('"', start + 1);
                 if (finish != -1 && finish > start)
                 {
-                    outHash = hashBytes64(data.constData() + start + 1,
-                                          finish - start - 1);
+                    outHash = hashBytes64(ptr + start + 1, finish - start - 1);
                     return true;
                 }
             }
@@ -360,22 +365,45 @@ static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
         return false;
     }
 
-    if (*trimmed == '@')
+    if (ptr[i] == '@')
     {
-        int idPos = data.indexOf("id=");
-        if (idPos != -1 &&
-            (idPos == 1 || data[idPos - 1] == ';' || data[idPos - 1] == '@'))
+        int spacePos = data.indexOf(' ', i);
+        if (spacePos == -1)
+        {
+            return false;
+        }
+
+        int idPos = -1;
+        if (size >= i + 4 && strncmp(ptr + i, "@id=", 4) == 0)
+        {
+            idPos = i + 1;
+        }
+        else
+        {
+            int searchIdx = i;
+            while (searchIdx < spacePos)
+            {
+                int found = data.indexOf(";id=", searchIdx);
+                if (found == -1 || found >= spacePos)
+                {
+                    break;
+                }
+                idPos = found + 1;
+                break;
+            }
+        }
+
+        if (idPos != -1)
         {
             int start = idPos + 3;
             int finish = data.indexOf(';', start);
-            int space = data.indexOf(' ', start);
-            if (finish == -1 || (space != -1 && space < finish))
+            if (finish == -1 || finish > spacePos)
             {
-                finish = space;
+                finish = spacePos;
             }
-            if (finish != -1 && finish > start)
+            if (finish > start)
             {
-                outHash = hashBytes64(data.constData() + start, finish - start);
+                outHash = hashBytes64(ptr + start, finish - start);
                 return true;
             }
         }
@@ -412,6 +440,8 @@ void FirehoseManager::processBatch()
         batch.swap(this->rawQueue_);
     }
 
+    this->messagesThisSecond_ += static_cast<int>(batch.size());
+
     std::vector<MessagePtr> parsedMessages;
     parsedMessages.reserve(batch.size());
 
@@ -423,7 +453,7 @@ void FirehoseManager::processBatch()
         {
             if (this->seenHashes_.find(rawHash) != this->seenHashes_.end())
             {
-                continue;  // duplicate message: dropped immediately without allocations
+                continue;  // duplicate message across streams: dropped
             }
 
             this->seenHashes_.insert(rawHash);
@@ -441,25 +471,6 @@ void FirehoseManager::processBatch()
         if (!msg)
         {
             continue;
-        }
-
-        if (!hasHash && !msgId.isEmpty())
-        {
-            QByteArray utf8 = msgId.toUtf8();
-            uint64_t idHash = hashBytes64(utf8.constData(), utf8.size());
-            if (this->seenHashes_.find(idHash) != this->seenHashes_.end())
-            {
-                continue;  // duplicate message
-            }
-
-            this->seenHashes_.insert(idHash);
-            this->seenQueue_.push_back(idHash);
-
-            if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
-            {
-                this->seenHashes_.erase(this->seenQueue_.front());
-                this->seenQueue_.pop_front();
-            }
         }
 
         // Route message to active stalk channels matching target username
@@ -489,7 +500,6 @@ void FirehoseManager::processBatch()
         }
 
         parsedMessages.emplace_back(std::move(msg));
-        this->messagesThisSecond_++;
     }
 
     if (!parsedMessages.empty())
@@ -614,12 +624,6 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
     QString targetChan;
     trimChannelName(privMsg->target(), targetChan);
 
-    if (outMsgId.isEmpty())
-    {
-        outMsgId = QStringLiteral("%1:%2:%3")
-                       .arg(targetChan, privMsg->nick(), privMsg->content());
-    }
-
     auto twitchChan = getApp()->getTwitch()->getChannelOrEmpty(targetChan);
     Channel *targetChannel = twitchChan.get();
     if (!targetChannel || targetChannel->isEmpty())
@@ -674,10 +678,6 @@ MessagePtr FirehoseManager::parseJsonPayload(const QByteArray &data,
     if (outMsgId.isEmpty())
     {
         outMsgId = tagsObj.value(QStringLiteral("id")).toString();
-    }
-    if (outMsgId.isEmpty())
-    {
-        outMsgId = QStringLiteral("%1:%2:%3").arg(channel, username, text);
     }
 
     // Build synthetic IRC PRIVMSG with tags to use Chatterino's full rendering pipeline

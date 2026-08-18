@@ -92,23 +92,23 @@ QString getRoleBadgeText(const QString &role)
 {
     if (role == "moderators")
     {
-        return QStringLiteral("🛡️ Moderator");
+        return QStringLiteral("Moderator");
     }
     if (role == "vips")
     {
-        return QStringLiteral("💎 VIP");
+        return QStringLiteral("VIP");
     }
     if (role == "artists")
     {
-        return QStringLiteral("🎨 Artist");
+        return QStringLiteral("Artist");
     }
     if (role == "founders")
     {
-        return QStringLiteral("👑 Founder");
+        return QStringLiteral("Founder");
     }
     if (role == "subscribers")
     {
-        return QStringLiteral("⭐ Subscriber");
+        return QStringLiteral("Subscriber");
     }
     return role;
 }
@@ -144,7 +144,6 @@ protected:
         painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
         const auto rect = this->rect();
-        const int radius = std::max(2, int(rect.width() / 2));
 
         auto placeholderColor = getApp()->getThemes()->splits.input.background;
         painter.setBrush(placeholderColor);
@@ -250,14 +249,14 @@ public:
 
         if (item.isPartner)
         {
-            auto *partnerLabel = new QLabel(QStringLiteral("🟣 Partner"), this);
+            auto *partnerLabel = new QLabel(QStringLiteral("Partner"), this);
             partnerLabel->setObjectName("RoleCardPartner");
             tagLayout->addWidget(partnerLabel);
         }
         else if (item.isAffiliate)
         {
             auto *affiliateLabel =
-                new QLabel(QStringLiteral("⚪ Affiliate"), this);
+                new QLabel(QStringLiteral("Affiliate"), this);
             affiliateLabel->setObjectName("RoleCardAffiliate");
             tagLayout->addWidget(affiliateLabel);
         }
@@ -273,8 +272,8 @@ public:
         if (item.followers > 0)
         {
             auto *followersLabel =
-                new QLabel(QStringLiteral("👥 %1").arg(
-                               formatFollowerCount(item.followers)),
+                new QLabel(QStringLiteral("%1 followers")
+                               .arg(formatFollowerCount(item.followers)),
                            this);
             followersLabel->setObjectName("RoleCardMuted");
             metaLayout->addWidget(followersLabel);
@@ -282,9 +281,9 @@ public:
 
         if (item.grantedAt.isValid())
         {
-            auto *dateLabel = new QLabel(QStringLiteral("📅 Granted: %1")
-                                             .arg(formatDate(item.grantedAt)),
-                                         this);
+            auto *dateLabel = new QLabel(
+                QStringLiteral("Granted: %1").arg(formatDate(item.grantedAt)),
+                this);
             dateLabel->setObjectName("RoleCardMuted");
             metaLayout->addWidget(dateLabel);
         }
@@ -294,83 +293,84 @@ public:
 
         mainLayout->addLayout(detailsLayout, 1);
     }
+    ut(detailsLayout, 1);
+}
 
-protected:
-    void mousePressEvent(QMouseEvent *event) override
+protected : void
+            mousePressEvent(QMouseEvent *event) override
+{
+    QFrame::mousePressEvent(event);
+    if (event->button() == Qt::LeftButton)
     {
-        QFrame::mousePressEvent(event);
-        if (event->button() == Qt::LeftButton)
-        {
-            this->openUsercard();
-        }
-        else if (event->button() == Qt::RightButton)
-        {
-            this->showContextMenu(event->globalPosition().toPoint());
-        }
+        this->openUsercard();
     }
+    else if (event->button() == Qt::RightButton)
+    {
+        this->showContextMenu(event->globalPosition().toPoint());
+    }
+}
 
 private:
-    void openUsercard()
+void openUsercard()
+{
+    Split *split = nullptr;
+    if (auto *window = getApp()->getWindows()->getLastSelectedWindow())
     {
-        Split *split = nullptr;
-        if (auto *window = getApp()->getWindows()->getLastSelectedWindow())
+        if (auto *page = dynamic_cast<SplitContainer *>(
+                window->getNotebook().getSelectedPage()))
         {
-            if (auto *page = dynamic_cast<SplitContainer *>(
-                    window->getNotebook().getSelectedPage()))
-            {
-                split = page->getSelectedSplit();
-            }
-        }
-        if (split != nullptr)
-        {
-            auto *popup =
-                new UserInfoPopup(getSettings()->autoCloseUserPopup, split);
-            popup->setData(this->item_.login, split->getChannel());
-            popup->show();
-        }
-        else
-        {
-            QDesktopServices::openUrl(QUrl(
-                QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
+            split = page->getSelectedSplit();
         }
     }
-
-    void showContextMenu(const QPoint &pos)
+    if (split != nullptr)
     {
-        auto *menu = new QMenu(this);
-        menu->setAttribute(Qt::WA_DeleteOnClose);
-
-        menu->addAction(QStringLiteral("Open Usercard"), [this] {
-            this->openUsercard();
-        });
-
-        menu->addAction(QStringLiteral("Open on Twitch"), [this] {
-            QDesktopServices::openUrl(QUrl(
-                QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
-        });
-
-        menu->addAction(QStringLiteral("Open on roles.tv"), [this] {
-            QDesktopServices::openUrl(
-                QUrl(QStringLiteral("https://roles.tv/c/%1")
-                         .arg(this->item_.login)));
-        });
-
-        menu->addSeparator();
-
-        menu->addAction(QStringLiteral("Copy Username"), [this] {
-            QApplication::clipboard()->setText(this->item_.login);
-        });
-
-        menu->addAction(QStringLiteral("Copy Channel Link"), [this] {
-            QApplication::clipboard()->setText(
-                QStringLiteral("https://twitch.tv/%1").arg(this->item_.login));
-        });
-
-        menu->popup(pos);
+        auto *popup =
+            new UserInfoPopup(getSettings()->autoCloseUserPopup, split);
+        popup->setData(this->item_.login, split->getChannel());
+        popup->show();
     }
+    else
+    {
+        QDesktopServices::openUrl(QUrl(
+            QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
+    }
+}
 
-    RoleItem item_;
-    QString role_;
+void showContextMenu(const QPoint &pos)
+{
+    auto *menu = new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    menu->addAction(QStringLiteral("Open Usercard"), [this] {
+        this->openUsercard();
+    });
+
+    menu->addAction(QStringLiteral("Open on Twitch"), [this] {
+        QDesktopServices::openUrl(QUrl(
+            QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
+    });
+
+    menu->addAction(QStringLiteral("Open on roles.tv"), [this] {
+        QDesktopServices::openUrl(QUrl(
+            QStringLiteral("https://roles.tv/c/%1").arg(this->item_.login)));
+    });
+
+    menu->addSeparator();
+
+    menu->addAction(QStringLiteral("Copy Username"), [this] {
+        QApplication::clipboard()->setText(this->item_.login);
+    });
+
+    menu->addAction(QStringLiteral("Copy Channel Link"), [this] {
+        QApplication::clipboard()->setText(
+            QStringLiteral("https://twitch.tv/%1").arg(this->item_.login));
+    });
+
+    menu->popup(pos);
+}
+
+RoleItem item_;
+QString role_;
 };
 
 std::vector<QPointer<UserRolesDialog>> UserRolesDialog::activeDialogs_;
@@ -384,17 +384,16 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
                                                    : displayName.trimmed())
     , channelName_(channelName.trimmed().toLower())
 {
+    this->setAttribute(Qt::WA_DeleteOnClose);
     this->setObjectName("UserRolesDialog");
     this->setWindowTitle(QStringLiteral("Roles — %1").arg(this->displayName_));
-    this->setWindowFlag(Qt::Window, true);
+    this->setScaleIndependentSize(
+        {DIALOG_DEFAULT_WIDTH, DIALOG_DEFAULT_HEIGHT});
 
-    auto *container = new QWidget(this);
+    auto *container = this->getLayoutContainer();
     container->setObjectName("UserRolesDialogRoot");
-    auto *containerLayout = new QVBoxLayout(container);
-    containerLayout->setContentsMargins(0, 0, 0, 0);
-    containerLayout->setSpacing(0);
-
-    this->mainLayout_ = new QVBoxLayout();
+    container->setMouseTracking(true);
+    this->mainLayout_ = new QVBoxLayout(container);
     this->mainLayout_->setContentsMargins(12, 10, 12, 12);
     this->mainLayout_->setSpacing(10);
 
@@ -402,7 +401,7 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
     this->headerWidget_ = new QWidget(container);
     this->headerWidget_->setObjectName("UserRolesHeader");
     auto *headerLayout = new QHBoxLayout(this->headerWidget_);
-    headerLayout->setContentsMargins(12, 10, 12, 6);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(8);
 
     this->headerTitleLabel_ =
@@ -426,88 +425,61 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
                      &QWidget::close);
     headerLayout->addWidget(this->closeButton_);
 
-    containerLayout->addWidget(this->headerWidget_);
+    this->mainLayout_->addWidget(this->headerWidget_);
 
     auto *separator = new QFrame(container);
     separator->setFrameShape(QFrame::HLine);
     separator->setFrameShadow(QFrame::Plain);
     separator->setObjectName("UserRolesDialogSeparator");
-    containerLayout->addWidget(separator);
+    this->mainLayout_->addWidget(separator);
 
     // Mode tabs row: Channel Mode vs User Mode
     auto *modeRow = new QHBoxLayout();
     modeRow->setSpacing(8);
     modeRow->setContentsMargins(0, 0, 0, 0);
 
-    this->channelModeTab_ = new QPushButton("📺 Channel Roles", container);
-    this->channelModeTab_->setObjectName("RoleTabActive");
+    this->channelModeTab_ = new LabelButton(this);
+    this->channelModeTab_->setText("Channel");
     this->channelModeTab_->setCursor(Qt::PointingHandCursor);
-    this->channelModeTab_->setCheckable(true);
-    this->channelModeTab_->setChecked(true);
     modeRow->addWidget(this->channelModeTab_);
 
-    this->userModeTab_ = new QPushButton("👤 User Roles", container);
-    this->userModeTab_->setObjectName("RoleTabInactive");
+    this->userModeTab_ = new LabelButton(this);
+    this->userModeTab_->setText("User");
     this->userModeTab_->setCursor(Qt::PointingHandCursor);
-    this->userModeTab_->setCheckable(true);
-    this->userModeTab_->setChecked(false);
     modeRow->addWidget(this->userModeTab_);
 
-    QObject::connect(this->channelModeTab_, &QPushButton::clicked, [this] {
+    QObject::connect(this->channelModeTab_, &Button::leftClicked, [this] {
         this->setMode("channel");
     });
-    QObject::connect(this->userModeTab_, &QPushButton::clicked, [this] {
+    QObject::connect(this->userModeTab_, &Button::leftClicked, [this] {
         this->setMode("user");
     });
 
     modeRow->addStretch(1);
     this->mainLayout_->addLayout(modeRow);
 
-    // Role filter pills row: Moderators, VIPs, Artists, Founders, Subscribers
+    // Role filter tabs row: Moderators, VIPs, Artists, Founders, Subscribers
     auto *roleRow = new QHBoxLayout();
     roleRow->setSpacing(6);
     roleRow->setContentsMargins(0, 0, 0, 0);
 
-    this->moderatorsTab_ = new QPushButton("🛡️ Mods", container);
-    this->moderatorsTab_->setObjectName("RoleFilterActive");
-    this->moderatorsTab_->setCursor(Qt::PointingHandCursor);
-    roleRow->addWidget(this->moderatorsTab_);
+    auto createRoleTab = [this, roleRow](const QString &roleKey,
+                                         const QString &label) {
+        auto *tab = new LabelButton(this);
+        tab->setText(label);
+        tab->setCursor(Qt::PointingHandCursor);
+        QObject::connect(tab, &Button::leftClicked, [this, roleKey] {
+            this->setRole(roleKey);
+        });
+        roleRow->addWidget(tab);
+        return tab;
+    };
 
-    this->vipsTab_ = new QPushButton("💎 VIPs", container);
-    this->vipsTab_->setObjectName("RoleFilterInactive");
-    this->vipsTab_->setCursor(Qt::PointingHandCursor);
-    roleRow->addWidget(this->vipsTab_);
-
-    this->artistsTab_ = new QPushButton("🎨 Artists", container);
-    this->artistsTab_->setObjectName("RoleFilterInactive");
-    this->artistsTab_->setCursor(Qt::PointingHandCursor);
-    roleRow->addWidget(this->artistsTab_);
-
-    this->foundersTab_ = new QPushButton("👑 Founders", container);
-    this->foundersTab_->setObjectName("RoleFilterInactive");
-    this->foundersTab_->setCursor(Qt::PointingHandCursor);
-    roleRow->addWidget(this->foundersTab_);
-
-    this->subscribersTab_ = new QPushButton("⭐ Subs", container);
-    this->subscribersTab_->setObjectName("RoleFilterInactive");
-    this->subscribersTab_->setCursor(Qt::PointingHandCursor);
-    roleRow->addWidget(this->subscribersTab_);
-
-    QObject::connect(this->moderatorsTab_, &QPushButton::clicked, [this] {
-        this->setRole("moderators");
-    });
-    QObject::connect(this->vipsTab_, &QPushButton::clicked, [this] {
-        this->setRole("vips");
-    });
-    QObject::connect(this->artistsTab_, &QPushButton::clicked, [this] {
-        this->setRole("artists");
-    });
-    QObject::connect(this->foundersTab_, &QPushButton::clicked, [this] {
-        this->setRole("founders");
-    });
-    QObject::connect(this->subscribersTab_, &QPushButton::clicked, [this] {
-        this->setRole("subscribers");
-    });
+    this->moderatorsTab_ = createRoleTab("moderators", "Mods");
+    this->vipsTab_ = createRoleTab("vips", "VIPs");
+    this->artistsTab_ = createRoleTab("artists", "Artists");
+    this->foundersTab_ = createRoleTab("founders", "Founders");
+    this->subscribersTab_ = createRoleTab("subscribers", "Subs");
 
     roleRow->addStretch(1);
     this->mainLayout_->addLayout(roleRow);
@@ -548,11 +520,6 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
 
     this->scrollArea_->setWidget(this->contentWidget_);
     this->mainLayout_->addWidget(this->scrollArea_, 1);
-
-    containerLayout->addLayout(this->mainLayout_, 1);
-    auto *rootLayout = new QVBoxLayout(this);
-    rootLayout->setContentsMargins(0, 0, 0, 0);
-    rootLayout->addWidget(container);
 
     // Infinite scroll connection
     QObject::connect(
@@ -695,14 +662,6 @@ void UserRolesDialog::setMode(const QString &mode)
     this->itemsLoaded_ = false;
     this->itemsLoading_ = false;
 
-    const bool isChannel = (mode == "channel");
-    this->channelModeTab_->setChecked(isChannel);
-    this->userModeTab_->setChecked(!isChannel);
-    this->channelModeTab_->setObjectName(isChannel ? "RoleTabActive"
-                                                   : "RoleTabInactive");
-    this->userModeTab_->setObjectName(!isChannel ? "RoleTabActive"
-                                                 : "RoleTabInactive");
-
     this->refreshStyle();
     this->loadSummary();
     this->loadRoles(true);
@@ -722,17 +681,6 @@ void UserRolesDialog::setRole(const QString &role)
     this->itemsLoaded_ = false;
     this->itemsLoading_ = false;
 
-    this->moderatorsTab_->setObjectName(
-        role == "moderators" ? "RoleFilterActive" : "RoleFilterInactive");
-    this->vipsTab_->setObjectName(role == "vips" ? "RoleFilterActive"
-                                                 : "RoleFilterInactive");
-    this->artistsTab_->setObjectName(role == "artists" ? "RoleFilterActive"
-                                                       : "RoleFilterInactive");
-    this->foundersTab_->setObjectName(
-        role == "founders" ? "RoleFilterActive" : "RoleFilterInactive");
-    this->subscribersTab_->setObjectName(
-        role == "subscribers" ? "RoleFilterActive" : "RoleFilterInactive");
-
     this->refreshStyle();
     this->loadRoles(true);
 }
@@ -744,16 +692,31 @@ void UserRolesDialog::updateTabCounters()
         return;
     }
 
-    this->moderatorsTab_->setText(
-        QStringLiteral("🛡️ Mods (%1)").arg(this->summary_.moderators));
-    this->vipsTab_->setText(
-        QStringLiteral("💎 VIPs (%1)").arg(this->summary_.vips));
-    this->artistsTab_->setText(
-        QStringLiteral("🎨 Artists (%1)").arg(this->summary_.artists));
-    this->foundersTab_->setText(
-        QStringLiteral("👑 Founders (%1)").arg(this->summary_.founders));
-    this->subscribersTab_->setText(
-        QStringLiteral("⭐ Subs (%1)").arg(this->summary_.subscribers));
+    if (this->moderatorsTab_)
+    {
+        this->moderatorsTab_->setText(
+            QStringLiteral("Mods (%1)").arg(this->summary_.moderators));
+    }
+    if (this->vipsTab_)
+    {
+        this->vipsTab_->setText(
+            QStringLiteral("VIPs (%1)").arg(this->summary_.vips));
+    }
+    if (this->artistsTab_)
+    {
+        this->artistsTab_->setText(
+            QStringLiteral("Artists (%1)").arg(this->summary_.artists));
+    }
+    if (this->foundersTab_)
+    {
+        this->foundersTab_->setText(
+            QStringLiteral("Founders (%1)").arg(this->summary_.founders));
+    }
+    if (this->subscribersTab_)
+    {
+        this->subscribersTab_->setText(
+            QStringLiteral("Subs (%1)").arg(this->summary_.subscribers));
+    }
 }
 
 void UserRolesDialog::loadSummary()
@@ -998,6 +961,8 @@ void UserRolesDialog::refreshStyle()
         sep->setFixedHeight(scaledSeparatorHeight(rawScale));
     }
 
+    const auto *fonts = getApp()->getFonts();
+    const auto effectiveScale = this->getScale();
     const auto *theme = this->theme;
     auto textColor = theme->window.text;
     auto mutedColor = textColor;
@@ -1020,7 +985,35 @@ void UserRolesDialog::refreshStyle()
         theme->isLightTheme()
             ? theme->splits.header.background.darker(105).name()
             : theme->splits.header.background.lighter(125).name();
-    const auto accentColor = QStringLiteral("#9147ff");
+
+    auto styleTab = [fonts, effectiveScale, theme](LabelButton *tab,
+                                                   bool active) {
+        if (tab == nullptr)
+        {
+            return;
+        }
+        tab->setFont(fonts->getFont(
+            active ? FontStyle::UiMediumBold : FontStyle::UiMedium,
+            effectiveScale));
+        tab->setBorderColor(active ? theme->splits.header.focusedBorder
+                                   : theme->splits.header.border);
+        tab->setMouseEffectColor(
+            active ? std::optional<QColor>(theme->splits.header.focusedBorder)
+                   : std::nullopt);
+    };
+
+    const bool isChannelMode = (this->activeMode_ == QStringLiteral("channel"));
+    styleTab(this->channelModeTab_, isChannelMode);
+    styleTab(this->userModeTab_, !isChannelMode);
+
+    styleTab(this->moderatorsTab_,
+             this->activeRole_ == QStringLiteral("moderators"));
+    styleTab(this->vipsTab_, this->activeRole_ == QStringLiteral("vips"));
+    styleTab(this->artistsTab_, this->activeRole_ == QStringLiteral("artists"));
+    styleTab(this->foundersTab_,
+             this->activeRole_ == QStringLiteral("founders"));
+    styleTab(this->subscribersTab_,
+             this->activeRole_ == QStringLiteral("subscribers"));
 
     this->closeButton_->setColor(textColor);
 
@@ -1101,7 +1094,7 @@ void UserRolesDialog::refreshStyle()
             font-size: 11px;
         }
         QLabel#RoleCardBadge {
-            color: %17;
+            color: %13;
             font-weight: 600;
             font-size: 11px;
         }
@@ -1115,45 +1108,6 @@ void UserRolesDialog::refreshStyle()
             font-weight: 600;
             font-size: 11px;
         }
-        QPushButton#RoleTabActive {
-            background: %17;
-            color: #ffffff;
-            border: none;
-            border-radius: %6px;
-            padding: 5px 14px;
-            font-weight: 600;
-        }
-        QPushButton#RoleTabInactive {
-            background: %14;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: %6px;
-            padding: 5px 14px;
-        }
-        QPushButton#RoleTabInactive:hover {
-            background: %16;
-        }
-        QPushButton#RoleFilterActive {
-            background: %17;
-            color: #ffffff;
-            border: none;
-            border-radius: %18px;
-            padding: 4px 10px;
-            font-weight: 600;
-            font-size: 11px;
-        }
-        QPushButton#RoleFilterInactive {
-            background: %14;
-            color: %4;
-            border: 1px solid %3;
-            border-radius: %18px;
-            padding: 4px 10px;
-            font-size: 11px;
-        }
-        QPushButton#RoleFilterInactive:hover {
-            background: %16;
-            color: %2;
-        }
     )")
             .arg(bg, text, border, muted, inputBg, QString::number(radius),
                  QString::number(inputPaddingX),
@@ -1161,8 +1115,7 @@ void UserRolesDialog::refreshStyle()
                  QString::number(scrollbarRadius),
                  QString::number(scrollbarMinHeight),
                  QString::number(inputMinHeight), hoverBg, focusedBorder,
-                 cardBg, QString::number(cardRadius), cardHoverBg, accentColor,
-                 QString::number(pillRadius)));
+                 cardBg, QString::number(cardRadius), cardHoverBg));
 }
 
 }  // namespace chatterino
