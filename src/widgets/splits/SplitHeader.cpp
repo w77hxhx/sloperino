@@ -36,6 +36,7 @@
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/SettingsDialog.hpp"
+#include "widgets/dialogs/UserRolesDialog.hpp"
 #include "widgets/helper/CommonTexts.hpp"
 #include "widgets/Label.hpp"
 #include "widgets/splits/Split.hpp"
@@ -826,6 +827,12 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
                         twitchChannel->createClip({}, {});
                     })
                 ->setVisible(twitchChannel->isLive());
+
+            menu->addAction("Roles", this->split_, [twitchChannel] {
+                UserRolesDialog::showDialog(twitchChannel->getName(),
+                                            twitchChannel->getName(),
+                                            twitchChannel->getName(), nullptr);
+            });
         }
 
         if (this->split_->getIndirectChannel().getType() ==

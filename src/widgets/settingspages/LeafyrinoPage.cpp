@@ -55,6 +55,13 @@ void LeafyrinoPage::initLayout(GeneralPageView &layout)
         ->addKeywords({"usercard", "clips", "twitch", "button", "video"})
         ->addTo(layout);
 
+    SettingWidget::checkbox("Show roles button", s.showUsercardRolesButton)
+        ->setTooltip("Show a button on usercards to look up Twitch roles via "
+                     "roles.tv.")
+        ->addKeywords({"usercard", "roles", "roles.tv", "button", "moderator",
+                       "vip", "artist"})
+        ->addTo(layout);
+
     SettingWidget::checkbox("Show badges button", s.showUsercardBadgesButton)
         ->setTooltip("Show a button on usercards to view earned Twitch badges "
                      "in the channel.")

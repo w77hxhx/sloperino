@@ -980,6 +980,7 @@ public:
     BoolSetting showUsercardSevenTVPaint = {"/usercard/showSevenTVPaint", true};
     BoolSetting showUsercardStatus = {"/usercard/showStatus", true};
     BoolSetting showUsercardClipsButton = {"/usercard/showClipsButton", true};
+    BoolSetting showUsercardRolesButton = {"/usercard/showRolesButton", true};
     BoolSetting showUsercardBadgesButton = {"/usercard/showBadgesButton", true};
     BoolSetting showSevenTVUsercardButton = {"/usercard/showSevenTVButton",
                                              true};

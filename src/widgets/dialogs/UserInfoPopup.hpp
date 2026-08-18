@@ -115,8 +115,10 @@ private:
     void updateNameHistoryButton();
     void updateBadgesButton();
     void updateClipsButton();
+    void updateRolesButton();
     void openBadgesDialog();
     void openClipsDialog();
+    void openRolesDialog();
     void showNameHistoryMenu();
     void openNameHistoryMenu(const QString &statusText = {});
     void requestNameHistory();

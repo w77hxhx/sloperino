@@ -426,6 +426,9 @@ set(SOURCE_FILES
         providers/firehose/StalkChannel.cpp
         providers/firehose/StalkChannel.hpp
 
+        providers/roles/RolesApi.cpp
+        providers/roles/RolesApi.hpp
+
         providers/folhinha/FolhinhaBadges.cpp
         providers/folhinha/FolhinhaBadges.hpp
 
@@ -831,6 +834,8 @@ set(SOURCE_FILES
         widgets/dialogs/UserBadgesDialog.hpp
         widgets/dialogs/UserClipsDialog.cpp
         widgets/dialogs/UserClipsDialog.hpp
+        widgets/dialogs/UserRolesDialog.cpp
+        widgets/dialogs/UserRolesDialog.hpp
         widgets/dialogs/ChannelFilterEditorDialog.cpp
         widgets/dialogs/ChannelFilterEditorDialog.hpp
         widgets/dialogs/ChannelPointsDialog.cpp

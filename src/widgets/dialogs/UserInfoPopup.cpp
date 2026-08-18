@@ -56,6 +56,7 @@
 #include "widgets/dialogs/EditUserNotesDialog.hpp"
 #include "widgets/dialogs/UserBadgesDialog.hpp"
 #include "widgets/dialogs/UserClipsDialog.hpp"
+#include "widgets/dialogs/UserRolesDialog.hpp"
 #include "widgets/helper/ChannelView.hpp"
 #include "widgets/helper/InvisibleSizeGrip.hpp"
 #include "widgets/helper/Line.hpp"
@@ -1410,6 +1411,15 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                                  [this] {
                                      this->openClipsDialog();
                                  });
+                auto roles =
+                    box.emplace<LabelButton>("roles", this, QSize{4, 0})
+                        .assign(&this->ui_.rolesLabel);
+                roles->setToolTip("View Twitch roles via roles.tv");
+                roles->hide();
+                QObject::connect(roles.getElement(), &Button::leftClicked,
+                                 [this] {
+                                     this->openRolesDialog();
+                                 });
                 box->addSpacing(5);
                 box->addStretch(1);
 
@@ -2163,6 +2173,11 @@ void UserInfoPopup::installEvents()
             this->updateClipsButton();
         },
         this->signalHolder_);
+    getSettings()->showUsercardRolesButton.connect(
+        [this](bool) {
+            this->updateRolesButton();
+        },
+        this->signalHolder_);
     getSettings()->showFollowButtonInUsercard.connect(
         [this](bool enabled) {
             if (enabled && !this->isKick_ && !this->userId_.isEmpty())
@@ -2478,6 +2493,7 @@ void UserInfoPopup::setData(const QString &name,
 
     this->updateBadgesButton();
     this->updateClipsButton();
+    this->updateRolesButton();
 }
 
 void UserInfoPopup::setYouTubeContext()
@@ -4736,6 +4752,45 @@ void UserInfoPopup::openClipsDialog()
                                  ? this->ui_.nameLabel->getText()
                                  : this->userName_;
     UserClipsDialog::showDialog(this->userName_, displayName, this);
+}
+
+void UserInfoPopup::updateRolesButton()
+{
+    if (this->ui_.rolesLabel == nullptr)
+    {
+        return;
+    }
+
+    bool canShow = getSettings()->showUsercardRolesButton && !this->isKick_ &&
+                   !this->isYouTube_ && !this->userName_.isEmpty();
+
+    this->ui_.rolesLabel->setVisible(canShow);
+    this->ui_.rolesLabel->setEnabled(canShow);
+    if (!canShow)
+    {
+        this->ui_.rolesLabel->setToolTip({});
+        return;
+    }
+
+    this->ui_.rolesLabel->setToolTip("View Twitch roles via roles.tv");
+}
+
+void UserInfoPopup::openRolesDialog()
+{
+    if (this->isKick_ || this->isYouTube_ || this->userName_.isEmpty())
+    {
+        return;
+    }
+
+    const auto displayName = this->ui_.nameLabel != nullptr
+                                 ? this->ui_.nameLabel->getText()
+                                 : this->userName_;
+    const auto channelName = this->underlyingChannel_
+                                 ? this->underlyingChannel_->getName()
+                                 : QString{};
+
+    UserRolesDialog::showDialog(this->userName_, displayName, channelName,
+                                this);
 }
 
 void UserInfoPopup::openBadgesDialog()
