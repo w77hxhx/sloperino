@@ -17,11 +17,6 @@
 - **Auto-Pagination**: Seamless infinite scrolling with cursor-based pagination.
 - **Clip Cards**: Preview thumbnails with duration badge overlay, formatted view counts, relative dates, categories, and direct browser / incognito links with clipboard actions.
 
-### 🪪 Earned Badges Viewer
-
-- **Usercard Badges Button**: View all earned Twitch badges (loyalty, VIP, founder, subscriber tiers, custom channel badges) in a styled popup.
-- **Chat Vault Integration**: Direct links to Chat Vault for badge details.
-
 ### 🌐 Real-Time Chat Firehose
 
 - **Multi-Feed Streaming**: Connect to public WebSocket firehose streams (`Spanix`, `Supa`, `Susgee`, `Nadeko`, `Logxx`, `Catquery`).
