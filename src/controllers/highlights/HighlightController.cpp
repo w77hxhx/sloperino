@@ -54,7 +54,7 @@ auto highlightPhraseCheck(const HighlightPhrase &highlight) -> HighlightCheck
             return HighlightResult{
                 highlight.hasAlert(),       highlight.hasSound(),
                 highlightSoundUrl,          highlight.getColor(),
-                highlight.showInMentions(),
+                highlight.showInMentions(), {highlight.getPattern()},
             };
         }};
 }
@@ -596,6 +596,20 @@ std::pair<bool, HighlightResult> HighlightController::check(
                 if (!result.showInMentions)
                 {
                     result.showInMentions = checkResult->showInMentions;
+                }
+            }
+
+            if (!checkResult->triggerWords.empty())
+            {
+                for (const auto &w : checkResult->triggerWords)
+                {
+                    if (!w.isEmpty() &&
+                        std::find(result.triggerWords.begin(),
+                                  result.triggerWords.end(),
+                                  w) == result.triggerWords.end())
+                    {
+                        result.triggerWords.push_back(w);
+                    }
                 }
             }
 

@@ -156,30 +156,41 @@ void Updates::installUpdates()
         return;
     }
 
-    if (Version::instance().isNightly())
+#ifdef Q_OS_MACOS
+    if (!this->updateExe_.isEmpty())
     {
-        // Since Nightly builds can be installed in many different ways, we ask the user to download the update manually.
+        QDesktopServices::openUrl(QUrl(this->updateExe_));
+    }
+    else
+    {
+        QDesktopServices::openUrl(
+            QUrl("https://github.com/w77hxhx/sloperino/releases"));
+    }
+#elif defined Q_OS_LINUX
+    if (!this->updateExe_.isEmpty())
+    {
+        QDesktopServices::openUrl(QUrl(this->updateExe_));
+    }
+    else
+    {
+        QDesktopServices::openUrl(
+            QUrl("https://github.com/w77hxhx/sloperino/releases"));
+    }
+#elif defined Q_OS_WIN
+    if (this->modes.isPortable && this->updatePortable_.isEmpty() &&
+        this->updateExe_.isEmpty())
+    {
+        QDesktopServices::openUrl(
+            QUrl("https://github.com/w77hxhx/sloperino/releases"));
+        return;
+    }
+    if (!this->modes.isPortable && this->updateExe_.isEmpty())
+    {
         QDesktopServices::openUrl(
             QUrl("https://github.com/w77hxhx/sloperino/releases"));
         return;
     }
 
-#ifdef Q_OS_MACOS
-    QMessageBox *box = new QMessageBox(
-        QMessageBox::Information, "Chatterino Update",
-        "A link will open in your browser. Download and install to update.");
-    box->setAttribute(Qt::WA_DeleteOnClose);
-    box->open();
-    QDesktopServices::openUrl(this->updateExe_);
-#elif defined Q_OS_LINUX
-    QMessageBox *box =
-        new QMessageBox(QMessageBox::Information, "Chatterino Update",
-                        "Automatic updates are currently not available on "
-                        "Linux. Please redownload the app to update.");
-    box->setAttribute(Qt::WA_DeleteOnClose);
-    box->open();
-    QDesktopServices::openUrl(this->updateGuideLink_);
-#elif defined Q_OS_WIN
     if (this->modes.isPortable)
     {
         QMessageBox *box =
@@ -346,8 +357,10 @@ void Updates::installUpdates()
 #endif
 }
 
-void Updates::checkForUpdates()
+void Updates::checkForUpdates(bool promptUser)
 {
+    this->promptOnUpdate_ = promptUser;
+
 #ifndef CHATTERINO_DISABLE_UPDATER
     auto version = Version::instance();
 
@@ -364,117 +377,154 @@ void Updates::checkForUpdates()
         return;
     }
 
-    // See https://github.com/SevenTV/SevenTV/issues/48#issue-2193272289
-    // for the proposed structure of the response.
-    auto onSuccess = [this](const NetworkResult &result) {
-        const auto object = result.parseJson();
-        if (object.empty())
+    auto parseReleaseJson = [this](const QJsonObject &object) -> bool {
+        if (object.isEmpty())
         {
-            return;
+            return false;
         }
 
-        auto version = object["version"];
-        if (object["v2_version"_L1].isString())
+        QString tagName = object["tag_name"].toString();
+        QString publishedAt = object["published_at"].toString();
+        QJsonArray assets = object["assets"].toArray();
+
+        QString cleanVersion = tagName;
+        if (cleanVersion.startsWith('v') || cleanVersion.startsWith('V'))
         {
-            version = object["v2_version"_L1].toString();
+            cleanVersion = cleanVersion.mid(1);
         }
 
-        if (!version.isString())
+        QString exeUrl;
+        QString portableUrl;
+        QString dmgUrl;
+        QString appImageUrl;
+
+        for (const auto &assetVal : assets)
         {
-            this->setStatus_(SearchFailed);
-            qCDebug(chatterinoUpdate)
-                << "error checking version - missing 'version'" << object;
-            return;
+            auto assetObj = assetVal.toObject();
+            QString name = assetObj["name"].toString();
+            QString downloadUrl = assetObj["browser_download_url"].toString();
+
+            if (name.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive))
+            {
+                if (name.contains(QStringLiteral("Installer"),
+                                  Qt::CaseInsensitive) ||
+                    exeUrl.isEmpty())
+                {
+                    exeUrl = downloadUrl;
+                }
+            }
+            if (name.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive))
+            {
+                if (name.contains(QStringLiteral("Portable"),
+                                  Qt::CaseInsensitive) ||
+                    portableUrl.isEmpty())
+                {
+                    portableUrl = downloadUrl;
+                }
+            }
+            if (name.endsWith(QStringLiteral(".dmg"), Qt::CaseInsensitive))
+            {
+                dmgUrl = downloadUrl;
+            }
+            if (name.endsWith(QStringLiteral(".AppImage"),
+                              Qt::CaseInsensitive) ||
+                name.endsWith(QStringLiteral(".deb"), Qt::CaseInsensitive))
+            {
+                appImageUrl = downloadUrl;
+            }
         }
 
-#    if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
-
-        auto updateExeUrl = getForArchitecture(object, u"updateexe"_s);
-        if (!updateExeUrl.isString())
-        {
-            this->setStatus_(SearchFailed);
-            qCDebug(chatterinoUpdate)
-                << "error checking version - missing 'updateexe'" << object;
-            return;
-        }
-
-        this->updateExe_ = updateExeUrl.toString();
-
-#        ifdef Q_OS_WIN
-
-        auto portableUrl = getForArchitecture(object, "portable_download");
-        if (!portableUrl.isString())
-        {
-            this->setStatus_(SearchFailed);
-            qCDebug(chatterinoUpdate)
-                << "error checking version - missing 'portable_download'"
-                << object;
-            return;
-        }
-        this->updatePortable_ = portableUrl.toString();
-#        endif
-
+#    if defined(Q_OS_WIN)
+        this->updateExe_ = exeUrl;
+        this->updatePortable_ = portableUrl.isEmpty() ? exeUrl : portableUrl;
+#    elif defined(Q_OS_MACOS)
+        this->updateExe_ = dmgUrl;
 #    elif defined(Q_OS_LINUX)
-        QJsonValue updateGuide = object.value("updateguide");
-        if (updateGuide.isString())
-        {
-            this->updateGuideLink_ = updateGuide.toString();
-        }
-#    else
-        return;
+        this->updateExe_ = appImageUrl;
 #    endif
 
-        this->onlineVersion_ = version.toString();
+        if (tagName == QStringLiteral("nightly-build"))
+        {
+            this->onlineVersion_ = QStringLiteral("nightly-build");
+            this->setStatus_(UpdateAvailable);
+            return true;
+        }
+
+        this->onlineVersion_ = cleanVersion;
 
         if (this->currentVersion_ != this->onlineVersion_ &&
             !Updates::isDowngradeOf(this->onlineVersion_,
                                     this->currentVersion_))
         {
             this->setStatus_(UpdateAvailable);
+            return true;
         }
         else
         {
             this->setStatus_(NoUpdateAvailable);
+            return true;
         }
     };
 
-    auto apiVersion = std::make_shared<uint8_t>(3);
-    constexpr auto maxApiVersion = 3;
-    auto fmtUrl = [apiVersion]() -> QString {
-        return u"https://7tv.io/v" % QString::number(*apiVersion) %
-               "/chatterino/version/" % CHATTERINO_OS % "/" % currentBranch();
-    };
-
-    auto onError = std::make_shared<std::function<void(NetworkResult)>>();
-
-    auto makeRequest = [onSuccess,
-                        onErrorWeak = std::weak_ptr(onError)](auto url) {
-        auto onError = onErrorWeak.lock();
-        if (!onError)
+    auto onGitHubLatestSuccess = [this, parseReleaseJson](
+                                     const NetworkResult &result) {
+        const auto object = result.parseJson();
+        if (!parseReleaseJson(object))
         {
-            return;
+            // Fallback to checking nightly-build tag
+            NetworkRequest(
+                QStringLiteral("https://api.github.com/repos/w77hxhx/"
+                               "sloperino/releases/tags/nightly-build"))
+                .timeout(30000)
+                .followRedirects(true)
+                .header("User-Agent", "Sloperino-App")
+                .onSuccess(
+                    [this, parseReleaseJson](const NetworkResult &nightlyRes) {
+                        const auto nightlyObj = nightlyRes.parseJson();
+                        if (!parseReleaseJson(nightlyObj))
+                        {
+                            this->setStatus_(SearchFailed);
+                        }
+                    })
+                .onError([this](NetworkResult) {
+                    this->setStatus_(SearchFailed);
+                })
+                .execute();
         }
-        qCDebug(chatterinoUpdate) << "Requesting updates from" << url;
-        NetworkRequest(url)
-            .timeout(60000)
+    };
+
+    auto onGitHubLatestError = [this, parseReleaseJson](NetworkResult) {
+        // Try nightly-build tag
+        NetworkRequest(QStringLiteral("https://api.github.com/repos/w77hxhx/"
+                                      "sloperino/releases/tags/nightly-build"))
+            .timeout(30000)
             .followRedirects(true)
-            .onSuccess(onSuccess)
-            .onError(*onError)
-            .finally([onError]() {})
+            .header("User-Agent", "Sloperino-App")
+            .onSuccess(
+                [this, parseReleaseJson](const NetworkResult &nightlyRes) {
+                    const auto nightlyObj = nightlyRes.parseJson();
+                    if (!parseReleaseJson(nightlyObj))
+                    {
+                        this->setStatus_(SearchFailed);
+                    }
+                })
+            .onError([this](NetworkResult) {
+                this->setStatus_(SearchFailed);
+            })
             .execute();
     };
 
-    *onError = [apiVersion, fmtUrl, makeRequest](const auto &) mutable {
-        if (*apiVersion >= maxApiVersion)
-        {
-            return;
-        }
-        (*apiVersion)++;
-        makeRequest(fmtUrl());
-    };
-    makeRequest(fmtUrl());
-
     this->setStatus_(Searching);
+
+    NetworkRequest(
+        QStringLiteral(
+            "https://api.github.com/repos/w77hxhx/sloperino/releases/latest"))
+        .timeout(30000)
+        .followRedirects(true)
+        .header("User-Agent", "Sloperino-App")
+        .onSuccess(onGitHubLatestSuccess)
+        .onError(onGitHubLatestError)
+        .execute();
 #endif
 }
 
@@ -570,6 +620,26 @@ void Updates::setStatus_(Status status)
         this->status_ = status;
         postToThread([this, status] {
             this->statusUpdated.invoke(status);
+
+            if (status == UpdateAvailable && this->promptOnUpdate_)
+            {
+                this->promptOnUpdate_ = false;
+                QMessageBox *box = new QMessageBox(
+                    QMessageBox::Question, "Sloperino Update Available",
+                    QStringLiteral(
+                        "A new version of Sloperino (%1) is available on "
+                        "GitHub!\n\n"
+                        "Would you like to download and install the update "
+                        "now?")
+                        .arg(this->onlineVersion_),
+                    QMessageBox::Yes | QMessageBox::No,
+                    QApplication::activeWindow());
+                box->setAttribute(Qt::WA_DeleteOnClose);
+                if (box->exec() == QMessageBox::Yes)
+                {
+                    this->installUpdates();
+                }
+            }
         });
     }
 }

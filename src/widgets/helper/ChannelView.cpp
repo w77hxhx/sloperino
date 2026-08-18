@@ -25,6 +25,7 @@
 #include "messages/MessageThread.hpp"
 #include "providers/colors/ColorProvider.hpp"
 #include "providers/emoji/Emojis.hpp"
+#include "providers/firehose/FirehoseManager.hpp"
 #include "providers/kick/KickApi.hpp"
 #include "providers/kick/KickChannel.hpp"
 #include "providers/kick/KickChatServer.hpp"
@@ -1059,6 +1060,21 @@ ChannelView::ChannelView(InternalCtor /*tag*/, QWidget *parent, Split *split,
                                               this->signalHolder_);
 }
 
+ChannelView::~ChannelView()
+{
+    if (this->underlyingChannel_ &&
+        this->underlyingChannel_->getType() == Channel::Type::TwitchFirehose)
+    {
+        if (auto *app = tryGetApp())
+        {
+            if (auto *fh = app->getFirehose())
+            {
+                fh->removeFirehoseConsumer();
+            }
+        }
+    }
+}
+
 void ChannelView::initializeLayout()
 {
     this->goToBottom_ = new LabelButton("More messages below", this);
@@ -1887,6 +1903,30 @@ void ChannelView::refreshScrollbarHighlights()
 
 void ChannelView::setChannel(const ChannelPtr &underlyingChannel)
 {
+    if (this->underlyingChannel_ &&
+        this->underlyingChannel_->getType() == Channel::Type::TwitchFirehose)
+    {
+        if (auto *app = tryGetApp())
+        {
+            if (auto *fh = app->getFirehose())
+            {
+                fh->removeFirehoseConsumer();
+            }
+        }
+    }
+
+    if (underlyingChannel &&
+        underlyingChannel->getType() == Channel::Type::TwitchFirehose)
+    {
+        if (auto *app = tryGetApp())
+        {
+            if (auto *fh = app->getFirehose())
+            {
+                fh->addFirehoseConsumer();
+            }
+        }
+    }
+
     /// Clear connections from the last channel
     this->channelConnections_.clear();
 
@@ -2718,6 +2758,8 @@ void ChannelView::drawMessages(QPainter &painter, const QRect &area)
             areaContainsY(ctx.y + layout->getHeight()) ||
             (ctx.y < area.y() && layout->getHeight() > area.height()))
         {
+            ctx.isHovered = (this->hoveredMessageIndex_ ==
+                             static_cast<int>(ctx.messageIndex));
             auto paintResult = layout->paint(ctx);
             const auto &message = layout->getMessagePtr();
             if (message != nullptr &&
@@ -3044,6 +3086,16 @@ bool ChannelView::gestureEvent(const QGestureEvent *event)
     return false;
 }
 
+void ChannelView::leaveEvent(QEvent * /*event*/)
+{
+    if (this->hoveredMessageIndex_ != -1)
+    {
+        this->hoveredMessageIndex_ = -1;
+        this->queueUpdate();
+    }
+    this->tooltipWidget_->hide();
+}
+
 void ChannelView::mouseMoveEvent(QMouseEvent *event)
 {
     if (this->isPanning_)
@@ -3066,14 +3118,25 @@ void ChannelView::mouseMoveEvent(QMouseEvent *event)
 
     std::shared_ptr<MessageLayout> layout;
     QPointF relativePos;
-    int messageIndex;
+    int messageIndex = -1;
 
     // no message under cursor
     if (!this->tryGetMessageAt(event->pos(), layout, relativePos, messageIndex))
     {
+        if (this->hoveredMessageIndex_ != -1)
+        {
+            this->hoveredMessageIndex_ = -1;
+            this->queueUpdate();
+        }
         this->setCursor(Qt::ArrowCursor);
         this->tooltipWidget_->hide();
         return;
+    }
+
+    if (this->hoveredMessageIndex_ != messageIndex)
+    {
+        this->hoveredMessageIndex_ = messageIndex;
+        this->queueUpdate();
     }
 
     if (this->isScrolling_)

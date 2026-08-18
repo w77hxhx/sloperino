@@ -16,7 +16,8 @@ namespace chatterino {
 struct HighlightResult {
     HighlightResult(bool _alert, bool _playSound,
                     std::optional<QUrl> _customSoundUrl,
-                    std::shared_ptr<QColor> _color, bool _showInMentions);
+                    std::shared_ptr<QColor> _color, bool _showInMentions,
+                    std::vector<QString> _triggerWords = {});
 
     static HighlightResult emptyResult();
 
@@ -29,6 +30,8 @@ struct HighlightResult {
     std::shared_ptr<QColor> color{};
 
     bool showInMentions{false};
+
+    std::vector<QString> triggerWords{};
 
     bool operator==(const HighlightResult &other) const;
     bool operator!=(const HighlightResult &other) const;

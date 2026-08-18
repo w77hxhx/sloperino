@@ -58,6 +58,10 @@ struct MessageLayoutContainer {
     void paintSelection(QPainter &painter, size_t messageIndex,
                         const Selection &selection, qreal yOffset) const;
 
+    void paintTriggerWordHighlights(
+        QPainter &painter, qreal yOffset,
+        const std::vector<QString> &triggerWords) const;
+
     void addSelectionText(QString &str, uint32_t from, uint32_t to,
                           CopyMode copymode) const;
 

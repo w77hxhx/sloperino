@@ -309,6 +309,14 @@ MessagePaintResult MessageLayout::paint(const MessagePaintContext &ctx)
                                         ctx.selection, ctx.y);
     }
 
+    if (ctx.isMentions && ctx.isHovered &&
+        this->message_->flags.has(MessageFlag::Highlighted) &&
+        !this->message_->highlightTriggerWords.empty())
+    {
+        this->container_.paintTriggerWordHighlights(
+            ctx.painter, ctx.y, this->message_->highlightTriggerWords);
+    }
+
     if (ctx.preferences.separateMessages)
     {
         ctx.painter.fillRect(

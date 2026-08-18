@@ -9,12 +9,14 @@ namespace chatterino {
 HighlightResult::HighlightResult(bool _alert, bool _playSound,
                                  std::optional<QUrl> _customSoundUrl,
                                  std::shared_ptr<QColor> _color,
-                                 bool _showInMentions)
+                                 bool _showInMentions,
+                                 std::vector<QString> _triggerWords)
     : alert(_alert)
     , playSound(_playSound)
     , customSoundUrl(std::move(_customSoundUrl))
     , color(std::move(_color))
     , showInMentions(_showInMentions)
+    , triggerWords(std::move(_triggerWords))
 {
 }
 

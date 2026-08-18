@@ -434,6 +434,10 @@ int Application::run()
 
     MoltorinoAuth::scheduleStartupRefresh();
 
+    QTimer::singleShot(2500, [this] {
+        this->updates.checkForUpdates(true);
+    });
+
     return QApplication::exec();
 }
 

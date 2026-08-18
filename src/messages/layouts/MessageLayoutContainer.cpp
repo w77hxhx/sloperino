@@ -439,6 +439,78 @@ void MessageLayoutContainer::paintSelection(QPainter &painter,
     this->paintSelectionEnd(painter, lineIndex, selection, yOffset);
 }
 
+void MessageLayoutContainer::paintTriggerWordHighlights(
+    QPainter &painter, qreal yOffset,
+    const std::vector<QString> &triggerWords) const
+{
+    if (triggerWords.empty())
+    {
+        return;
+    }
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    for (const auto &element : this->elements_)
+    {
+        if (!element)
+        {
+            continue;
+        }
+
+        const auto &text = element->getText();
+        if (text.isEmpty())
+        {
+            continue;
+        }
+
+        bool matched = false;
+        for (const auto &trigger : triggerWords)
+        {
+            if (trigger.isEmpty())
+            {
+                continue;
+            }
+
+            QString cleanTrigger = trigger.trimmed();
+            if (cleanTrigger.startsWith('@'))
+            {
+                cleanTrigger = cleanTrigger.mid(1);
+            }
+
+            QString cleanText = text.trimmed();
+            if (cleanText.startsWith('@'))
+            {
+                cleanText = cleanText.mid(1);
+            }
+            cleanText.remove(
+                QRegularExpression(QStringLiteral("[.,:;!?\"']+$")));
+
+            if (cleanText.compare(cleanTrigger, Qt::CaseInsensitive) == 0 ||
+                text.contains(trigger, Qt::CaseInsensitive))
+            {
+                matched = true;
+                break;
+            }
+        }
+
+        if (matched)
+        {
+            QRectF r = element->getRect();
+            r.moveTop(r.top() + yOffset);
+            QRectF pill = r.adjusted(-2.0, -1.0, 2.0, 1.0);
+            QColor pillBg(255, 80, 80, 75);
+            QColor pillBorder(255, 95, 95, 230);
+
+            painter.setPen(QPen(pillBorder, 1.5));
+            painter.setBrush(QBrush(pillBg));
+            painter.drawRoundedRect(pill, 4.0, 4.0);
+        }
+    }
+
+    painter.restore();
+}
+
 void MessageLayoutContainer::addSelectionText(QString &str, uint32_t from,
                                               uint32_t to,
                                               CopyMode copymode) const

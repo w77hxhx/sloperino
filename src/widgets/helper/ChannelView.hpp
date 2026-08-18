@@ -106,6 +106,8 @@ public:
                          Context context = Context::None,
                          size_t messagesLimit = 1000);
 
+    ~ChannelView() override;
+
     void queueUpdate();
     void queueUpdate(const QRect &area);
     Scrollbar &getScrollBar();
@@ -494,6 +496,7 @@ private:
 
     // We're only interested in the pointer, not the contents
     MessageLayout *highlightedMessage_ = nullptr;
+    int hoveredMessageIndex_ = -1;
     QVariantAnimation highlightAnimation_;
     void setupHighlightAnimationColors();
     QSet<QString> nukePreviewMessageIds_;

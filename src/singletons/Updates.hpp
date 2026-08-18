@@ -42,7 +42,7 @@ public:
 
     void deleteOldFiles();
 
-    void checkForUpdates();
+    void checkForUpdates(bool promptUser = false);
     const QString &getCurrentVersion() const;
     const QString &getOnlineVersion() const;
     void installUpdates();
@@ -64,6 +64,7 @@ private:
     QString onlineVersion_;
     Status status_ = None;
     bool isDowngrade_{};
+    bool promptOnUpdate_{false};
 
     QString updateExe_;
     QString updatePortable_;

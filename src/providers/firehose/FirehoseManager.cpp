@@ -76,32 +76,23 @@ FirehoseManager::FirehoseManager()
 {
     this->initEndpoints();
 
-    // 16ms batch processing timer (≈60fps-like throughput)
-    this->batchTimer_.setTimerType(Qt::PreciseTimer);
-    this->batchTimer_.setInterval(
-        getSettings()->firehoseBatchIntervalMs.getValue());
-    QObject::connect(&this->batchTimer_, &QTimer::timeout, this,
-                     &FirehoseManager::processBatch);
-    this->batchTimer_.start();
-
-    getSettings()->firehoseBatchIntervalMs.connect(
-        [this](int ms) {
-            this->batchTimer_.setInterval(std::clamp(ms, 10, 2000));
-        },
-        this->signalHolder_);
-
     // 1-second statistics timer
     this->statsTimer_.setTimerType(Qt::PreciseTimer);
     this->statsTimer_.setInterval(1000);
     QObject::connect(&this->statsTimer_, &QTimer::timeout, this,
                      &FirehoseManager::updateStats);
-    this->statsTimer_.start();
+
+    // 15-second watchdog timer to keep connection throughput resilient
+    this->watchdogTimer_.setTimerType(Qt::CoarseTimer);
+    this->watchdogTimer_.setInterval(15000);
+    QObject::connect(&this->watchdogTimer_, &QTimer::timeout, this,
+                     &FirehoseManager::runWatchdog);
 }
 
 FirehoseManager::~FirehoseManager()
 {
-    this->batchTimer_.stop();
     this->statsTimer_.stop();
+    this->watchdogTimer_.stop();
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
         this->disconnectEndpoint(i);
@@ -111,6 +102,53 @@ FirehoseManager::~FirehoseManager()
 std::shared_ptr<FirehoseChannel> FirehoseManager::getChannel() const
 {
     return this->channel_;
+}
+
+bool FirehoseManager::isNeeded() const
+{
+    return this->firehoseAttachedCount_ > 0 || !this->stalkChannels_.empty();
+}
+
+void FirehoseManager::checkConnectionState()
+{
+    if (this->isNeeded())
+    {
+        if (!this->isRunning_)
+        {
+            this->isRunning_ = true;
+            this->initialize();
+            this->statsTimer_.start();
+            this->watchdogTimer_.start();
+        }
+    }
+    else
+    {
+        if (this->isRunning_)
+        {
+            this->isRunning_ = false;
+            this->statsTimer_.stop();
+            this->watchdogTimer_.stop();
+            for (size_t i = 0; i < this->endpoints_.size(); ++i)
+            {
+                this->disconnectEndpoint(i);
+            }
+        }
+    }
+}
+
+void FirehoseManager::addFirehoseConsumer()
+{
+    this->firehoseAttachedCount_++;
+    this->checkConnectionState();
+}
+
+void FirehoseManager::removeFirehoseConsumer()
+{
+    if (this->firehoseAttachedCount_ > 0)
+    {
+        this->firehoseAttachedCount_--;
+    }
+    this->checkConnectionState();
 }
 
 void FirehoseManager::initEndpoints()
@@ -153,14 +191,17 @@ void FirehoseManager::initEndpoints()
         ep.reconnectTimer->setSingleShot(true);
         QObject::connect(ep.reconnectTimer.get(), &QTimer::timeout, this,
                          [this, i] {
-                             this->connectEndpoint(i);
+                             if (this->isNeeded())
+                             {
+                                 this->connectEndpoint(i);
+                             }
                          });
 
         if (ep.enabledSetting)
         {
             ep.enabledSetting->connect(
                 [this, i](bool enabled) {
-                    if (enabled)
+                    if (enabled && this->isNeeded())
                     {
                         this->connectEndpoint(i);
                     }
@@ -176,6 +217,11 @@ void FirehoseManager::initEndpoints()
 
 void FirehoseManager::initialize()
 {
+    if (!this->isNeeded())
+    {
+        return;
+    }
+
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
         auto &ep = this->endpoints_[i];
@@ -188,6 +234,11 @@ void FirehoseManager::initialize()
 
 void FirehoseManager::reconnectAll()
 {
+    if (!this->isNeeded())
+    {
+        return;
+    }
+
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
         this->disconnectEndpoint(i);
@@ -278,243 +329,124 @@ void FirehoseManager::scheduleReconnect(size_t index)
 
 void FirehoseManager::onRawMessageReceived(QByteArray data)
 {
-    if (data.isEmpty())
+    if (!this->isNeeded() || data.isEmpty())
     {
         return;
     }
 
-    std::lock_guard<std::mutex> lock(this->queueMutex_);
+    const char *raw = data.constData();
+    const int len = data.size();
 
-    if (data.contains('\n'))
+    int start = 0;
+    std::vector<MessagePtr> batch;
+
+    while (start < len)
     {
-        int start = 0;
-        int size = data.size();
-        while (start < size)
+        int next = data.indexOf('\n', start);
+        if (next == -1)
         {
-            int next = data.indexOf('\n', start);
-            if (next == -1)
-            {
-                next = size;
-            }
-            int len = next - start;
-            if (len > 0 && data[start + len - 1] == '\r')
-            {
-                len--;
-            }
-            if (len > 0)
-            {
-                this->rawQueue_.emplace_back(data.mid(start, len));
-            }
-            start = next + 1;
+            next = len;
         }
-    }
-    else
-    {
-        this->rawQueue_.emplace_back(std::move(data));
-    }
-}
-
-static inline uint64_t hashBytes64(const char *data, size_t len) noexcept
-{
-    uint64_t hash = 14695981039346656037ull;
-    for (size_t i = 0; i < len; ++i)
-    {
-        hash ^= static_cast<uint8_t>(data[i]);
-        hash *= 1099511628211ull;
-    }
-    return hash;
-}
-
-static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
-{
-    const char *ptr = data.constData();
-    const int size = data.size();
-    if (size < 4)
-    {
-        return false;
-    }
-
-    int i = 0;
-    while (i < size && (ptr[i] == ' ' || ptr[i] == '\t' || ptr[i] == '\r' ||
-                        ptr[i] == '\n'))
-    {
-        i++;
-    }
-
-    if (i >= size)
-    {
-        return false;
-    }
-
-    if (ptr[i] == '{')
-    {
-        int idPos = data.indexOf("\"id\":", i);
-        if (idPos != -1)
+        int lineLen = next - start;
+        if (lineLen > 0 && raw[start + lineLen - 1] == '\r')
         {
-            int start = data.indexOf('"', idPos + 5);
-            if (start != -1)
+            lineLen--;
+        }
+        if (lineLen > 0)
+        {
+            QByteArray line = data.mid(start, lineLen);
+            uint64_t rawHash = 0;
+            if (extractRawMessageHash(line, rawHash))
             {
-                int finish = data.indexOf('"', start + 1);
-                if (finish != -1 && finish > start)
+                if (this->seenHashes_.find(rawHash) != this->seenHashes_.end())
                 {
-                    outHash = hashBytes64(ptr + start + 1, finish - start - 1);
-                    return true;
+                    start = next + 1;
+                    continue;  // Duplicate across multiple firehose endpoints
+                }
+
+                this->seenHashes_.insert(rawHash);
+                this->seenQueue_.push_back(rawHash);
+
+                if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
+                {
+                    this->seenHashes_.erase(this->seenQueue_.front());
+                    this->seenQueue_.pop_front();
                 }
             }
-        }
-        return false;
-    }
 
-    if (ptr[i] == '@')
-    {
-        int spacePos = data.indexOf(' ', i);
-        if (spacePos == -1)
-        {
-            return false;
-        }
-
-        int idPos = -1;
-        if (size >= i + 4 && strncmp(ptr + i, "@id=", 4) == 0)
-        {
-            idPos = i + 1;
-        }
-        else
-        {
-            int searchIdx = i;
-            while (searchIdx < spacePos)
+            QString msgId;
+            auto msg = this->parseRawPayload(line, msgId);
+            if (msg)
             {
-                int found = data.indexOf(";id=", searchIdx);
-                if (found == -1 || found >= spacePos)
+                this->messagesThisSecond_++;
+
+                // Route message to active stalk channels matching target username
+                if (!this->stalkChannels_.empty())
                 {
-                    break;
+                    for (auto it = this->stalkChannels_.begin();
+                         it != this->stalkChannels_.end();)
+                    {
+                        if (auto stalk = it->lock())
+                        {
+                            const auto &target = stalk->targetUser();
+                            if (!target.isEmpty() &&
+                                (msg->loginName.compare(
+                                     target, Qt::CaseInsensitive) == 0 ||
+                                 msg->displayName.compare(
+                                     target, Qt::CaseInsensitive) == 0))
+                            {
+                                stalk->addMessage(msg,
+                                                  MessageContext::Original);
+                            }
+                            ++it;
+                        }
+                        else
+                        {
+                            it = this->stalkChannels_.erase(it);
+                        }
+                    }
                 }
-                idPos = found + 1;
-                break;
-            }
-        }
 
-        if (idPos != -1)
-        {
-            int start = idPos + 3;
-            int finish = data.indexOf(';', start);
-            if (finish == -1 || finish > spacePos)
-            {
-                finish = spacePos;
-            }
-            if (finish > start)
-            {
-                outHash = hashBytes64(ptr + start, finish - start);
-                return true;
+                // Route message to global /mentions channel without duplicate sound
+                if (msg->flags.has(MessageFlag::Highlighted) &&
+                    msg->flags.has(MessageFlag::ShowInMentions))
+                {
+                    if (auto mentions =
+                            getApp()->getTwitch()->getMentionsChannel())
+                    {
+                        mentions->addMessage(msg, MessageContext::Original);
+                    }
+                }
+
+                batch.emplace_back(std::move(msg));
             }
         }
+        start = next + 1;
     }
 
-    return false;
+    if (!batch.empty() && this->channel_)
+    {
+        this->channel_->addMessagesBatch(batch);
+    }
 }
 
-void FirehoseManager::processBatch()
+void FirehoseManager::runWatchdog()
 {
-    bool anyEnabled = false;
-    for (const auto &ep : this->endpoints_)
+    if (!this->isNeeded())
     {
+        return;
+    }
+
+    for (size_t i = 0; i < this->endpoints_.size(); ++i)
+    {
+        auto &ep = this->endpoints_[i];
         if (ep.enabledSetting && ep.enabledSetting->getValue())
         {
-            anyEnabled = true;
-            break;
-        }
-    }
-    if (!anyEnabled)
-    {
-        std::lock_guard<std::mutex> lock(this->queueMutex_);
-        this->rawQueue_.clear();
-        return;
-    }
-
-    std::vector<QByteArray> batch;
-    {
-        std::lock_guard<std::mutex> lock(this->queueMutex_);
-        if (this->rawQueue_.empty())
-        {
-            return;
-        }
-        batch.swap(this->rawQueue_);
-    }
-
-    this->messagesThisSecond_ += static_cast<int>(batch.size());
-
-    std::vector<MessagePtr> parsedMessages;
-    parsedMessages.reserve(batch.size());
-
-    for (const auto &item : batch)
-    {
-        uint64_t rawHash = 0;
-        bool hasHash = extractRawMessageHash(item, rawHash);
-        if (hasHash)
-        {
-            if (this->seenHashes_.find(rawHash) != this->seenHashes_.end())
+            if (!ep.isConnected && !ep.reconnectTimer->isActive())
             {
-                continue;  // duplicate message across streams: dropped
-            }
-
-            this->seenHashes_.insert(rawHash);
-            this->seenQueue_.push_back(rawHash);
-
-            if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
-            {
-                this->seenHashes_.erase(this->seenQueue_.front());
-                this->seenQueue_.pop_front();
+                this->connectEndpoint(i);
             }
         }
-
-        QString msgId;
-        auto msg = this->parseRawPayload(item, msgId);
-        if (!msg)
-        {
-            continue;
-        }
-
-        // Route message to active stalk channels matching target username
-        if (!this->stalkChannels_.empty())
-        {
-            for (auto it = this->stalkChannels_.begin();
-                 it != this->stalkChannels_.end();)
-            {
-                if (auto stalk = it->lock())
-                {
-                    const auto &target = stalk->targetUser();
-                    if (!target.isEmpty() &&
-                        (msg->loginName.compare(target, Qt::CaseInsensitive) ==
-                             0 ||
-                         msg->displayName.compare(target,
-                                                  Qt::CaseInsensitive) == 0))
-                    {
-                        stalk->addMessage(msg, MessageContext::Original);
-                    }
-                    ++it;
-                }
-                else
-                {
-                    it = this->stalkChannels_.erase(it);
-                }
-            }
-        }
-
-        // Route message to global /mentions channel if highlighted & showInMentions
-        if (msg->flags.has(MessageFlag::Highlighted) &&
-            msg->flags.has(MessageFlag::ShowInMentions))
-        {
-            if (auto mentions = getApp()->getTwitch()->getMentionsChannel())
-            {
-                mentions->addMessage(msg, MessageContext::Original);
-            }
-        }
-
-        parsedMessages.emplace_back(std::move(msg));
-    }
-
-    if (!parsedMessages.empty())
-    {
-        this->channel_->addMessagesBatch(parsedMessages);
     }
 }
 
@@ -538,6 +470,7 @@ void FirehoseManager::registerStalkChannel(
     }
 
     this->stalkChannels_.push_back(channel);
+    this->checkConnectionState();
 }
 
 void FirehoseManager::unregisterStalkChannel(
@@ -556,7 +489,7 @@ void FirehoseManager::unregisterStalkChannel(
             if (locked == channel)
             {
                 it = this->stalkChannels_.erase(it);
-                return;
+                break;
             }
             ++it;
         }
@@ -565,6 +498,7 @@ void FirehoseManager::unregisterStalkChannel(
             it = this->stalkChannels_.erase(it);
         }
     }
+    this->checkConnectionState();
 }
 
 void FirehoseManager::updateStats()
@@ -660,11 +594,6 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
 
     auto [builtMsg, alert] = MessageBuilder::makeIrcMessage(
         targetChannel, privMsg, args, content, messageOffset);
-
-    if (builtMsg)
-    {
-        MessageBuilder::triggerHighlights(targetChannel, builtMsg, alert);
-    }
 
     delete ircMsg;
 

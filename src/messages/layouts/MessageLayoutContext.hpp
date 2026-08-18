@@ -100,6 +100,7 @@ struct MessagePaintContext {
     bool isCollapsed{};
 
     bool tintByPlatform{};
+    bool isHovered{};
 };
 
 struct MessageLayoutContext {

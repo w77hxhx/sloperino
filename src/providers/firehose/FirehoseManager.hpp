@@ -49,6 +49,11 @@ public:
     void registerStalkChannel(const std::shared_ptr<StalkChannel> &channel);
     void unregisterStalkChannel(const std::shared_ptr<StalkChannel> &channel);
 
+    void addFirehoseConsumer();
+    void removeFirehoseConsumer();
+    bool isNeeded() const;
+    void checkConnectionState();
+
 private:
     struct Endpoint {
         QString name;
@@ -67,8 +72,8 @@ private:
     void onEndpointConnected(size_t index);
 
     void onRawMessageReceived(QByteArray data);
-    void processBatch();
     void updateStats();
+    void runWatchdog();
 
     MessagePtr parseRawPayload(const QByteArray &data, QString &outMsgId);
     MessagePtr parseIrcLine(const QByteArray &data, QString &outMsgId);
@@ -79,18 +84,18 @@ private:
 
     std::vector<Endpoint> endpoints_;
 
-    // Thread-safe raw message queue
-    std::mutex queueMutex_;
-    std::vector<QByteArray> rawQueue_;
-
     // Deduplication ring-buffer cache using 64-bit hashes (zero string allocations)
     std::unordered_set<uint64_t> seenHashes_;
     std::deque<uint64_t> seenQueue_;
     static constexpr size_t MAX_DEDUP_CACHE_SIZE = 50000;
 
     // Timers
-    QTimer batchTimer_;
     QTimer statsTimer_;
+    QTimer watchdogTimer_;
+
+    // Consumer state
+    int firehoseAttachedCount_{0};
+    bool isRunning_{false};
 
     // Statistics
     int messagesThisSecond_{0};
