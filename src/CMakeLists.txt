@@ -1137,10 +1137,10 @@ target_link_libraries(${LIBRARY_PROJECT}
         PUBLIC
         Qt${MAJOR_QT_VERSION}::Core
         Qt${MAJOR_QT_VERSION}::Widgets
-        Qt${MAJOR_QT_VERSION}::WidgetsPrivate # for pixmap filters (paints)
+        Qt${MAJOR_QT_VERSION}::WidgetsPrivate
         Qt${MAJOR_QT_VERSION}::Gui
         Qt${MAJOR_QT_VERSION}::Network
-        Qt${MAJOR_QT_VERSION}::NetworkPrivate # for DELETE with a body (Kick)
+        Qt${MAJOR_QT_VERSION}::NetworkPrivate
         Qt${MAJOR_QT_VERSION}::Svg
         Qt${MAJOR_QT_VERSION}::SvgWidgets
         Qt${MAJOR_QT_VERSION}::Concurrent
@@ -1381,13 +1381,11 @@ target_compile_definitions(${LIBRARY_PROJECT} PUBLIC
     AB_CUSTOM_SETTINGS
     IRC_STATIC
     IRC_NAMESPACE=Communi
-    $<$<BOOL:${WIN32}>:_WIN32_WINNT=0x0A00> # Windows 10
+    $<$<BOOL:${WIN32}>:_WIN32_WINNT=0x0A00>
     $<$<BOOL:${BUILD_TESTS}>:CHATTERINO_WITH_TESTS>
-#Disable min / max macros from Windows.h
     $<$<BOOL:${WIN32}>:NOMINMAX>
-#Exclude some headers when including Windows.h
     $<$<BOOL:${WIN32}>:WIN32_LEAN_AND_MEAN>
-    )
+)
 
 set(_c2_qt_defs
     QT_DISABLE_DEPRECATED_BEFORE=${CHATTERINO_MIN_QT_VERSION}
