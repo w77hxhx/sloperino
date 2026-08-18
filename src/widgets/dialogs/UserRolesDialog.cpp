@@ -293,84 +293,83 @@ public:
 
         mainLayout->addLayout(detailsLayout, 1);
     }
-    ut(detailsLayout, 1);
-}
 
-protected : void
-            mousePressEvent(QMouseEvent *event) override
-{
-    QFrame::mousePressEvent(event);
-    if (event->button() == Qt::LeftButton)
+protected:
+    void mousePressEvent(QMouseEvent *event) override
     {
-        this->openUsercard();
-    }
-    else if (event->button() == Qt::RightButton)
-    {
-        this->showContextMenu(event->globalPosition().toPoint());
-    }
-}
-
-private:
-void openUsercard()
-{
-    Split *split = nullptr;
-    if (auto *window = getApp()->getWindows()->getLastSelectedWindow())
-    {
-        if (auto *page = dynamic_cast<SplitContainer *>(
-                window->getNotebook().getSelectedPage()))
+        QFrame::mousePressEvent(event);
+        if (event->button() == Qt::LeftButton)
         {
-            split = page->getSelectedSplit();
+            this->openUsercard();
+        }
+        else if (event->button() == Qt::RightButton)
+        {
+            this->showContextMenu(event->globalPosition().toPoint());
         }
     }
-    if (split != nullptr)
+
+private:
+    void openUsercard()
     {
-        auto *popup =
-            new UserInfoPopup(getSettings()->autoCloseUserPopup, split);
-        popup->setData(this->item_.login, split->getChannel());
-        popup->show();
+        Split *split = nullptr;
+        if (auto *window = getApp()->getWindows()->getLastSelectedWindow())
+        {
+            if (auto *page = dynamic_cast<SplitContainer *>(
+                    window->getNotebook().getSelectedPage()))
+            {
+                split = page->getSelectedSplit();
+            }
+        }
+        if (split != nullptr)
+        {
+            auto *popup =
+                new UserInfoPopup(getSettings()->autoCloseUserPopup, split);
+            popup->setData(this->item_.login, split->getChannel());
+            popup->show();
+        }
+        else
+        {
+            QDesktopServices::openUrl(QUrl(
+                QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
+        }
     }
-    else
+
+    void showContextMenu(const QPoint &pos)
     {
-        QDesktopServices::openUrl(QUrl(
-            QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
+        auto *menu = new QMenu(this);
+        menu->setAttribute(Qt::WA_DeleteOnClose);
+
+        menu->addAction(QStringLiteral("Open Usercard"), [this] {
+            this->openUsercard();
+        });
+
+        menu->addAction(QStringLiteral("Open on Twitch"), [this] {
+            QDesktopServices::openUrl(QUrl(
+                QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
+        });
+
+        menu->addAction(QStringLiteral("Open on roles.tv"), [this] {
+            QDesktopServices::openUrl(
+                QUrl(QStringLiteral("https://roles.tv/c/%1")
+                         .arg(this->item_.login)));
+        });
+
+        menu->addSeparator();
+
+        menu->addAction(QStringLiteral("Copy Username"), [this] {
+            QApplication::clipboard()->setText(this->item_.login);
+        });
+
+        menu->addAction(QStringLiteral("Copy Channel Link"), [this] {
+            QApplication::clipboard()->setText(
+                QStringLiteral("https://twitch.tv/%1").arg(this->item_.login));
+        });
+
+        menu->popup(pos);
     }
-}
 
-void showContextMenu(const QPoint &pos)
-{
-    auto *menu = new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
-
-    menu->addAction(QStringLiteral("Open Usercard"), [this] {
-        this->openUsercard();
-    });
-
-    menu->addAction(QStringLiteral("Open on Twitch"), [this] {
-        QDesktopServices::openUrl(QUrl(
-            QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
-    });
-
-    menu->addAction(QStringLiteral("Open on roles.tv"), [this] {
-        QDesktopServices::openUrl(QUrl(
-            QStringLiteral("https://roles.tv/c/%1").arg(this->item_.login)));
-    });
-
-    menu->addSeparator();
-
-    menu->addAction(QStringLiteral("Copy Username"), [this] {
-        QApplication::clipboard()->setText(this->item_.login);
-    });
-
-    menu->addAction(QStringLiteral("Copy Channel Link"), [this] {
-        QApplication::clipboard()->setText(
-            QStringLiteral("https://twitch.tv/%1").arg(this->item_.login));
-    });
-
-    menu->popup(pos);
-}
-
-RoleItem item_;
-QString role_;
+    RoleItem item_;
+    QString role_;
 };
 
 std::vector<QPointer<UserRolesDialog>> UserRolesDialog::activeDialogs_;
