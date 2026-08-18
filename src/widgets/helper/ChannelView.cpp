@@ -2487,8 +2487,8 @@ MessageElementFlags ChannelView::getFlags() const
              this->underlyingChannel_ == twitch->getLiveChannel() ||
              this->underlyingChannel_ == twitch->getAutomodChannel() ||
              this->underlyingChannel_ == twitch->getFirehoseChannel() ||
-             (this->underlyingChannel_ &&
-              this->underlyingChannel_->getType() == Channel::Type::TwitchStalk)))
+             (this->underlyingChannel_ && this->underlyingChannel_->getType() ==
+                                              Channel::Type::TwitchStalk)))
         {
             flags.set(MessageElementFlag::ChannelName);
             flags.unset(MessageElementFlag::ChannelPointReward);
@@ -2502,12 +2502,11 @@ MessageElementFlags ChannelView::getFlags() const
         flags.set(MessageElementFlag::RepeatedMessageCounter);
     }
 
-    if (twitch &&
-        (this->sourceChannel_ == twitch->getMentionsChannel() ||
-         this->sourceChannel_ == twitch->getAutomodChannel() ||
-         this->sourceChannel_ == twitch->getFirehoseChannel() ||
-         (this->sourceChannel_ &&
-          this->sourceChannel_->getType() == Channel::Type::TwitchStalk)))
+    if (twitch && (this->sourceChannel_ == twitch->getMentionsChannel() ||
+                   this->sourceChannel_ == twitch->getAutomodChannel() ||
+                   this->sourceChannel_ == twitch->getFirehoseChannel() ||
+                   (this->sourceChannel_ && this->sourceChannel_->getType() ==
+                                                Channel::Type::TwitchStalk)))
     {
         flags.set(MessageElementFlag::ChannelName);
     }
