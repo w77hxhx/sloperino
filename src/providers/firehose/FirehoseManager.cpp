@@ -327,6 +327,104 @@ void FirehoseManager::scheduleReconnect(size_t index)
     ep.reconnectTimer->start(delay);
 }
 
+static inline uint64_t hashBytes64(const char *data, size_t len) noexcept
+{
+    uint64_t hash = 14695981039346656037ull;
+    for (size_t i = 0; i < len; ++i)
+    {
+        hash ^= static_cast<uint8_t>(data[i]);
+        hash *= 1099511628211ull;
+    }
+    return hash;
+}
+
+static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
+{
+    const char *ptr = data.constData();
+    const int size = data.size();
+    if (size < 4)
+    {
+        return false;
+    }
+
+    int i = 0;
+    while (i < size && (ptr[i] == ' ' || ptr[i] == '\t' || ptr[i] == '\r' ||
+                        ptr[i] == '\n'))
+    {
+        i++;
+    }
+
+    if (i >= size)
+    {
+        return false;
+    }
+
+    if (ptr[i] == '{')
+    {
+        int idPos = data.indexOf("\"id\":", i);
+        if (idPos != -1)
+        {
+            int start = data.indexOf('"', idPos + 5);
+            if (start != -1)
+            {
+                int finish = data.indexOf('"', start + 1);
+                if (finish != -1 && finish > start)
+                {
+                    outHash = hashBytes64(ptr + start + 1, finish - start - 1);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    if (ptr[i] == '@')
+    {
+        int spacePos = data.indexOf(' ', i);
+        if (spacePos == -1)
+        {
+            return false;
+        }
+
+        int idPos = -1;
+        if (size >= i + 4 && strncmp(ptr + i, "@id=", 4) == 0)
+        {
+            idPos = i + 1;
+        }
+        else
+        {
+            int searchIdx = i;
+            while (searchIdx < spacePos)
+            {
+                int found = data.indexOf(";id=", searchIdx);
+                if (found == -1 || found >= spacePos)
+                {
+                    break;
+                }
+                idPos = found + 1;
+                break;
+            }
+        }
+
+        if (idPos != -1)
+        {
+            int start = idPos + 3;
+            int finish = data.indexOf(';', start);
+            if (finish == -1 || finish > spacePos)
+            {
+                finish = spacePos;
+            }
+            if (finish > start)
+            {
+                outHash = hashBytes64(ptr + start, finish - start);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void FirehoseManager::onRawMessageReceived(QByteArray data)
 {
     if (!this->isNeeded() || data.isEmpty())
