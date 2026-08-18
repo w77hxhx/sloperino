@@ -85,6 +85,7 @@ private:
     std::vector<Endpoint> endpoints_;
 
     // Deduplication ring-buffer cache using 64-bit hashes (zero string allocations)
+    mutable std::mutex dedupMutex_;
     std::unordered_set<uint64_t> seenHashes_;
     std::deque<uint64_t> seenQueue_;
     static constexpr size_t MAX_DEDUP_CACHE_SIZE = 50000;

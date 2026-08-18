@@ -624,7 +624,7 @@ void Updates::setStatus_(Status status)
             if (status == UpdateAvailable && this->promptOnUpdate_)
             {
                 this->promptOnUpdate_ = false;
-                QMessageBox *box = new QMessageBox(
+                QMessageBox box(
                     QMessageBox::Question, "Sloperino Update Available",
                     QStringLiteral(
                         "A new version of Sloperino (%1) is available on "
@@ -634,8 +634,7 @@ void Updates::setStatus_(Status status)
                         .arg(this->onlineVersion_),
                     QMessageBox::Yes | QMessageBox::No,
                     QApplication::activeWindow());
-                box->setAttribute(Qt::WA_DeleteOnClose);
-                if (box->exec() == QMessageBox::Yes)
+                if (box.exec() == QMessageBox::Yes)
                 {
                     this->installUpdates();
                 }

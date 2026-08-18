@@ -14,6 +14,7 @@
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "singletons/Settings.hpp"
 #include "util/Helpers.hpp"
+#include "util/PostToThread.hpp"
 
 #include <IrcCommand>
 #include <IrcMessage>
@@ -48,12 +49,16 @@ public:
 
     void onTextMessage(QByteArray data) override
     {
-        this->mgr_->onRawMessageReceived(std::move(data));
+        postToThread([mgr = this->mgr_, data = std::move(data)]() mutable {
+            mgr->onRawMessageReceived(std::move(data));
+        });
     }
 
     void onBinaryMessage(QByteArray data) override
     {
-        this->mgr_->onRawMessageReceived(std::move(data));
+        postToThread([mgr = this->mgr_, data = std::move(data)]() mutable {
+            mgr->onRawMessageReceived(std::move(data));
+        });
     }
 
     void onClose(std::unique_ptr<WebSocketListener> /*self*/) override
@@ -456,6 +461,7 @@ void FirehoseManager::onRawMessageReceived(QByteArray data)
             uint64_t rawHash = 0;
             if (extractRawMessageHash(line, rawHash))
             {
+                std::lock_guard<std::mutex> lock(this->dedupMutex_);
                 if (this->seenHashes_.find(rawHash) != this->seenHashes_.end())
                 {
                     start = next + 1;

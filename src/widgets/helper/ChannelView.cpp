@@ -2451,7 +2451,11 @@ MessageElementFlags ChannelView::getFlags() const
         return *this->overrideFlags_;
     }
 
-    MessageElementFlags flags = app->getWindows()->getWordFlags();
+    MessageElementFlags flags;
+    if (app && app->getWindows())
+    {
+        flags = app->getWindows()->getWordFlags();
+    }
 
     auto *split = dynamic_cast<Split *>(this->parentWidget());
 
@@ -2463,6 +2467,8 @@ MessageElementFlags ChannelView::getFlags() const
             split = dynamic_cast<Split *>(searchPopup->parentWidget());
         }
     }
+
+    auto *twitch = (app ? app->getTwitch() : nullptr);
 
     if (split != nullptr)
     {
@@ -2476,16 +2482,13 @@ MessageElementFlags ChannelView::getFlags() const
         {
             flags.set(MessageElementFlag::RepeatedMessageCounter);
         }
-        if (this->underlyingChannel_ ==
-                getApp()->getTwitch()->getMentionsChannel() ||
-            this->underlyingChannel_ ==
-                getApp()->getTwitch()->getLiveChannel() ||
-            this->underlyingChannel_ ==
-                getApp()->getTwitch()->getAutomodChannel() ||
-            this->underlyingChannel_ ==
-                getApp()->getTwitch()->getFirehoseChannel() ||
-            (this->underlyingChannel_ &&
-             this->underlyingChannel_->getType() == Channel::Type::TwitchStalk))
+        if (twitch &&
+            (this->underlyingChannel_ == twitch->getMentionsChannel() ||
+             this->underlyingChannel_ == twitch->getLiveChannel() ||
+             this->underlyingChannel_ == twitch->getAutomodChannel() ||
+             this->underlyingChannel_ == twitch->getFirehoseChannel() ||
+             (this->underlyingChannel_ &&
+              this->underlyingChannel_->getType() == Channel::Type::TwitchStalk)))
         {
             flags.set(MessageElementFlag::ChannelName);
             flags.unset(MessageElementFlag::ChannelPointReward);
@@ -2499,11 +2502,12 @@ MessageElementFlags ChannelView::getFlags() const
         flags.set(MessageElementFlag::RepeatedMessageCounter);
     }
 
-    if (this->sourceChannel_ == getApp()->getTwitch()->getMentionsChannel() ||
-        this->sourceChannel_ == getApp()->getTwitch()->getAutomodChannel() ||
-        this->sourceChannel_ == getApp()->getTwitch()->getFirehoseChannel() ||
-        (this->sourceChannel_ &&
-         this->sourceChannel_->getType() == Channel::Type::TwitchStalk))
+    if (twitch &&
+        (this->sourceChannel_ == twitch->getMentionsChannel() ||
+         this->sourceChannel_ == twitch->getAutomodChannel() ||
+         this->sourceChannel_ == twitch->getFirehoseChannel() ||
+         (this->sourceChannel_ &&
+          this->sourceChannel_->getType() == Channel::Type::TwitchStalk)))
     {
         flags.set(MessageElementFlag::ChannelName);
     }
