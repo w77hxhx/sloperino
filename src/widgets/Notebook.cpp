@@ -33,6 +33,7 @@
 #include <QFormLayout>
 #include <QLayout>
 #include <QList>
+#include <QMessageBox>
 #include <QStandardPaths>
 #include <QUuid>
 #include <QWidget>
@@ -1515,6 +1516,58 @@ SplitNotebook::SplitNotebook(Window *parent)
                             }
                         }
                     }
+                }
+            }
+
+            if (message && !message->channelName.isEmpty())
+            {
+                auto channelName = message->channelName.trimmed().toLower();
+                if (channelName.startsWith('#'))
+                {
+                    channelName.remove(0, 1);
+                }
+
+                QMessageBox msgBox(this);
+                msgBox.setWindowTitle("Open Channel");
+                msgBox.setText(QString("Open channel #%1:").arg(channelName));
+                msgBox.setInformativeText(
+                    "This channel is not currently open in any tab. Would you "
+                    "like to connect anonymously or with your current "
+                    "account?");
+                auto *anonBtn =
+                    msgBox.addButton("Anonymous", QMessageBox::ActionRole);
+                auto *normalBtn = msgBox.addButton("Normal (Current User)",
+                                                   QMessageBox::ActionRole);
+                auto *cancelBtn =
+                    msgBox.addButton("Cancel", QMessageBox::RejectRole);
+                msgBox.setDefaultButton(normalBtn);
+                msgBox.exec();
+
+                if (msgBox.clickedButton() == cancelBtn)
+                {
+                    return;
+                }
+
+                bool isAnonymous = (msgBox.clickedButton() == anonBtn);
+
+                ChannelPtr channel;
+                if (isAnonymous)
+                {
+                    channel = getApp()->getTwitch()->getOrAddAnonymousChannel(
+                        channelName);
+                }
+                else
+                {
+                    channel =
+                        getApp()->getTwitch()->getOrAddChannel(channelName);
+                }
+
+                if (channel)
+                {
+                    SplitContainer *container = this->addPage(true);
+                    auto *split = new Split(container);
+                    split->setChannel(channel);
+                    container->insertSplit(split);
                 }
             }
         });

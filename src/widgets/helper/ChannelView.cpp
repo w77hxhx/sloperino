@@ -2483,7 +2483,9 @@ MessageElementFlags ChannelView::getFlags() const
             this->underlyingChannel_ ==
                 getApp()->getTwitch()->getAutomodChannel() ||
             this->underlyingChannel_ ==
-                getApp()->getTwitch()->getFirehoseChannel())
+                getApp()->getTwitch()->getFirehoseChannel() ||
+            (this->underlyingChannel_ &&
+             this->underlyingChannel_->getType() == Channel::Type::TwitchStalk))
         {
             flags.set(MessageElementFlag::ChannelName);
             flags.unset(MessageElementFlag::ChannelPointReward);
@@ -2499,7 +2501,9 @@ MessageElementFlags ChannelView::getFlags() const
 
     if (this->sourceChannel_ == getApp()->getTwitch()->getMentionsChannel() ||
         this->sourceChannel_ == getApp()->getTwitch()->getAutomodChannel() ||
-        this->sourceChannel_ == getApp()->getTwitch()->getFirehoseChannel())
+        this->sourceChannel_ == getApp()->getTwitch()->getFirehoseChannel() ||
+        (this->sourceChannel_ &&
+         this->sourceChannel_->getType() == Channel::Type::TwitchStalk))
     {
         flags.set(MessageElementFlag::ChannelName);
     }
@@ -4607,16 +4611,62 @@ void ChannelView::handleLinkClick(QMouseEvent *event, const Link &link,
                 }
             }
 
-            if (!found && link.type == Link::JumpToOrCreateChannel)
+            if (!found)
             {
-                ChannelPtr channel =
-                    getApp()->getTwitch()->getOrAddChannel(link.value);
-                auto &nb =
-                    getApp()->getWindows()->getMainWindow().getNotebook();
-                SplitContainer *container = nb.addPage(true);
-                auto *split = new Split(container);
-                split->setChannel(channel);
-                container->insertSplit(split);
+                QString targetName = link.value;
+                if (targetName.startsWith('#'))
+                {
+                    targetName.remove(0, 1);
+                }
+
+                QMessageBox msgBox(this);
+                msgBox.setWindowTitle("Open Channel");
+                msgBox.setText(QString("Open channel #%1:").arg(targetName));
+                msgBox.setInformativeText(
+                    "This channel is not currently open in any tab. Would you "
+                    "like to connect anonymously or with your current "
+                    "account?");
+                auto *anonBtn =
+                    msgBox.addButton("Anonymous", QMessageBox::ActionRole);
+                auto *normalBtn = msgBox.addButton("Normal (Current User)",
+                                                   QMessageBox::ActionRole);
+                auto *cancelBtn =
+                    msgBox.addButton("Cancel", QMessageBox::RejectRole);
+                msgBox.setDefaultButton(normalBtn);
+                msgBox.exec();
+
+                if (msgBox.clickedButton() != cancelBtn)
+                {
+                    bool isAnonymous = (msgBox.clickedButton() == anonBtn);
+                    ChannelPtr channel;
+                    if (searchKickChannel)
+                    {
+                        channel = getApp()->getKickChatServer()->getOrCreate(
+                            searchName.toString().toLower());
+                    }
+                    else
+                    {
+                        channel = isAnonymous
+                                      ? getApp()
+                                            ->getTwitch()
+                                            ->getOrAddAnonymousChannel(
+                                                targetName.toLower())
+                                      : getApp()->getTwitch()->getOrAddChannel(
+                                            targetName.toLower());
+                    }
+
+                    if (channel)
+                    {
+                        auto &nb = getApp()
+                                       ->getWindows()
+                                       ->getMainWindow()
+                                       .getNotebook();
+                        SplitContainer *container = nb.addPage(true);
+                        auto *split = new Split(container);
+                        split->setChannel(channel);
+                        container->insertSplit(split);
+                    }
+                }
             }
         }
         break;

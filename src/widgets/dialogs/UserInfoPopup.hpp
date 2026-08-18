@@ -163,6 +163,7 @@ private:
     /// Shows the profile picture context menu (avatar right-click menu).
     /// Returns an error message if the menu could not be shown, empty on success.
     QString showProfilePictureContextMenu();
+    void promptAndOpenChannel();
 
     QStringView platformName() const;
 
@@ -302,6 +303,7 @@ private:
         LabelButton *rolesLabel = nullptr;
         LabelButton *rolesMgmtLabel = nullptr;
         LabelButton *switchAvatars = nullptr;
+        LabelButton *addChannelButton = nullptr;
 
         TimeoutWidget *timeoutWidget = nullptr;
     } ui_;

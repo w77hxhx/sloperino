@@ -1367,6 +1367,16 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
             this->toggleUsercardFollow();
         });
 
+        avatarBox->addSpacing(2);
+        auto addChannelBtn =
+            avatarBox.emplace<LabelButton>("Add channel", this, QSize{2, 2})
+                .assign(&this->ui_.addChannelButton);
+        addChannelBtn->setToolTip("Open / add this channel");
+        QObject::connect(addChannelBtn.getElement(), &LabelButton::leftClicked,
+                         this, [this] {
+                             this->promptAndOpenChannel();
+                         });
+
         auto vbox = head.emplace<QVBoxLayout>();
         {
             // items on the right
@@ -4245,6 +4255,64 @@ QString UserInfoPopup::showProfilePictureContextMenu()
     menu->popup(QCursor::pos());
     menu->raise();
     return {};
+}
+
+void UserInfoPopup::promptAndOpenChannel()
+{
+    if (this->userName_.isEmpty())
+    {
+        return;
+    }
+
+    auto channelName = this->userName_.trimmed();
+
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Open Channel");
+    msgBox.setText(QString("Open channel #%1:").arg(channelName));
+    msgBox.setInformativeText(
+        "Would you like to connect anonymously or with your current account?");
+    auto *anonBtn = msgBox.addButton("Anonymous", QMessageBox::ActionRole);
+    auto *normalBtn =
+        msgBox.addButton("Normal (Current User)", QMessageBox::ActionRole);
+    auto *cancelBtn = msgBox.addButton("Cancel", QMessageBox::RejectRole);
+    msgBox.setDefaultButton(normalBtn);
+    msgBox.exec();
+
+    if (msgBox.clickedButton() == cancelBtn)
+    {
+        return;
+    }
+
+    bool isAnonymous = (msgBox.clickedButton() == anonBtn);
+
+    ChannelPtr channel;
+    if (this->isKick_)
+    {
+        channel =
+            getApp()->getKickChatServer()->getOrCreate(channelName.toLower());
+    }
+    else
+    {
+        if (isAnonymous)
+        {
+            channel = getApp()->getTwitch()->getOrAddAnonymousChannel(
+                channelName.toLower());
+        }
+        else
+        {
+            channel =
+                getApp()->getTwitch()->getOrAddChannel(channelName.toLower());
+        }
+    }
+
+    if (channel)
+    {
+        SplitContainer *container =
+            getApp()->getWindows()->getMainWindow().getNotebook().addPage(true);
+        auto *split = new Split(container);
+        split->setChannel(channel);
+        container->insertSplit(split);
+    }
 }
 
 bool UserInfoPopup::canShowRoleManagementMenu() const
