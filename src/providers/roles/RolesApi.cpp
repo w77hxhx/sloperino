@@ -92,14 +92,13 @@ void RolesApi::getChannelSummary(const QString &channelLogin,
         .header("User-Agent", "Sloperino")
         .onSuccess([success = std::move(success),
                     failure](const NetworkResult &result) {
-            const auto doc = result.parseJson();
-            if (!doc.isObject())
+            const auto root = result.parseJson();
+            if (root.isEmpty())
             {
                 failure("Invalid JSON response from roles.tv");
                 return;
             }
 
-            const auto root = doc.object();
             if (!root.contains("data") || !root["data"].isObject())
             {
                 failure("Data object missing in response");
@@ -134,14 +133,13 @@ void RolesApi::getUserSummary(const QString &userLogin, SummaryCallback success,
         .header("User-Agent", "Sloperino")
         .onSuccess([success = std::move(success),
                     failure](const NetworkResult &result) {
-            const auto doc = result.parseJson();
-            if (!doc.isObject())
+            const auto root = result.parseJson();
+            if (root.isEmpty())
             {
                 failure("Invalid JSON response from roles.tv");
                 return;
             }
 
-            const auto root = doc.object();
             if (!root.contains("data") || !root["data"].isObject())
             {
                 failure("Data object missing in response");
@@ -189,14 +187,13 @@ void RolesApi::getRoleList(const QString &mode, const QString &role,
         .header("User-Agent", "Sloperino")
         .onSuccess([cleanedMode, cleanedRole, success = std::move(success),
                     failure](const NetworkResult &result) {
-            const auto doc = result.parseJson();
-            if (!doc.isObject())
+            const auto root = result.parseJson();
+            if (root.isEmpty())
             {
                 failure("Invalid JSON response from roles.tv");
                 return;
             }
 
-            const auto root = doc.object();
             RoleListResult res;
             res.mode = cleanedMode;
             res.role = cleanedRole;
