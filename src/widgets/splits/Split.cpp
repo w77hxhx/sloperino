@@ -2768,7 +2768,6 @@ SplitDescriptor Split::buildDescriptor() const
         case Channel::Type::TwitchMentions:
         case Channel::Type::TwitchLive:
         case Channel::Type::TwitchAutomod:
-        case Channel::Type::TwitchFirehose:
 
         // FIXME: Remove these (#5703)
         case Channel::Type::None:
