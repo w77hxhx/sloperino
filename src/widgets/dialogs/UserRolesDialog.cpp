@@ -14,6 +14,7 @@
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/UserInfoPopup.hpp"
 #include "widgets/splits/Split.hpp"
+#include "widgets/splits/SplitContainer.hpp"
 #include "widgets/Window.hpp"
 
 #include <QApplication>
@@ -119,7 +120,6 @@ public:
     RoleAvatarWidget(const RoleItem &item, float scale, QWidget *parent)
         : QWidget(parent)
         , item_(item)
-        , scale_(scale)
     {
         const int size = scaledMetric(scale, AVATAR_SIZE, 40);
         this->setFixedSize(size, size);
@@ -311,8 +311,15 @@ protected:
 private:
     void openUsercard()
     {
-        auto *window = getApp()->getWindows()->getTopLevelWindow();
-        auto *split = window ? window->getSelectedSplit() : nullptr;
+        Split *split = nullptr;
+        if (auto *window = getApp()->getWindows()->getLastSelectedWindow())
+        {
+            if (auto *page = dynamic_cast<SplitContainer *>(
+                    window->getNotebook().getSelectedPage()))
+            {
+                split = page->getSelectedSplit();
+            }
+        }
         if (split != nullptr)
         {
             auto *popup =
