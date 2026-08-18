@@ -160,8 +160,7 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
 
     auto *aliasesModel =
         (new EmoteAliasesModel(nullptr))->initialized(&s.customEmoteAliases);
-    auto *aliasesView =
-        layout.emplace<EditableModelView>(aliasesModel, true).getElement();
+    auto *aliasesView = new EditableModelView(aliasesModel, true);
     aliasesView->setTitles(
         {"Word", "Link (7TV / BTTV / FFZ / CDN)", "Case-sensitive"});
     aliasesView->getTableView()->horizontalHeader()->setSectionResizeMode(
@@ -178,6 +177,9 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
             "Привет", "https://7tv.app/emotes/01H3YN7XBG000BH97SCKY1D88B",
             false});
     });
+
+    layout.addWidget(aliasesView,
+                     {"aliases", "emote", "replace", "7tv", "bttv", "ffz"});
 
     layout.addStretch();
 
