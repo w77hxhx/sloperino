@@ -581,6 +581,8 @@ void UserRolesDialog::showDialog(const QString &targetLogin,
         return;
     }
 
+    const bool wasAutoPinned = DraggablePopup::pinParentIfNeeded(parent);
+
     UserRolesDialog *dialog = nullptr;
     for (auto it = activeDialogs_.begin(); it != activeDialogs_.end();)
     {
@@ -600,19 +602,40 @@ void UserRolesDialog::showDialog(const QString &targetLogin,
 
     if (dialog == nullptr)
     {
-        dialog =
-            new UserRolesDialog(targetLogin, displayName, channelName, parent);
+        QWidget *ownershipParent = parent;
+        if (qobject_cast<DraggablePopup *>(parent) != nullptr)
+        {
+            ownershipParent = nullptr;
+        }
+
+        dialog = new UserRolesDialog(targetLogin, displayName, channelName,
+                                     ownershipParent);
         activeDialogs_.emplace_back(dialog);
+
+        QPoint center = QCursor::pos();
+        if (parent != nullptr && parent->window() != nullptr)
+        {
+            center = parent->window()->geometry().center();
+        }
+
+        dialog->show();
+        const auto size = dialog->size();
+        dialog->showAndMoveTo(
+            center - QPoint(size.width() / 2, size.height() / 2),
+            widgets::BoundsChecking::DesiredPosition);
+        dialog->raise();
+        dialog->activateWindow();
+    }
+    else
+    {
+        dialog->raise();
+        dialog->activateWindow();
     }
 
-    if (parent != nullptr)
+    if (wasAutoPinned)
     {
         dialog->scheduleUnpinParentOnClose(parent);
     }
-
-    dialog->show();
-    dialog->raise();
-    dialog->activateWindow();
 }
 
 void UserRolesDialog::scheduleUnpinParentOnClose(QWidget *parent)

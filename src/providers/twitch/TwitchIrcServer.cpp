@@ -1197,6 +1197,10 @@ ChannelPtr TwitchIrcServer::getStalkChannel(const QString &targetUser)
     {
         cleaned = cleaned.mid(7);
     }
+    if (cleaned.startsWith('#'))
+    {
+        cleaned = cleaned.mid(1);
+    }
     if (cleaned.isEmpty())
     {
         return Channel::getEmpty();

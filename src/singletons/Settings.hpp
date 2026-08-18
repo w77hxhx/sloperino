@@ -1359,7 +1359,7 @@ public:
     BoolSetting firehoseAutoReconnect{"/sloperino/firehose/autoReconnect",
                                       true};
     IntSetting firehoseBatchIntervalMs{"/sloperino/firehose/batchIntervalMs",
-                                       250};
+                                       16};
     IntSetting firehoseMaxMessages{"/sloperino/firehose/maxMessages", 10000};
     BoolSetting firehoseShowRateInTitle{"/sloperino/firehose/showRateInTitle",
                                         true};

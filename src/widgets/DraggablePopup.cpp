@@ -115,7 +115,9 @@ void DraggablePopup::togglePinned()
     }
     else
     {
-        this->windowDeactivateAction = WindowDeactivateAction::Delete;
+        this->windowDeactivateAction = this->closeAutomatically_
+                                           ? WindowDeactivateAction::Delete
+                                           : WindowDeactivateAction::Nothing;
         this->pinButton_->setSource(this->pinDisabledSource_);
     }
 }
@@ -153,7 +155,10 @@ void DraggablePopup::unpinParentIfNeeded(QWidget *parent)
 {
     if (auto *popup = qobject_cast<DraggablePopup *>(parent))
     {
-        popup->togglePinned();
+        if (popup->isPinned_)
+        {
+            popup->togglePinned();
+        }
     }
 }
 

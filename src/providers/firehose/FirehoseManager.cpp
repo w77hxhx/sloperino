@@ -76,7 +76,7 @@ FirehoseManager::FirehoseManager()
 {
     this->initEndpoints();
 
-    // 250ms batch processing timer
+    // 16ms batch processing timer (≈60fps-like throughput)
     this->batchTimer_.setInterval(
         getSettings()->firehoseBatchIntervalMs.getValue());
     QObject::connect(&this->batchTimer_, &QTimer::timeout, this,
@@ -85,7 +85,7 @@ FirehoseManager::FirehoseManager()
 
     getSettings()->firehoseBatchIntervalMs.connect(
         [this](int ms) {
-            this->batchTimer_.setInterval(std::clamp(ms, 50, 2000));
+            this->batchTimer_.setInterval(std::clamp(ms, 10, 2000));
         },
         this->signalHolder_);
 
@@ -176,8 +176,8 @@ void FirehoseManager::initialize()
 {
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
-        if (!this->endpoints_[i].enabledSetting ||
-            this->endpoints_[i].enabledSetting->getValue())
+        auto &ep = this->endpoints_[i];
+        if (ep.enabledSetting && ep.enabledSetting->getValue())
         {
             this->connectEndpoint(i);
         }
@@ -189,7 +189,7 @@ void FirehoseManager::reconnectAll()
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
         this->disconnectEndpoint(i);
-        if (!this->endpoints_[i].enabledSetting ||
+        if (this->endpoints_[i].enabledSetting &&
             this->endpoints_[i].enabledSetting->getValue())
         {
             this->connectEndpoint(i);
@@ -386,6 +386,22 @@ static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
 
 void FirehoseManager::processBatch()
 {
+    bool anyEnabled = false;
+    for (const auto &ep : this->endpoints_)
+    {
+        if (ep.enabledSetting && ep.enabledSetting->getValue())
+        {
+            anyEnabled = true;
+            break;
+        }
+    }
+    if (!anyEnabled)
+    {
+        std::lock_guard<std::mutex> lock(this->queueMutex_);
+        this->rawQueue_.clear();
+        return;
+    }
+
     std::vector<QByteArray> batch;
     {
         std::lock_guard<std::mutex> lock(this->queueMutex_);

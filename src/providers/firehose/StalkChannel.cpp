@@ -10,10 +10,17 @@
 namespace chatterino {
 
 StalkChannel::StalkChannel(const QString &targetUser)
-    : Channel(QStringLiteral("/stalk/") + targetUser.trimmed().toLower(),
+    : Channel(QStringLiteral("/stalk/") +
+                  (targetUser.startsWith('#')
+                       ? targetUser.mid(1).trimmed().toLower()
+                       : targetUser.trimmed().toLower()),
               Channel::Type::TwitchStalk)
-    , targetUser_(targetUser.trimmed())
-    , customDisplayName_(QStringLiteral("Stalk — %1").arg(this->targetUser_))
+    , targetUser_(targetUser.startsWith('#') ? targetUser.mid(1).trimmed()
+                                             : targetUser.trimmed())
+    , customDisplayName_(QStringLiteral("Stalk — #%1")
+                             .arg(targetUser.startsWith('#')
+                                      ? targetUser.mid(1).trimmed()
+                                      : targetUser.trimmed()))
 {
 }
 

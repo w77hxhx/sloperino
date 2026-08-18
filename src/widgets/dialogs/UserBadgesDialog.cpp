@@ -281,7 +281,7 @@ UserBadgesDialog::UserBadgesDialog(const QString &userLogin,
                                    const QString &channelLogin,
                                    const QString &displayName,
                                    TwitchChannel *channel, QWidget *parent)
-    : DraggablePopup(true, parent)
+    : DraggablePopup(false, parent)
     , userLogin_(userLogin)
     , channelLogin_(channelLogin)
     , displayName_(displayName.isEmpty() ? userLogin : displayName)

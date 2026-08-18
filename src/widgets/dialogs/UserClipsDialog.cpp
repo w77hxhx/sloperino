@@ -16,6 +16,7 @@
 #include "util/Clipboard.hpp"
 #include "util/IncognitoBrowser.hpp"
 #include "widgets/buttons/Button.hpp"
+#include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/helper/Line.hpp"
 
@@ -266,8 +267,7 @@ public:
 
         if (!clip.gameName.isEmpty())
         {
-            auto *gameLabel =
-                new QLabel(QStringLiteral("👾 %1").arg(clip.gameName), this);
+            auto *gameLabel = new QLabel(clip.gameName, this);
             gameLabel->setObjectName("ClipCardGame");
             gameLabel->setToolTip(clip.gameName);
             infoLayout->addWidget(gameLabel);
@@ -276,7 +276,8 @@ public:
         if (!clip.curatorDisplayName.isEmpty())
         {
             auto *curatorLabel = new QLabel(
-                QStringLiteral("✂ %1").arg(clip.curatorDisplayName), this);
+                QStringLiteral("Clipped by %1").arg(clip.curatorDisplayName),
+                this);
             curatorLabel->setObjectName("ClipCardInfo");
             curatorLabel->setToolTip(
                 QStringLiteral("Clipped by %1 (%2)")
@@ -285,8 +286,8 @@ public:
         }
         else if (!clip.broadcasterDisplayName.isEmpty())
         {
-            auto *broadcasterLabel = new QLabel(
-                QStringLiteral("📺 %1").arg(clip.broadcasterDisplayName), this);
+            auto *broadcasterLabel =
+                new QLabel(clip.broadcasterDisplayName, this);
             broadcasterLabel->setObjectName("ClipCardInfo");
             broadcasterLabel->setToolTip(
                 QStringLiteral("Streamer: %1 (%2)")
@@ -303,13 +304,12 @@ public:
         metaLayout->setContentsMargins(0, 0, 0, 0);
 
         auto *viewsLabel = new QLabel(
-            QStringLiteral("👁 %1 views").arg(formatViewCount(clip.viewCount)),
+            QStringLiteral("%1 views").arg(formatViewCount(clip.viewCount)),
             this);
         viewsLabel->setObjectName("ClipCardMeta");
         metaLayout->addWidget(viewsLabel);
 
-        auto *dateLabel = new QLabel(
-            QStringLiteral("📅 %1").arg(formatDate(clip.createdAt)), this);
+        auto *dateLabel = new QLabel(formatDate(clip.createdAt), this);
         dateLabel->setObjectName("ClipCardMeta");
         metaLayout->addWidget(dateLabel);
 
@@ -405,7 +405,7 @@ std::vector<QPointer<UserClipsDialog>> UserClipsDialog::activeDialogs_;
 
 UserClipsDialog::UserClipsDialog(const QString &userLogin,
                                  const QString &displayName, QWidget *parent)
-    : DraggablePopup(true, parent)
+    : DraggablePopup(false, parent)
     , userLogin_(userLogin)
     , displayName_(displayName.isEmpty() ? userLogin : displayName)
 {
@@ -458,29 +458,22 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     tabRow->setContentsMargins(0, scaledMetric(this->scale(), 6, 3), 0, 0);
     tabRow->setSpacing(6);
 
-    this->broadcasterTab_ = new QPushButton("📺 Broadcaster", container);
-    this->broadcasterTab_->setObjectName("ClipTabActive");
-    this->broadcasterTab_->setCursor(Qt::PointingHandCursor);
-    this->broadcasterTab_->setCheckable(true);
-    this->broadcasterTab_->setChecked(true);
+    this->broadcasterTab_ = new LabelButton("Broadcaster", this, QSize{8, 4});
+    this->broadcasterTab_->setToolTip("Clips created on this channel");
     tabRow->addWidget(this->broadcasterTab_);
 
-    this->curatorTab_ = new QPushButton("✂ Curator", container);
-    this->curatorTab_->setObjectName("ClipTabInactive");
-    this->curatorTab_->setCursor(Qt::PointingHandCursor);
-    this->curatorTab_->setCheckable(true);
-    this->curatorTab_->setChecked(false);
+    this->curatorTab_ = new LabelButton("Curator", this, QSize{8, 4});
+    this->curatorTab_->setToolTip("Clips created by this user");
     tabRow->addWidget(this->curatorTab_);
 
     tabRow->addStretch(1);
     this->mainLayout_->addLayout(tabRow);
 
-    QObject::connect(this->broadcasterTab_, &QPushButton::clicked, this,
-                     [this] {
-                         this->setActiveRole("BROADCASTER");
-                     });
-    QObject::connect(this->curatorTab_, &QPushButton::clicked, this, [this] {
-        this->setActiveRole("CURATOR");
+    QObject::connect(this->broadcasterTab_, &Button::leftClicked, this, [this] {
+        this->setActiveRole(QStringLiteral("BROADCASTER"));
+    });
+    QObject::connect(this->curatorTab_, &Button::leftClicked, this, [this] {
+        this->setActiveRole(QStringLiteral("CURATOR"));
     });
 
     // Search input
@@ -680,15 +673,7 @@ void UserClipsDialog::setActiveRole(const QString &role)
     this->clipsLoaded_ = false;
     this->clipsLoading_ = false;
 
-    const bool isBroadcaster = (role == "BROADCASTER");
-    this->broadcasterTab_->setChecked(isBroadcaster);
-    this->curatorTab_->setChecked(!isBroadcaster);
-    this->broadcasterTab_->setObjectName(isBroadcaster ? "ClipTabActive"
-                                                       : "ClipTabInactive");
-    this->curatorTab_->setObjectName(!isBroadcaster ? "ClipTabActive"
-                                                    : "ClipTabInactive");
     this->refreshStyle();
-
     this->loadClips(true);
 }
 
@@ -975,10 +960,35 @@ void UserClipsDialog::refreshStyle()
         theme->isLightTheme()
             ? theme->splits.header.background.darker(105).name()
             : theme->splits.header.background.lighter(125).name();
-    const auto accentColor = QStringLiteral("#9147ff");
-    const auto tabActiveBg = accentColor;
-    const auto tabActiveText = QStringLiteral("#ffffff");
-    const auto tabInactiveBg = cardBg;
+
+    const bool isBroadcaster =
+        (this->activeRole_ == QStringLiteral("BROADCASTER"));
+    if (this->broadcasterTab_ != nullptr)
+    {
+        this->broadcasterTab_->setFont(fonts->getFont(
+            isBroadcaster ? FontStyle::UiMediumBold : FontStyle::UiMedium,
+            effectiveScale));
+        this->broadcasterTab_->setBorderColor(
+            isBroadcaster ? theme->splits.header.focusedBorder
+                          : theme->splits.header.border);
+        this->broadcasterTab_->setMouseEffectColor(
+            isBroadcaster
+                ? std::optional<QColor>(theme->splits.header.focusedBorder)
+                : std::nullopt);
+    }
+    if (this->curatorTab_ != nullptr)
+    {
+        this->curatorTab_->setFont(fonts->getFont(
+            !isBroadcaster ? FontStyle::UiMediumBold : FontStyle::UiMedium,
+            effectiveScale));
+        this->curatorTab_->setBorderColor(
+            !isBroadcaster ? theme->splits.header.focusedBorder
+                           : theme->splits.header.border);
+        this->curatorTab_->setMouseEffectColor(
+            !isBroadcaster
+                ? std::optional<QColor>(theme->splits.header.focusedBorder)
+                : std::nullopt);
+    }
 
     this->closeButton_->setColor(textColor);
 
@@ -1068,33 +1078,15 @@ void UserClipsDialog::refreshStyle()
             color: %4;
             font-size: 11px;
         }
-        QPushButton#ClipTabActive {
-            background: %18;
-            color: %19;
-            border: none;
-            border-radius: %6px;
-            padding: 5px 14px;
-            font-weight: 600;
-        }
-        QPushButton#ClipTabInactive {
-            background: %20;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: %6px;
-            padding: 5px 14px;
-        }
-        QPushButton#ClipTabInactive:hover {
-            background: %17;
-        }
     )")
-            .arg(
-                bg, text, border, muted, inputBg, QString::number(radius),
-                QString::number(inputPaddingX), QString::number(scrollbarWidth),
-                QString::number(scrollbarRadius),
-                QString::number(scrollbarMinHeight),
-                QString::number(inputMinHeight), hoverBg, focusedBorder, cardBg,
-                QString::number(cardRadius), QString::number(CLIP_CARD_PADDING),
-                cardHoverBg, tabActiveBg, tabActiveText, tabInactiveBg));
+            .arg(bg, text, border, muted, inputBg, QString::number(radius),
+                 QString::number(inputPaddingX),
+                 QString::number(scrollbarWidth),
+                 QString::number(scrollbarRadius),
+                 QString::number(scrollbarMinHeight),
+                 QString::number(inputMinHeight), hoverBg, focusedBorder,
+                 cardBg, QString::number(cardRadius),
+                 QString::number(CLIP_CARD_PADDING), cardHoverBg));
 }
 
 QString UserClipsDialog::authTokenOrMessage()

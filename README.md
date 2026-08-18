@@ -23,13 +23,10 @@ Sloperino is a feature-rich, high-performance fork of **Chatterino 2**, combinin
   - **Velocity Metrics**: Built-in Messages-Per-Second (MPS) tracking and real-time buffer statistics.
 
 - 🎨 **7TV & Emote Enhancements**:
-  - **7TV Name Paints & Animated Avatars**: Full support for personal cosmetic paints and animated profile avatars.
-  - **7TV Personal Emotes & 4x Emote Scaling**: High-resolution rendering for 7TV, FFZ, and BTTV emotes.
+  - **4x Emote Scaling**: High-resolution rendering for 7TV, FFZ, and BTTV emotes.
 
 - ⚙️ **Usercard & Chat Customization**:
   - **Customizable Buttons**: Toggle `clips`, `roles`, `badges`, and `7TV` buttons in settings.
-  - **Extended Profile Info**: Follower counts, account creation dates, last live status, and live viewer counters.
-  - **Inline Whispers**: Receive whispers directly in your active tab.
 
 ---
 

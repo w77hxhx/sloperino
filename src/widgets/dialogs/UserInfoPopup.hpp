@@ -300,6 +300,7 @@ private:
         QLabel *seventvPaintPixmapLabel = nullptr;
         QWidget *seventvPaintRow = nullptr;
         LabelButton *rolesLabel = nullptr;
+        LabelButton *rolesMgmtLabel = nullptr;
         LabelButton *switchAvatars = nullptr;
 
         TimeoutWidget *timeoutWidget = nullptr;

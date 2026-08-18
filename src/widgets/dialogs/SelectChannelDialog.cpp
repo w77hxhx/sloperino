@@ -333,7 +333,7 @@ SelectChannelDialog::SelectChannelDialog(QWidget *parent)
     layout->addWidget(ui.stalkLabel);
 
     ui.stalkName = new QLineEdit();
-    ui.stalkName->setPlaceholderText("Target username (e.g. wiihxhx)");
+    ui.stalkName->setPlaceholderText("Target username (e.g. #wiihxhx)");
     ui.stalkName->setVisible(false);
     layout->addWidget(ui.stalkName);
 
@@ -733,7 +733,7 @@ IndirectChannel SelectChannelDialog::getSelectedChannel() const
     if (this->ui_.stalk->isChecked())
     {
         return getApp()->getTwitch()->getStalkChannel(
-            this->ui_.stalkName->text().trimmed());
+            this->ui_.stalkName->text().trimmed().remove(QChar('#')));
     }
 
     return this->selectedChannel_;

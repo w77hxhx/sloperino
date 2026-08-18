@@ -15,7 +15,6 @@
 
 class QLabel;
 class QLineEdit;
-class QPushButton;
 class QResizeEvent;
 class QScrollArea;
 class QScrollBar;
@@ -25,6 +24,7 @@ class QVBoxLayout;
 namespace chatterino {
 
 class Button;
+class LabelButton;
 class SvgButton;
 
 class UserClipsDialog : public DraggablePopup
@@ -62,8 +62,8 @@ private:
     QWidget *headerWidget_{};
     QLabel *headerTitleLabel_{};
     QLineEdit *searchInput_{};
-    QPushButton *broadcasterTab_{};
-    QPushButton *curatorTab_{};
+    LabelButton *broadcasterTab_{};
+    LabelButton *curatorTab_{};
     Button *pinButton_{};
     SvgButton *closeButton_{};
     QScrollArea *scrollArea_{};

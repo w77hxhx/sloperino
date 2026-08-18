@@ -1617,7 +1617,7 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
         sevenTVUser->setEnabled(false);
         sevenTVUser->hide();
         auto roles = user.emplace<LabelButton>("Roles", this)
-                         .assign(&this->ui_.rolesLabel);
+                         .assign(&this->ui_.rolesMgmtLabel);
         roles->setToolTip("Manage editor and lead mod roles");
         roles->hide();
         auto mod = user.emplace<PixmapButton>(this);
@@ -1689,7 +1689,7 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
         };
         QObject::connect(roles.getElement(), &Button::leftClicked,
                          openRoleMenu);
-        this->registerMnemonicButton(this->ui_.rolesLabel, Qt::Key_R,
+        this->registerMnemonicButton(this->ui_.rolesMgmtLabel, Qt::Key_R,
                                      openRoleMenu);
 
         QObject::connect(mod.getElement(), &Button::leftClicked, [this] {
@@ -2591,7 +2591,7 @@ void UserInfoPopup::updateYouTubeUserData()
     this->ui_.chatterCountLabel->hide();
     this->ui_.lastLiveLabel->hide();
     this->ui_.sevenTVUserLabel->hide();
-    this->ui_.rolesLabel->hide();
+    this->ui_.rolesMgmtLabel->hide();
     this->ui_.notesAdd->hide();
     this->ui_.notesPreview->setVisible(false);
     this->ui_.block->hide();
@@ -3483,7 +3483,7 @@ void UserInfoPopup::updateUserData()
                     rolesString += "Ex-Staff ";
                 }
 
-                this->ui_.rolesLabel->setText((rolesString));
+                this->ui_.rolesMgmtLabel->setText((rolesString));
 
                 if (userInfo.chatterCount >= 0)
                 {
@@ -4281,7 +4281,8 @@ bool UserInfoPopup::canShowRoleManagementMenu() const
 
 void UserInfoPopup::showRoleManagementMenu()
 {
-    if (this->ui_.rolesLabel == nullptr || !this->canShowRoleManagementMenu())
+    if (this->ui_.rolesMgmtLabel == nullptr ||
+        !this->canShowRoleManagementMenu())
     {
         return;
     }
@@ -4304,8 +4305,8 @@ void UserInfoPopup::showRoleManagementMenu()
     addAction("Add editor", "/editor", "add editor to");
     addAction("Remove editor", "/uneditor", "remove editor from");
 
-    menu->popup(this->ui_.rolesLabel->mapToGlobal(
-        QPoint(0, this->ui_.rolesLabel->height())));
+    menu->popup(this->ui_.rolesMgmtLabel->mapToGlobal(
+        QPoint(0, this->ui_.rolesMgmtLabel->height())));
     menu->raise();
 }
 
