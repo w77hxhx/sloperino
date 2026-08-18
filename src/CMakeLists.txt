@@ -498,8 +498,6 @@ set(SOURCE_FILES
         providers/moltorino/MoltorinoAuth.cpp
         providers/moltorino/MoltorinoAuth.hpp
         providers/moltorino/MoltorinoFeatureFlags.hpp
-#providers / moltorino / MoltorinoPresence.cpp
-#providers / moltorino / MoltorinoPresence.hpp
         providers/moltorino/MoltorinoSupporterBadges.cpp
         providers/moltorino/MoltorinoSupporterBadges.hpp
 
@@ -809,8 +807,6 @@ set(SOURCE_FILES
         widgets/buttons/FollowButton.hpp
         widgets/buttons/DrawnButton.cpp
         widgets/buttons/DrawnButton.hpp
-#widgets / buttons / InitMoltorinoUpdateButton.cpp
-#widgets / buttons / InitMoltorinoUpdateButton.hpp
         widgets/buttons/InitUpdateButton.cpp
         widgets/buttons/InitUpdateButton.hpp
         widgets/buttons/LabelButton.cpp
@@ -1551,16 +1547,11 @@ if (MSVC)
 else ()
     target_compile_options(${LIBRARY_PROJECT} PUBLIC
         -Wall
-#Disable the following warnings
         -Wno-unused-function
         -Wno-switch
         -Wno-deprecated-declarations
         -Wno-sign-compare
-
-#Disabling strict - aliasing warnings for now, \
-    although we probably want to re - enable this in the future
         -Wno-strict-aliasing
-
         -Werror=return-type
         -Werror=reorder
     )
