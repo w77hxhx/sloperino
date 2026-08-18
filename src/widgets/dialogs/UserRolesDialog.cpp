@@ -6,11 +6,13 @@
 
 #include "Application.hpp"
 #include "messages/Image.hpp"
+#include "singletons/Fonts.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/IncognitoBrowser.hpp"
 #include "widgets/buttons/Button.hpp"
+#include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/UserInfoPopup.hpp"
 #include "widgets/Notebook.hpp"
@@ -961,7 +963,7 @@ void UserRolesDialog::refreshStyle()
     }
 
     const auto *fonts = getApp()->getFonts();
-    const auto effectiveScale = this->getScale();
+    const auto effectiveScale = rawScale;
     const auto *theme = this->theme;
     auto textColor = theme->window.text;
     auto mutedColor = textColor;
