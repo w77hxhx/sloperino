@@ -179,7 +179,6 @@ private:
     }
 
     RoleItem item_;
-    float scale_{1.0F};
     ImagePtr image_{};
     bool attemptRefresh_{false};
     pajlada::Signals::SignalHolder connections_;
@@ -405,27 +404,18 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
     headerLayout->addWidget(this->headerTitleLabel_);
     headerLayout->addStretch(1);
 
-    this->pinButton_ = new Button(this->headerWidget_);
-    this->pinButton_->setPixmap(getApp()->getThemes()->buttons.pinDisabled);
-    this->pinButton_->setEnableDisplay(true);
-    this->pinButton_->setScaleIndependantSize(18, 18);
-    this->pinButton_->setToolTip(QStringLiteral("Pin window"));
-    QObject::connect(this->pinButton_, &Button::leftClicked, [this] {
-        const bool pinned = !this->pinButton_->isPinned();
-        this->pinButton_->setPinned(pinned);
-        this->pinButton_->setPixmap(
-            pinned ? getApp()->getThemes()->buttons.pinEnabled
-                   : getApp()->getThemes()->buttons.pinDisabled);
-    });
+    this->pinButton_ = this->createPinButton();
     headerLayout->addWidget(this->pinButton_);
 
-    this->closeButton_ = new SvgButton(this->headerWidget_);
-    this->closeButton_->setPixmap(getApp()->getThemes()->buttons.close);
-    this->closeButton_->setScaleIndependantSize(18, 18);
+    this->closeButton_ = new SvgButton(
+        {.dark = ":/buttons/cancel.svg", .light = ":/buttons/cancelDark.svg"},
+        this, QSize{3, 3});
+    this->closeButton_->setScaleIndependentSize(18, 18);
     this->closeButton_->setToolTip(QStringLiteral("Close"));
-    QObject::connect(this->closeButton_, &Button::leftClicked, [this] {
-        this->close();
-    });
+    this->closeButton_->setCursor(Qt::PointingHandCursor);
+    this->closeButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    QObject::connect(this->closeButton_, &Button::leftClicked, this,
+                     &QWidget::close);
     headerLayout->addWidget(this->closeButton_);
 
     containerLayout->addWidget(this->headerWidget_);
@@ -625,15 +615,11 @@ void UserRolesDialog::scheduleUnpinParentOnClose(QWidget *parent)
     }
 
     this->parentUnpinScheduled_ = true;
-    QPointer<QWidget> parentWidget = parent;
-    QObject::connect(this, &QObject::destroyed, [parentWidget] {
-        if (parentWidget)
+    QPointer<QWidget> parentPtr(parent);
+    QObject::connect(this, &QObject::destroyed, parent, [parentPtr] {
+        if (parentPtr)
         {
-            if (auto *popup =
-                    qobject_cast<DraggablePopup *>(parentWidget.data()))
-            {
-                popup->getPinButton().setPinned(false);
-            }
+            DraggablePopup::unpinParentIfNeeded(parentPtr);
         }
     });
 }
@@ -745,7 +731,7 @@ void UserRolesDialog::loadSummary()
     const auto target = this->targetLogin_;
     const bool isChannel = (this->activeMode_ == "channel");
 
-    auto success = [self, isChannel](const RoleSummary &summary) {
+    auto success = [self](const RoleSummary &summary) {
         if (!self)
         {
             return;
