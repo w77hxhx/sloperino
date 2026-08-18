@@ -826,6 +826,133 @@ MessagePtr makeUsercardModLogMessage(const GqlUsercardMessage &message,
     return builder.release();
 }
 
+MessagePtr makeZonianLogMessage(const QJsonObject &obj,
+                                TwitchChannel *twitchChannel,
+                                const QString &channelName,
+                                const QString &fallbackUser)
+{
+    QString text =
+        cleanIrcMessageBody(obj.value(QStringLiteral("text")).toString());
+    QString displayName =
+        obj.value(QStringLiteral("displayName")).toString().trimmed();
+    if (displayName.isEmpty())
+    {
+        displayName = fallbackUser;
+    }
+    QString login = displayName.toLower();
+    QString id = obj.value(QStringLiteral("id")).toString();
+    QString tsStr = obj.value(QStringLiteral("timestamp")).toString();
+    auto sentAt = QDateTime::fromString(tsStr, Qt::ISODate);
+    if (!sentAt.isValid())
+    {
+        sentAt = parseIvrTimestamp(tsStr);
+    }
+    if (!sentAt.isValid())
+    {
+        sentAt = QDateTime::currentDateTime();
+    }
+    else
+    {
+        sentAt = sentAt.toLocalTime();
+    }
+
+    auto tagsObj = obj.value(QStringLiteral("tags")).toObject();
+
+    QStringList tags;
+    for (auto it = tagsObj.begin(); it != tagsObj.end(); ++it)
+    {
+        tags << it.key() + QStringLiteral("=") +
+                    escapeIrcTagValue(it.value().toVariant().toString());
+    }
+
+    if (!tagsObj.contains(QStringLiteral("id")) && !id.isEmpty())
+    {
+        tags << QStringLiteral("id=") + escapeIrcTagValue(id);
+    }
+    if (!tagsObj.contains(QStringLiteral("display-name")) &&
+        !displayName.isEmpty())
+    {
+        tags << QStringLiteral("display-name=") +
+                    escapeIrcTagValue(displayName);
+    }
+    if (!tagsObj.contains(QStringLiteral("login")) && !login.isEmpty())
+    {
+        tags << QStringLiteral("login=") + escapeIrcTagValue(login);
+    }
+    if (!tagsObj.contains(QStringLiteral("tmi-sent-ts")) && sentAt.isValid())
+    {
+        tags << QStringLiteral("tmi-sent-ts=") +
+                    QString::number(sentAt.toMSecsSinceEpoch());
+    }
+    if (!tagsObj.contains(QStringLiteral("room-id")) &&
+        twitchChannel != nullptr && !twitchChannel->roomId().isEmpty())
+    {
+        tags << QStringLiteral("room-id=") +
+                    escapeIrcTagValue(twitchChannel->roomId());
+    }
+
+    const auto tagsText =
+        tags.isEmpty() ? QString() : u"@" % tags.join(';') % u" ";
+    const auto targetChan = !channelName.isEmpty()
+                                ? channelName
+                                : (twitchChannel ? twitchChannel->getName()
+                                                 : QStringLiteral("channel"));
+    const auto fakeIrcData =
+        QStringLiteral("%1:%2!%2@%2.tmi.twitch.tv PRIVMSG #%3 :%4")
+            .arg(tagsText, login, targetChan, text);
+
+    auto *fakeMessage =
+        Communi::IrcMessage::fromData(fakeIrcData.toUtf8(), nullptr);
+    if (fakeMessage != nullptr && fakeMessage->command() == "PRIVMSG")
+    {
+        MessageParseArgs args;
+        args.allowIgnore = false;
+        auto result = MessageBuilder::makeIrcMessage(twitchChannel, fakeMessage,
+                                                     args, text, 0);
+        auto builtMessage = std::move(result.first);
+        fakeMessage->deleteLater();
+        fakeMessage = nullptr;
+
+        if (builtMessage)
+        {
+            builtMessage->flags.set(MessageFlag::DoNotLog,
+                                    MessageFlag::DoNotTriggerNotification);
+            return builtMessage;
+        }
+    }
+    if (fakeMessage != nullptr)
+    {
+        fakeMessage->deleteLater();
+    }
+
+    auto colorVal = tagsObj.value(QStringLiteral("color")).toString();
+    auto color = QColor(colorVal);
+    const auto userColor = color.isValid() ? MessageColor(color)
+                                           : MessageColor(MessageColor::Text);
+
+    MessageBuilder builder;
+    builder->id = id;
+    builder->loginName = login;
+    builder->displayName = displayName;
+    builder->messageText = text;
+    builder->searchText = displayName + QStringLiteral(": ") + text;
+    builder->channelName = channelName;
+    builder->serverReceivedTime = sentAt;
+    builder->usernameColor = color;
+    builder->flags.set(MessageFlag::DoNotLog,
+                       MessageFlag::DoNotTriggerNotification);
+
+    builder.emplace<TimestampElement>(sentAt.time());
+    builder
+        .emplace<TextElement>(displayName + QStringLiteral(":"),
+                              MessageElementFlag::Username, userColor,
+                              FontStyle::ChatMediumBold)
+        ->setLink({Link::UserInfo, login});
+    builder.appendOrEmplaceText(text, MessageColor::Text);
+
+    return builder.release();
+}
+
 QDateTime oldestUsercardMessageTime(const ChannelPtr &channel)
 {
     QDateTime oldest;
@@ -1645,6 +1772,38 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
 
         user->addStretch(1);
 
+        auto *searchInput = new QLineEdit(this);
+        searchInput->setPlaceholderText("Search logs...");
+        searchInput->setClearButtonEnabled(true);
+        searchInput->setFixedWidth(135);
+        searchInput->setFixedHeight(22);
+        this->ui_.logSearchInput = searchInput;
+        user->addWidget(searchInput);
+
+        auto searchBtn = user.emplace<LabelButton>("Search", this, QSize{2, 2})
+                             .assign(&this->ui_.logSearchButton);
+        searchBtn->setToolTip("Search logs on logs.zonian.dev");
+
+        auto triggerSearch = [this] {
+            if (this->ui_.logSearchInput)
+            {
+                this->searchUserLogs(this->ui_.logSearchInput->text());
+            }
+        };
+        QObject::connect(this->ui_.logSearchInput, &QLineEdit::returnPressed,
+                         this, triggerSearch);
+        QObject::connect(searchBtn.getElement(), &Button::leftClicked, this,
+                         triggerSearch);
+        QObject::connect(
+            this->ui_.logSearchInput, &QLineEdit::textChanged, this,
+            [this](const QString &text) {
+                if (text.trimmed().isEmpty() && this->isZonianSearchMode_)
+                {
+                    this->isZonianSearchMode_ = false;
+                    this->fetchZonianLogList();
+                }
+            });
+
         auto openUsercard = [this] {
             MessagePlatform platform =
                 this->isYouTube_ ? MessagePlatform::YouTube
@@ -1822,7 +1981,15 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
         this->ui_.loadMoreMessages = loadMore;
 
         QObject::connect(loadMore, &Button::leftClicked, this, [this] {
-            this->requestMoreUsercardMessages(true);
+            if (!this->isZonianSearchMode_ && this->zonianLogsHasMore_ &&
+                this->zonianNextMonthIndex_ < this->zonianLogMonths_.size())
+            {
+                this->fetchZonianMonthLog(this->zonianNextMonthIndex_);
+            }
+            else
+            {
+                this->requestMoreUsercardMessages(true);
+            }
         });
         this->usercardScrollConnection_ =
             std::make_unique<pajlada::Signals::ScopedConnection>(
@@ -2728,7 +2895,15 @@ void UserInfoPopup::updateLatestMessages()
     this->ui_.latestMessages->setSourceChannel(this->underlyingChannel_);
 
     this->updateUsercardMessagesVisibility();
-    this->maybeStartUsercardMessageAutoLoad();
+
+    if (!this->isKick_ && !this->isYouTube_)
+    {
+        this->fetchZonianLogList();
+    }
+    else
+    {
+        this->maybeStartUsercardMessageAutoLoad();
+    }
 
     this->refreshConnection_ =
         std::make_unique<pajlada::Signals::ScopedConnection>(
@@ -2769,9 +2944,20 @@ void UserInfoPopup::updateUsercardMessagesVisibility()
     const bool hadLoadMoreButton = this->ui_.loadMoreMessages != nullptr &&
                                    this->ui_.loadMoreMessages->isVisible();
     const auto previousNoMessagesText = this->ui_.noMessagesLabel->getText();
-    const auto noMessagesText = this->usercardMessagesLoading_
-                                    ? QStringLiteral("Loading messages...")
-                                    : QStringLiteral("No recent messages");
+
+    QString noMessagesText;
+    if (this->zonianLogsLoading_ || this->usercardMessagesLoading_)
+    {
+        noMessagesText = QStringLiteral("Loading logs...");
+    }
+    else if (this->isZonianSearchMode_)
+    {
+        noMessagesText = QStringLiteral("No matching logs found");
+    }
+    else
+    {
+        noMessagesText = QStringLiteral("No recent messages");
+    }
 
     this->ui_.latestMessages->setVisible(hasMessages);
     this->ui_.noMessagesLabel->setText(noMessagesText);
@@ -2791,6 +2977,12 @@ void UserInfoPopup::updateUsercardMessagesVisibility()
 void UserInfoPopup::resetUsercardMessageLoader()
 {
     ++this->usercardMessagesRequestGeneration_;
+    ++this->zonianRequestGeneration_;
+    this->zonianLogMonths_.clear();
+    this->zonianNextMonthIndex_ = 0;
+    this->zonianLogsLoading_ = false;
+    this->zonianLogsHasMore_ = false;
+    this->isZonianSearchMode_ = false;
     this->usercardMessagesCursor_.clear();
     this->usercardMessagesError_.clear();
     this->usercardMessagesLoading_ = false;
@@ -2834,17 +3026,31 @@ void UserInfoPopup::updateLoadMoreMessagesButton()
         return;
     }
 
-    const bool canLoad = getSettings()->showUsercardLoadMoreMessagesButton &&
-                         this->canLoadMoreUsercardMessages() &&
-                         this->usercardMessagesHasNextPage_ &&
-                         !this->usercardMessagesLazyLoadEnabled_;
-    button->setVisible(canLoad);
-    button->setEnabled(canLoad && !this->usercardMessagesLoading_);
+    const bool canLoadZonian =
+        !this->isZonianSearchMode_ && this->zonianLogsHasMore_ &&
+        this->zonianNextMonthIndex_ < this->zonianLogMonths_.size();
 
-    if (this->usercardMessagesLoading_)
+    const bool canLoadGql = getSettings()->showUsercardLoadMoreMessagesButton &&
+                            this->canLoadMoreUsercardMessages() &&
+                            this->usercardMessagesHasNextPage_ &&
+                            !this->usercardMessagesLazyLoadEnabled_;
+
+    const bool canLoad = canLoadZonian || canLoadGql;
+    const bool isLoading =
+        this->zonianLogsLoading_ || this->usercardMessagesLoading_;
+
+    button->setVisible(canLoad);
+    button->setEnabled(canLoad && !isLoading);
+
+    if (isLoading)
     {
-        button->setText("Loading messages...");
-        button->setToolTip("Loading older messages from Twitch mod logs");
+        button->setText("Loading logs...");
+        button->setToolTip("Loading older logs");
+    }
+    else if (canLoadZonian)
+    {
+        button->setText("Load older logs");
+        button->setToolTip("Load previous month's logs from logs.zonian.dev");
     }
     else
     {
@@ -2895,8 +3101,12 @@ void UserInfoPopup::requestMoreUsercardMessages(bool enableLazyLoadOnSuccess)
 
 void UserInfoPopup::maybeLoadMoreUsercardMessagesFromScroll()
 {
-    if (!this->usercardMessagesLazyLoadEnabled_ ||
-        this->usercardMessagesLoading_ || !this->usercardMessagesHasNextPage_)
+    if (this->zonianLogsLoading_ || this->usercardMessagesLoading_)
+    {
+        return;
+    }
+
+    if (!this->ui_.latestMessages)
     {
         return;
     }
@@ -2908,7 +3118,348 @@ void UserInfoPopup::maybeLoadMoreUsercardMessagesFromScroll()
         return;
     }
 
-    this->requestMoreUsercardMessages(false);
+    if (!this->isZonianSearchMode_ && this->zonianLogsHasMore_ &&
+        this->zonianNextMonthIndex_ < this->zonianLogMonths_.size())
+    {
+        this->fetchZonianMonthLog(this->zonianNextMonthIndex_);
+        return;
+    }
+
+    if (this->usercardMessagesLazyLoadEnabled_ &&
+        this->usercardMessagesHasNextPage_)
+    {
+        this->requestMoreUsercardMessages(false);
+    }
+}
+
+void UserInfoPopup::fetchZonianLogList()
+{
+    if (this->isKick_ || this->isYouTube_ || this->userName_.isEmpty())
+    {
+        return;
+    }
+
+    QString channelName;
+    if (this->underlyingChannel_)
+    {
+        channelName = this->underlyingChannel_->getName();
+        if (channelName.startsWith('#'))
+        {
+            channelName.remove(0, 1);
+        }
+    }
+    if (channelName.isEmpty())
+    {
+        return;
+    }
+
+    const auto generation = ++this->zonianRequestGeneration_;
+    const auto user = this->userName_.trimmed().toLower();
+    const auto chan = channelName.trimmed().toLower();
+    const QPointer<UserInfoPopup> self(this);
+
+    this->zonianLogsLoading_ = true;
+    this->zonianLogMonths_.clear();
+    this->zonianNextMonthIndex_ = 0;
+    this->zonianLogsHasMore_ = false;
+    this->isZonianSearchMode_ = false;
+    this->updateUsercardMessagesVisibility();
+
+    QString url =
+        QStringLiteral("https://logs.zonian.dev/list?channel=%1&user=%2")
+            .arg(QString::fromLatin1(QUrl::toPercentEncoding(chan)),
+                 QString::fromLatin1(QUrl::toPercentEncoding(user)));
+
+    NetworkRequest(url)
+        .timeout(15000)
+        .header("User-Agent", "Sloperino-App")
+        .onSuccess([self, generation, chan, user](const NetworkResult &result) {
+            if (!self || generation != self->zonianRequestGeneration_)
+            {
+                return;
+            }
+
+            auto obj = result.parseJson();
+            auto logsArr = obj.value(QStringLiteral("availableLogs")).toArray();
+
+            self->zonianLogMonths_.clear();
+            for (const auto &itemVal : logsArr)
+            {
+                auto itemObj = itemVal.toObject();
+                QString year = itemObj.value(QStringLiteral("year")).toString();
+                QString month =
+                    itemObj.value(QStringLiteral("month")).toString();
+                if (!year.isEmpty() && !month.isEmpty())
+                {
+                    self->zonianLogMonths_.push_back({year, month});
+                }
+            }
+
+            if (!self->zonianLogMonths_.empty())
+            {
+                self->zonianNextMonthIndex_ = 0;
+                self->zonianLogsHasMore_ = true;
+                self->fetchZonianMonthLog(0);
+            }
+            else
+            {
+                self->zonianLogsLoading_ = false;
+                self->zonianLogsHasMore_ = false;
+                self->updateUsercardMessagesVisibility();
+            }
+        })
+        .onError([self, generation](const NetworkResult &) {
+            if (!self || generation != self->zonianRequestGeneration_)
+            {
+                return;
+            }
+            self->zonianLogsLoading_ = false;
+            self->zonianLogsHasMore_ = false;
+            self->updateUsercardMessagesVisibility();
+        })
+        .execute();
+}
+
+void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
+{
+    if (monthIndex >= this->zonianLogMonths_.size())
+    {
+        this->zonianLogsHasMore_ = false;
+        this->zonianLogsLoading_ = false;
+        this->updateUsercardMessagesVisibility();
+        return;
+    }
+
+    QString channelName;
+    if (this->underlyingChannel_)
+    {
+        channelName = this->underlyingChannel_->getName();
+        if (channelName.startsWith('#'))
+        {
+            channelName.remove(0, 1);
+        }
+    }
+    if (channelName.isEmpty())
+    {
+        return;
+    }
+
+    const auto generation = this->zonianRequestGeneration_;
+    const auto user = this->userName_.trimmed().toLower();
+    const auto chan = channelName.trimmed().toLower();
+    const auto monthData = this->zonianLogMonths_[monthIndex];
+    const QPointer<UserInfoPopup> self(this);
+
+    this->zonianLogsLoading_ = true;
+    this->updateUsercardMessagesVisibility();
+
+    QString url =
+        QStringLiteral("https://logs.zonian.dev/channel/%1/user/%2/%3/%4?"
+                       "jsonBasic=1")
+            .arg(QString::fromLatin1(QUrl::toPercentEncoding(chan)),
+                 QString::fromLatin1(QUrl::toPercentEncoding(user)),
+                 monthData.year, monthData.month);
+
+    NetworkRequest(url)
+        .timeout(20000)
+        .header("User-Agent", "Sloperino-App")
+        .onSuccess([self, generation, chan, user,
+                    monthIndex](const NetworkResult &result) {
+            if (!self || generation != self->zonianRequestGeneration_)
+            {
+                return;
+            }
+
+            auto obj = result.parseJson();
+            auto msgsArr = obj.value(QStringLiteral("messages")).toArray();
+
+            auto *renderChannel =
+                dynamic_cast<TwitchChannel *>(self->underlyingChannel_.get());
+
+            std::vector<MessagePtr> parsedMessages;
+            parsedMessages.reserve(static_cast<size_t>(msgsArr.size()));
+
+            for (const auto &msgVal : msgsArr)
+            {
+                auto msgObj = msgVal.toObject();
+                auto msg =
+                    makeZonianLogMessage(msgObj, renderChannel, chan, user);
+                if (msg)
+                {
+                    parsedMessages.push_back(msg);
+                }
+            }
+
+            if (!self->usercardMessagesChannel_)
+            {
+                self->usercardMessagesChannel_ =
+                    std::make_shared<TwitchChannel>(chan);
+                self->ui_.latestMessages->setChannel(
+                    self->usercardMessagesChannel_);
+                self->ui_.latestMessages->setSourceChannel(
+                    self->underlyingChannel_);
+            }
+
+            if (monthIndex == 0)
+            {
+                self->usercardMessagesChannel_->clearMessages();
+                self->ui_.latestMessages->clearMessages();
+                if (!parsedMessages.empty())
+                {
+                    self->usercardMessagesChannel_->addMessagesAtStart(
+                        parsedMessages);
+                }
+                QTimer::singleShot(50, self.data(), [self] {
+                    if (self && self->ui_.latestMessages)
+                    {
+                        self->ui_.latestMessages->getScrollBar()
+                            .scrollToBottom();
+                    }
+                });
+            }
+            else
+            {
+                if (!parsedMessages.empty())
+                {
+                    self->usercardMessagesChannel_->addMessagesAtStart(
+                        parsedMessages);
+                }
+            }
+
+            self->zonianNextMonthIndex_ = monthIndex + 1;
+            self->zonianLogsHasMore_ =
+                (self->zonianNextMonthIndex_ < self->zonianLogMonths_.size());
+            self->zonianLogsLoading_ = false;
+            self->updateUsercardMessagesVisibility();
+        })
+        .onError([self, generation](const NetworkResult &) {
+            if (!self || generation != self->zonianRequestGeneration_)
+            {
+                return;
+            }
+            self->zonianLogsLoading_ = false;
+            self->updateUsercardMessagesVisibility();
+        })
+        .execute();
+}
+
+void UserInfoPopup::searchUserLogs(const QString &query)
+{
+    QString trimmed = query.trimmed();
+    if (trimmed.isEmpty())
+    {
+        if (this->isZonianSearchMode_)
+        {
+            this->isZonianSearchMode_ = false;
+            this->fetchZonianLogList();
+        }
+        return;
+    }
+
+    if (this->isKick_ || this->isYouTube_ || this->userName_.isEmpty())
+    {
+        return;
+    }
+
+    QString channelName;
+    if (this->underlyingChannel_)
+    {
+        channelName = this->underlyingChannel_->getName();
+        if (channelName.startsWith('#'))
+        {
+            channelName.remove(0, 1);
+        }
+    }
+    if (channelName.isEmpty())
+    {
+        return;
+    }
+
+    this->isZonianSearchMode_ = true;
+    this->zonianLogsLoading_ = true;
+    this->zonianLogsHasMore_ = false;
+    const auto generation = ++this->zonianRequestGeneration_;
+    const auto user = this->userName_.trimmed().toLower();
+    const auto chan = channelName.trimmed().toLower();
+    const QPointer<UserInfoPopup> self(this);
+
+    this->updateUsercardMessagesVisibility();
+
+    QString url =
+        QStringLiteral("https://logs.zonian.dev/channel/%1/user/%2/"
+                       "search?jsonBasic=1&q=%3")
+            .arg(QString::fromLatin1(QUrl::toPercentEncoding(chan)),
+                 QString::fromLatin1(QUrl::toPercentEncoding(user)),
+                 QString::fromLatin1(QUrl::toPercentEncoding(trimmed)));
+
+    NetworkRequest(url)
+        .timeout(25000)
+        .header("User-Agent", "Sloperino-App")
+        .onSuccess([self, generation, chan, user](const NetworkResult &result) {
+            if (!self || generation != self->zonianRequestGeneration_)
+            {
+                return;
+            }
+
+            auto obj = result.parseJson();
+            auto msgsArr = obj.value(QStringLiteral("messages")).toArray();
+
+            auto *renderChannel =
+                dynamic_cast<TwitchChannel *>(self->underlyingChannel_.get());
+
+            std::vector<MessagePtr> parsedMessages;
+            parsedMessages.reserve(static_cast<size_t>(msgsArr.size()));
+
+            for (const auto &msgVal : msgsArr)
+            {
+                auto msgObj = msgVal.toObject();
+                auto msg =
+                    makeZonianLogMessage(msgObj, renderChannel, chan, user);
+                if (msg)
+                {
+                    parsedMessages.push_back(msg);
+                }
+            }
+
+            if (!self->usercardMessagesChannel_)
+            {
+                self->usercardMessagesChannel_ =
+                    std::make_shared<TwitchChannel>(chan);
+                self->ui_.latestMessages->setChannel(
+                    self->usercardMessagesChannel_);
+                self->ui_.latestMessages->setSourceChannel(
+                    self->underlyingChannel_);
+            }
+
+            self->usercardMessagesChannel_->clearMessages();
+            self->ui_.latestMessages->clearMessages();
+            if (!parsedMessages.empty())
+            {
+                self->usercardMessagesChannel_->addMessagesAtStart(
+                    parsedMessages);
+            }
+
+            self->zonianLogsLoading_ = false;
+            self->zonianLogsHasMore_ = false;
+            self->updateUsercardMessagesVisibility();
+
+            QTimer::singleShot(50, self.data(), [self] {
+                if (self && self->ui_.latestMessages)
+                {
+                    self->ui_.latestMessages->getScrollBar().scrollToBottom();
+                }
+            });
+        })
+        .onError([self, generation](const NetworkResult &) {
+            if (!self || generation != self->zonianRequestGeneration_)
+            {
+                return;
+            }
+            self->zonianLogsLoading_ = false;
+            self->zonianLogsHasMore_ = false;
+            self->updateUsercardMessagesVisibility();
+        })
+        .execute();
 }
 
 void UserInfoPopup::fetchMoreUsercardMessages(int emptyPageSkipsLeft,
@@ -4265,8 +4816,20 @@ void UserInfoPopup::promptAndOpenChannel()
     }
 
     auto channelName = this->userName_.trimmed();
+    bool isKick = this->isKick_;
 
-    QMessageBox msgBox(this);
+    const bool wasAutoPinned = DraggablePopup::pinParentIfNeeded(this);
+
+    QWidget *parentWidget = this;
+    if (auto *app = tryGetApp())
+    {
+        if (auto *wm = app->getWindows())
+        {
+            parentWidget = wm->getMainWindow().window();
+        }
+    }
+
+    QMessageBox msgBox(parentWidget);
     msgBox.setWindowTitle("Open Channel");
     msgBox.setText(QString("Open channel #%1:").arg(channelName));
     msgBox.setInformativeText(
@@ -4278,40 +4841,65 @@ void UserInfoPopup::promptAndOpenChannel()
     msgBox.setDefaultButton(normalBtn);
     msgBox.exec();
 
-    if (msgBox.clickedButton() == cancelBtn)
+    const bool isCancelled = (msgBox.clickedButton() == cancelBtn);
+    const bool isAnonymous = (msgBox.clickedButton() == anonBtn);
+
+    if (wasAutoPinned)
+    {
+        DraggablePopup::unpinParentIfNeeded(this);
+    }
+
+    if (isCancelled)
     {
         return;
     }
 
-    bool isAnonymous = (msgBox.clickedButton() == anonBtn);
-
     ChannelPtr channel;
-    if (this->isKick_)
+    if (isKick)
     {
-        channel =
-            getApp()->getKickChatServer()->getOrCreate(channelName.toLower());
+        if (auto *app = tryGetApp())
+        {
+            if (auto *kick = app->getKickChatServer())
+            {
+                channel = kick->getOrCreate(channelName.toLower());
+            }
+        }
     }
     else
     {
-        if (isAnonymous)
+        if (auto *app = tryGetApp())
         {
-            channel = getApp()->getTwitch()->getOrAddAnonymousChannel(
-                channelName.toLower());
-        }
-        else
-        {
-            channel =
-                getApp()->getTwitch()->getOrAddChannel(channelName.toLower());
+            if (auto *twitch = app->getTwitch())
+            {
+                if (isAnonymous)
+                {
+                    channel =
+                        twitch->getOrAddAnonymousChannel(channelName.toLower());
+                }
+                else
+                {
+                    channel = twitch->getOrAddChannel(channelName.toLower());
+                }
+            }
         }
     }
 
     if (channel)
     {
-        SplitContainer *container =
-            getApp()->getWindows()->getMainWindow().getNotebook().addPage(true);
-        auto *split = new Split(container);
-        split->setChannel(channel);
-        container->insertSplit(split);
+        if (auto *app = tryGetApp())
+        {
+            if (auto *wm = app->getWindows())
+            {
+                auto &notebook = wm->getMainWindow().getNotebook();
+                SplitContainer *container = notebook.addPage(true);
+                if (container != nullptr)
+                {
+                    auto *split = new Split(container);
+                    split->setChannel(channel);
+                    container->insertSplit(split);
+                }
+            }
+        }
     }
 }
 

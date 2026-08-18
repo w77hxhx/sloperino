@@ -2723,12 +2723,13 @@ SplitDescriptor Split::buildDescriptor() const
 
     auto chan = this->getChannel();
     descriptor.type_ = qmagicenum::enumNameString(chan->getType());
-    switch (this->channel_.getType())
+    switch (chan->getType())
     {
         case Channel::Type::Twitch:
         case Channel::Type::Misc:
         case Channel::Type::YouTube:
         case Channel::Type::TwitchStalk:
+        case Channel::Type::TwitchFirehose:
             descriptor.channelName_ = chan->getName();
             break;
 

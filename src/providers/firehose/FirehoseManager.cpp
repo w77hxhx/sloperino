@@ -478,12 +478,36 @@ void FirehoseManager::onRawMessageReceived(QByteArray data)
                 }
             }
 
+            this->messagesThisSecond_++;
+
+            // If firehose is not attached and we only have stalk channels, quick check before full parse
+            if (this->firehoseAttachedCount_ == 0 &&
+                !this->stalkChannels_.empty())
+            {
+                bool mightMatchStalk = false;
+                for (const auto &weakStalk : this->stalkChannels_)
+                {
+                    if (auto stalk = weakStalk.lock())
+                    {
+                        const auto &target = stalk->targetUser();
+                        if (!target.isEmpty() && line.contains(target.toUtf8()))
+                        {
+                            mightMatchStalk = true;
+                            break;
+                        }
+                    }
+                }
+                if (!mightMatchStalk)
+                {
+                    start = next + 1;
+                    continue;
+                }
+            }
+
             QString msgId;
             auto msg = this->parseRawPayload(line, msgId);
             if (msg)
             {
-                this->messagesThisSecond_++;
-
                 // Route message to active stalk channels matching target username
                 if (!this->stalkChannels_.empty())
                 {
@@ -522,7 +546,10 @@ void FirehoseManager::onRawMessageReceived(QByteArray data)
                     }
                 }
 
-                batch.emplace_back(std::move(msg));
+                if (this->firehoseAttachedCount_ > 0)
+                {
+                    batch.emplace_back(std::move(msg));
+                }
             }
         }
         start = next + 1;
