@@ -6,12 +6,15 @@
 
 #include "Application.hpp"
 #include "messages/Image.hpp"
+#include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/IncognitoBrowser.hpp"
-#include "widgets/Button.hpp"
+#include "widgets/buttons/Button.hpp"
+#include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/UserInfoPopup.hpp"
-#include "widgets/helper/SvgButton.hpp"
+#include "widgets/splits/Split.hpp"
+#include "widgets/Window.hpp"
 
 #include <QApplication>
 #include <QClipboard>
@@ -298,8 +301,7 @@ protected:
         QFrame::mousePressEvent(event);
         if (event->button() == Qt::LeftButton)
         {
-            UserInfoPopup::showDialog(this->item_.login,
-                                      this->item_.displayName, this);
+            this->openUsercard();
         }
         else if (event->button() == Qt::RightButton)
         {
@@ -308,14 +310,31 @@ protected:
     }
 
 private:
+    void openUsercard()
+    {
+        auto *window = getApp()->getWindows()->getTopLevelWindow();
+        auto *split = window ? window->getSelectedSplit() : nullptr;
+        if (split != nullptr)
+        {
+            auto *popup =
+                new UserInfoPopup(getSettings()->autoCloseUserPopup, split);
+            popup->setData(this->item_.login, split->getChannel());
+            popup->show();
+        }
+        else
+        {
+            QDesktopServices::openUrl(QUrl(
+                QStringLiteral("https://twitch.tv/%1").arg(this->item_.login)));
+        }
+    }
+
     void showContextMenu(const QPoint &pos)
     {
         auto *menu = new QMenu(this);
         menu->setAttribute(Qt::WA_DeleteOnClose);
 
         menu->addAction(QStringLiteral("Open Usercard"), [this] {
-            UserInfoPopup::showDialog(this->item_.login,
-                                      this->item_.displayName, this);
+            this->openUsercard();
         });
 
         menu->addAction(QStringLiteral("Open on Twitch"), [this] {
