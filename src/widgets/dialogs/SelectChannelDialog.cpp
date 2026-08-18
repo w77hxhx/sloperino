@@ -321,6 +321,38 @@ SelectChannelDialog::SelectChannelDialog(QWidget *parent)
 
     ui.firehose->installEventFilter(&this->tabFilter_);
 
+    // Stalk
+    ui.stalk = new AutoCheckedRadioButton("Stalk");
+    layout->addWidget(ui.stalk);
+
+    ui.stalkLabel = new QLabel(
+        "Streams messages from a specific Twitch user across all channels "
+        "via Firehose.");
+    ui.stalkLabel->setVisible(false);
+    ui.stalkLabel->setWordWrap(true);
+    layout->addWidget(ui.stalkLabel);
+
+    ui.stalkName = new QLineEdit();
+    ui.stalkName->setPlaceholderText("Target username (e.g. wiihxhx)");
+    ui.stalkName->setVisible(false);
+    layout->addWidget(ui.stalkName);
+
+    QObject::connect(ui.stalk, &AutoCheckedRadioButton::toggled, this,
+                     [this](bool enabled) {
+                         auto &ui = this->ui_;
+                         ui.stalkLabel->setVisible(enabled);
+                         ui.stalkName->setVisible(enabled);
+
+                         if (enabled)
+                         {
+                             ui.stalkName->setFocus();
+                             ui.stalkName->selectAll();
+                         }
+                     });
+
+    ui.stalk->installEventFilter(&this->tabFilter_);
+    ui.stalkName->installEventFilter(&this->tabFilter_);
+
     layout->addStretch(1);
 
     ui.notebook->addPage(ui.twitchPage, "Twitch");
@@ -551,6 +583,17 @@ void SelectChannelDialog::setSelectedChannel(
             this->ui_.firehose->setFocus();
         }
         break;
+        case Channel::Type::TwitchStalk: {
+            this->ui_.channelAnonymous->setChecked(false);
+            QString name = channel->getName();
+            if (name.startsWith(QStringLiteral("/stalk/")))
+            {
+                name = name.mid(7);
+            }
+            this->ui_.stalkName->setText(name);
+            this->ui_.stalk->setChecked(true);
+        }
+        break;
         case Channel::Type::Kick: {
             this->ui_.channelAnonymous->setChecked(false);
             this->ui_.kickName->setText(channel->getName());
@@ -685,6 +728,12 @@ IndirectChannel SelectChannelDialog::getSelectedChannel() const
     if (this->ui_.firehose->isChecked())
     {
         return getApp()->getTwitch()->getFirehoseChannel();
+    }
+
+    if (this->ui_.stalk->isChecked())
+    {
+        return getApp()->getTwitch()->getStalkChannel(
+            this->ui_.stalkName->text().trimmed());
     }
 
     return this->selectedChannel_;

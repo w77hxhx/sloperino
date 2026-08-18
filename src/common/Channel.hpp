@@ -58,6 +58,8 @@ public:
         TwitchAutomod,
         /// TwitchFirehose
         TwitchFirehose,
+        /// TwitchStalk
+        TwitchStalk,
         /// TwitchEnd
         TwitchEnd,
         Kick,
@@ -244,6 +246,8 @@ constexpr magic_enum::customize::customize_t
             return "automod";
         case Type::TwitchFirehose:
             return "firehose";
+        case Type::TwitchStalk:
+            return "stalk";
         case Type::TwitchMentions:
             return "mentions";
         case Type::TwitchWatching:

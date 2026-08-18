@@ -183,6 +183,17 @@ public:
         return this->automodChannel;
     }
 
+    ChannelPtr getFirehoseChannel() const override
+    {
+        return Channel::getEmpty();
+    }
+
+    ChannelPtr getStalkChannel(const QString &targetUser) override
+    {
+        (void)targetUser;
+        return Channel::getEmpty();
+    }
+
     ChannelPtr watchingChannelInner;
     IndirectChannel watchingChannel;
     ChannelPtr whispersChannel;

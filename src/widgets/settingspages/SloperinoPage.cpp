@@ -45,12 +45,14 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
 {
     auto &s = *getSettings();
 
-    // 1. Badges Category
-    layout.addTitle("Badges");
-    layout.addDescription("Toggle Sloperino badges.");
+    // 1. Usercard Category
+    layout.addTitle("Usercard");
+    layout.addDescription("Customize usercard buttons, details, and widgets.");
 
-    SettingWidget::checkbox("Show Sloperino badges", s.showSloperinoBadges)
-        ->addKeywords({"badges", "sloperino"})
+    SettingWidget::checkbox("Show clips button", s.showUsercardClipsButton)
+        ->setTooltip("Show a button on usercards to view and search the user's "
+                     "Twitch clips.")
+        ->addKeywords({"usercard", "clips", "twitch", "button", "video"})
         ->addTo(layout);
 
     // 2. Firehose Category

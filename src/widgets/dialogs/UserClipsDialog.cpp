@@ -267,7 +267,7 @@ public:
         if (!clip.gameName.isEmpty())
         {
             auto *gameLabel =
-                new QLabel(QStringLiteral("🎮 %1").arg(clip.gameName), this);
+                new QLabel(QStringLiteral("👾 %1").arg(clip.gameName), this);
             gameLabel->setObjectName("ClipCardGame");
             gameLabel->setToolTip(clip.gameName);
             infoLayout->addWidget(gameLabel);

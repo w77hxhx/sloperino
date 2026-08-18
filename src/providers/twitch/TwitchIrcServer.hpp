@@ -75,6 +75,7 @@ public:
     virtual ChannelPtr getLiveChannel() const = 0;
     virtual ChannelPtr getAutomodChannel() const = 0;
     virtual ChannelPtr getFirehoseChannel() const = 0;
+    virtual ChannelPtr getStalkChannel(const QString &targetUser) = 0;
 
     virtual QString getLastUserThatWhisperedMe() const = 0;
     virtual void setLastUserThatWhisperedMe(const QString &user) = 0;
@@ -164,6 +165,7 @@ public:
     ChannelPtr getLiveChannel() const override;
     ChannelPtr getAutomodChannel() const override;
     ChannelPtr getFirehoseChannel() const override;
+    ChannelPtr getStalkChannel(const QString &targetUser) override;
 
     QString getLastUserThatWhisperedMe() const override;
     void setLastUserThatWhisperedMe(const QString &user) override;
@@ -204,6 +206,7 @@ private:
 
     QMap<QString, std::weak_ptr<Channel>> channels;
     QMap<QString, std::weak_ptr<Channel>> anonymousChannels;
+    QMap<QString, std::weak_ptr<Channel>> stalkChannels_;
     std::mutex channelMutex;
 
     QObjectPtr<IrcConnection> writeConnection_ = nullptr;

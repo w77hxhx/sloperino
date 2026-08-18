@@ -14,6 +14,7 @@
 #include "providers/bttv/liveupdates/BttvLiveUpdateMessages.hpp"
 #include "providers/ffz/FfzEmotes.hpp"
 #include "providers/firehose/FirehoseManager.hpp"
+#include "providers/firehose/StalkChannel.hpp"
 #include "providers/irc/IrcConnection2.hpp"
 #include "providers/moltorino/MoltorinoSupporterBadges.hpp"
 #include "providers/seventv/eventapi/Dispatch.hpp"
@@ -1187,6 +1188,43 @@ ChannelPtr TwitchIrcServer::getFirehoseChannel() const
         }
     }
     return Channel::getEmpty();
+}
+
+ChannelPtr TwitchIrcServer::getStalkChannel(const QString &targetUser)
+{
+    QString cleaned = targetUser.trimmed().toLower();
+    if (cleaned.startsWith(QStringLiteral("/stalk/")))
+    {
+        cleaned = cleaned.mid(7);
+    }
+    if (cleaned.isEmpty())
+    {
+        return Channel::getEmpty();
+    }
+
+    std::lock_guard<std::mutex> lock(this->channelMutex);
+
+    auto it = this->stalkChannels_.find(cleaned);
+    if (it != this->stalkChannels_.end())
+    {
+        if (auto existing = it->lock())
+        {
+            return existing;
+        }
+    }
+
+    auto stalkChan = std::make_shared<StalkChannel>(cleaned);
+    this->stalkChannels_[cleaned] = stalkChan;
+
+    if (auto *app = tryGetApp())
+    {
+        if (auto *fh = app->getFirehose())
+        {
+            fh->registerStalkChannel(stalkChan);
+        }
+    }
+
+    return stalkChan;
 }
 
 QString TwitchIrcServer::getLastUserThatWhisperedMe() const

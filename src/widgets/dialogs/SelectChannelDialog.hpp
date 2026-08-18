@@ -95,6 +95,10 @@ private:
         detail::AutoCheckedRadioButton *firehose;
         QLabel *firehoseLabel;
 
+        detail::AutoCheckedRadioButton *stalk;
+        QLabel *stalkLabel;
+        QLineEdit *stalkName;
+
         QLineEdit *kickName;
 
         QLineEdit *youtubeName;

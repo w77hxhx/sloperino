@@ -8,6 +8,7 @@
 #include "common/QLogging.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
+#include "providers/firehose/StalkChannel.hpp"
 #include "providers/twitch/IrcMessageHandler.hpp"
 #include "providers/twitch/TwitchHelpers.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
@@ -39,8 +40,8 @@ public:
     {
         QMetaObject::invokeMethod(
             this->mgr_,
-            [mgr = this->mgr_] {
-                // Endpoint connected
+            [mgr = this->mgr_, idx = this->index_] {
+                mgr->onEndpointConnected(idx);
             },
             Qt::QueuedConnection);
     }
@@ -219,7 +220,18 @@ void FirehoseManager::connectEndpoint(size_t index)
     auto listener = std::make_unique<FirehoseWsListener>(this, index);
     ep.handle =
         this->wsPool_.createSocket(std::move(options), std::move(listener));
+}
+
+void FirehoseManager::onEndpointConnected(size_t index)
+{
+    if (index >= this->endpoints_.size())
+    {
+        return;
+    }
+
+    auto &ep = this->endpoints_[index];
     ep.isConnected = true;
+    ep.reconnectBackoffMs = 2000;
 }
 
 void FirehoseManager::disconnectEndpoint(size_t index)
@@ -270,7 +282,34 @@ void FirehoseManager::onRawMessageReceived(QByteArray data)
     }
 
     std::lock_guard<std::mutex> lock(this->queueMutex_);
-    this->rawQueue_.emplace_back(std::move(data));
+
+    if (data.contains('\n'))
+    {
+        int start = 0;
+        int size = data.size();
+        while (start < size)
+        {
+            int next = data.indexOf('\n', start);
+            if (next == -1)
+            {
+                next = size;
+            }
+            int len = next - start;
+            if (len > 0 && data[start + len - 1] == '\r')
+            {
+                len--;
+            }
+            if (len > 0)
+            {
+                this->rawQueue_.emplace_back(data.mid(start, len));
+            }
+            start = next + 1;
+        }
+    }
+    else
+    {
+        this->rawQueue_.emplace_back(std::move(data));
+    }
 }
 
 static inline uint64_t hashBytes64(const char *data, size_t len) noexcept
@@ -407,6 +446,32 @@ void FirehoseManager::processBatch()
             }
         }
 
+        // Route message to active stalk channels matching target username
+        if (!this->stalkChannels_.empty())
+        {
+            for (auto it = this->stalkChannels_.begin();
+                 it != this->stalkChannels_.end();)
+            {
+                if (auto stalk = it->lock())
+                {
+                    const auto &target = stalk->targetUser();
+                    if (!target.isEmpty() &&
+                        (msg->loginName.compare(target, Qt::CaseInsensitive) ==
+                             0 ||
+                         msg->displayName.compare(target,
+                                                  Qt::CaseInsensitive) == 0))
+                    {
+                        stalk->addMessage(msg, MessageContext::Original);
+                    }
+                    ++it;
+                }
+                else
+                {
+                    it = this->stalkChannels_.erase(it);
+                }
+            }
+        }
+
         parsedMessages.emplace_back(std::move(msg));
         this->messagesThisSecond_++;
     }
@@ -414,6 +479,55 @@ void FirehoseManager::processBatch()
     if (!parsedMessages.empty())
     {
         this->channel_->addMessagesBatch(parsedMessages);
+    }
+}
+
+void FirehoseManager::registerStalkChannel(
+    const std::shared_ptr<StalkChannel> &channel)
+{
+    if (!channel)
+    {
+        return;
+    }
+
+    for (const auto &w : this->stalkChannels_)
+    {
+        if (auto locked = w.lock())
+        {
+            if (locked == channel)
+            {
+                return;
+            }
+        }
+    }
+
+    this->stalkChannels_.push_back(channel);
+}
+
+void FirehoseManager::unregisterStalkChannel(
+    const std::shared_ptr<StalkChannel> &channel)
+{
+    if (!channel)
+    {
+        return;
+    }
+
+    for (auto it = this->stalkChannels_.begin();
+         it != this->stalkChannels_.end();)
+    {
+        if (auto locked = it->lock())
+        {
+            if (locked == channel)
+            {
+                it = this->stalkChannels_.erase(it);
+                return;
+            }
+            ++it;
+        }
+        else
+        {
+            it = this->stalkChannels_.erase(it);
+        }
     }
 }
 

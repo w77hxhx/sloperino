@@ -29,6 +29,7 @@ namespace chatterino {
 class Channel;
 using ChannelPtr = std::shared_ptr<Channel>;
 class FirehoseWsListener;
+class StalkChannel;
 
 class FirehoseManager final : public QObject
 {
@@ -45,6 +46,9 @@ public:
     void initialize();
     void reconnectAll();
 
+    void registerStalkChannel(const std::shared_ptr<StalkChannel> &channel);
+    void unregisterStalkChannel(const std::shared_ptr<StalkChannel> &channel);
+
 private:
     struct Endpoint {
         QString name;
@@ -60,6 +64,7 @@ private:
     void connectEndpoint(size_t index);
     void disconnectEndpoint(size_t index);
     void scheduleReconnect(size_t index);
+    void onEndpointConnected(size_t index);
 
     void onRawMessageReceived(QByteArray data);
     void processBatch();
@@ -92,6 +97,7 @@ private:
     int currentMsgPerSecond_{0};
 
     QHash<QString, std::shared_ptr<Channel>> fallbackChannels_;
+    std::vector<std::weak_ptr<StalkChannel>> stalkChannels_;
 
     pajlada::Signals::SignalHolder signalHolder_;
 };

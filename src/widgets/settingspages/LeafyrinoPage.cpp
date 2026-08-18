@@ -188,9 +188,6 @@ void LeafyrinoPage::initLayout(GeneralPageView &layout)
     layout.addTitle("Badges");
     layout.addDescription("Toggle custom and third-party badges.");
 
-    SettingWidget::checkbox("Show Sloperino badges", s.showSloperinoBadges)
-        ->addKeywords({"badges", "sloperino"})
-        ->addTo(layout);
     SettingWidget::checkbox("Show Folhinha badges", s.showBadgesFolhinha)
         ->addKeywords({"badges", "folhinha"})
         ->addTo(layout);
