@@ -246,7 +246,7 @@ public:
         tagLayout->setContentsMargins(0, 0, 0, 0);
 
         auto *roleLabel = new QLabel(getRoleBadgeText(role), this);
-        roleLabel->setObjectName("RoleCardBadge");
+        roleLabel->setObjectName(QStringLiteral("RoleCardBadge_%1").arg(role));
         tagLayout->addWidget(roleLabel);
 
         if (item.isPartner)
@@ -692,30 +692,43 @@ void UserRolesDialog::updateTabCounters()
         return;
     }
 
+    auto formatCount = [this](const QString &roleKey, int total) -> QString {
+        if (this->activeRole_ == roleKey && this->itemsLoaded_)
+        {
+            return QStringLiteral("%1/%2").arg(this->items_.size()).arg(total);
+        }
+        return QString::number(total);
+    };
+
     if (this->moderatorsTab_)
     {
         this->moderatorsTab_->setText(
-            QStringLiteral("Mods (%1)").arg(this->summary_.moderators));
+            QStringLiteral("Mods (%1)")
+                .arg(formatCount("moderators", this->summary_.moderators)));
     }
     if (this->vipsTab_)
     {
         this->vipsTab_->setText(
-            QStringLiteral("VIPs (%1)").arg(this->summary_.vips));
+            QStringLiteral("VIPs (%1)")
+                .arg(formatCount("vips", this->summary_.vips)));
     }
     if (this->artistsTab_)
     {
         this->artistsTab_->setText(
-            QStringLiteral("Artists (%1)").arg(this->summary_.artists));
+            QStringLiteral("Artists (%1)")
+                .arg(formatCount("artists", this->summary_.artists)));
     }
     if (this->foundersTab_)
     {
         this->foundersTab_->setText(
-            QStringLiteral("Founders (%1)").arg(this->summary_.founders));
+            QStringLiteral("Founders (%1)")
+                .arg(formatCount("founders", this->summary_.founders)));
     }
     if (this->subscribersTab_)
     {
         this->subscribersTab_->setText(
-            QStringLiteral("Subs (%1)").arg(this->summary_.subscribers));
+            QStringLiteral("Subs (%1)")
+                .arg(formatCount("subscribers", this->summary_.subscribers)));
     }
 }
 
@@ -780,7 +793,19 @@ void UserRolesDialog::loadRoles(bool force)
             self->hasNextPage_ =
                 !result.cursor.isEmpty() && result.page < result.pages;
 
+            self->updateTabCounters();
             self->rebuildContent();
+
+            // Auto-paginate remaining items in background
+            if (self->hasNextPage_ && !self->nextCursor_.isEmpty())
+            {
+                QTimer::singleShot(60, self, [self] {
+                    if (self && !self->itemsLoading_ && self->hasNextPage_)
+                    {
+                        self->loadNextPage();
+                    }
+                });
+            }
         },
         [self, mode, role, login](const QString &error) {
             if (!self || self->activeMode_ != mode ||
@@ -830,7 +855,19 @@ void UserRolesDialog::loadNextPage()
                 self->items_.push_back(item);
             }
 
+            self->updateTabCounters();
             self->rebuildContent();
+
+            // Continue auto-pagination if more pages exist
+            if (self->hasNextPage_ && !self->nextCursor_.isEmpty())
+            {
+                QTimer::singleShot(60, self, [self] {
+                    if (self && !self->itemsLoading_ && self->hasNextPage_)
+                    {
+                        self->loadNextPage();
+                    }
+                });
+            }
         },
         [self, mode, role, login](const QString &error) {
             if (!self || self->activeMode_ != mode ||
@@ -966,7 +1003,7 @@ void UserRolesDialog::refreshStyle()
     const auto *theme = this->theme;
     auto textColor = theme->window.text;
     auto mutedColor = textColor;
-    mutedColor.setAlpha(160);
+    mutedColor.setAlpha(theme->isLightTheme() ? 190 : 215);
     const auto bg = theme->window.background.name();
     const auto text = textColor.name(QColor::HexArgb);
     const auto border = theme->splits.header.border.name();
@@ -1093,19 +1130,40 @@ void UserRolesDialog::refreshStyle()
             color: %4;
             font-size: 11px;
         }
-        QLabel#RoleCardBadge {
-            color: %13;
-            font-weight: 600;
+        QLabel#RoleCardBadge,
+        QLabel#RoleCardBadge_moderators {
+            color: #22c55e;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        QLabel#RoleCardBadge_vips {
+            color: #e005b9;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        QLabel#RoleCardBadge_artists {
+            color: #f59e0b;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        QLabel#RoleCardBadge_founders {
+            color: #eab308;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        QLabel#RoleCardBadge_subscribers {
+            color: #818cf8;
+            font-weight: 700;
             font-size: 11px;
         }
         QLabel#RoleCardPartner {
             color: #bf94ff;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 11px;
         }
         QLabel#RoleCardAffiliate {
             color: #00e6cb;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 11px;
         }
     )")

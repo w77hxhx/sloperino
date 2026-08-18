@@ -12,6 +12,7 @@
 #include "common/StreamerModeSetting.hpp"
 #include "common/ThumbnailPreviewMode.hpp"
 #include "common/TimeoutStackStyle.hpp"
+#include "controllers/aliases/EmoteAlias.hpp"
 #include "controllers/filters/FilterRecord.hpp"
 #include "controllers/highlights/HighlightBadge.hpp"
 #include "controllers/highlights/HighlightBlacklistUser.hpp"
@@ -1311,6 +1312,8 @@ private:
     ChatterinoSetting<std::vector<FilterRecordPtr>> filterRecordsSetting = {
         "/filtering/filters"};
     ChatterinoSetting<std::vector<Nickname>> nicknamesSetting = {"/nicknames"};
+    ChatterinoSetting<std::vector<EmoteAlias>> customEmoteAliasesSetting = {
+        "/sloperino/emoteAliases"};
     ChatterinoSetting<std::vector<ModerationAction>> moderationActionsSetting =
         {"/moderation/actions"};
     ChatterinoSetting<std::vector<ChannelLog>> loggedChannelsSetting = {
@@ -1333,6 +1336,7 @@ public:
     SignalVector<IgnorePhrase> ignoredMessages;
     SignalVector<FilterRecordPtr> filterRecords;
     SignalVector<Nickname> nicknames;
+    SignalVector<EmoteAlias> customEmoteAliases;
     SignalVector<ModerationAction> moderationActions;
     SignalVector<ChannelLog> loggedChannels;
 

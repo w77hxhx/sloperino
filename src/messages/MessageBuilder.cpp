@@ -9,6 +9,7 @@
 #include "common/Literals.hpp"
 #include "common/QLogging.hpp"
 #include "controllers/accounts/AccountController.hpp"
+#include "controllers/aliases/EmoteAliasController.hpp"
 #include "controllers/emotes/EmoteController.hpp"
 #include "controllers/highlights/HighlightController.hpp"
 #include "controllers/highlights/HighlightResult.hpp"
@@ -710,6 +711,11 @@ EmotePtr makeSharedChatBadge(const QString &sourceName,
 EmotePtr parseEmote(TwitchChannel *twitchChannel, const QString &userID,
                     const EmoteName &name)
 {
+    if (auto aliasEmote = EmoteAliasController::findAliasEmote(name.string))
+    {
+        return *aliasEmote;
+    }
+
     // Emote order:
     //  - 7TV Personal Emotes
     //  - FrankerFaceZ Channel

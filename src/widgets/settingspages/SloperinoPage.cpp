@@ -4,13 +4,18 @@
 
 #include "widgets/settingspages/SloperinoPage.hpp"
 
+#include "controllers/aliases/EmoteAlias.hpp"
+#include "controllers/aliases/EmoteAliasesModel.hpp"
 #include "singletons/Settings.hpp"
 #include "widgets/BaseWidget.hpp"
+#include "widgets/helper/EditableModelView.hpp"
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QHeaderView>
+#include <QTableView>
 #include <QVBoxLayout>
 
 namespace chatterino {
@@ -147,6 +152,32 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
             "Send chat messages with a randomized client-nonce (simulating "
             "Web, iOS, and Android clients on Twitch).")
         ->addTo(layout);
+
+    // 4. Aliases Category
+    layout.addTitle("Aliases");
+    layout.addDescription("Replace specific words in chat with custom 7TV, "
+                          "BTTV, FFZ, or direct CDN emote links.");
+
+    auto *aliasesModel =
+        (new EmoteAliasesModel(nullptr))->initialized(&s.customEmoteAliases);
+    auto *aliasesView =
+        layout.emplace<EditableModelView>(aliasesModel, true).getElement();
+    aliasesView->setTitles(
+        {"Word", "Link (7TV / BTTV / FFZ / CDN)", "Case-sensitive"});
+    aliasesView->getTableView()->horizontalHeader()->setSectionResizeMode(
+        QHeaderView::Fixed);
+    aliasesView->getTableView()->horizontalHeader()->setSectionResizeMode(
+        0, QHeaderView::Interactive);
+    aliasesView->getTableView()->horizontalHeader()->setSectionResizeMode(
+        1, QHeaderView::Stretch);
+    aliasesView->getTableView()->setColumnWidth(0, 160);
+    aliasesView->getTableView()->setMinimumHeight(180);
+
+    std::ignore = aliasesView->addButtonPressed.connect([] {
+        getSettings()->customEmoteAliases.append(EmoteAlias{
+            "Привет", "https://7tv.app/emotes/01H3YN7XBG000BH97SCKY1D88B",
+            false});
+    });
 
     layout.addStretch();
 

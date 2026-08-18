@@ -499,6 +499,16 @@ void FirehoseManager::processBatch()
             }
         }
 
+        // Route message to global /mentions channel if highlighted & showInMentions
+        if (msg->flags.has(MessageFlag::Highlighted) &&
+            msg->flags.has(MessageFlag::ShowInMentions))
+        {
+            if (auto mentions = getApp()->getTwitch()->getMentionsChannel())
+            {
+                mentions->addMessage(msg, MessageContext::Original);
+            }
+        }
+
         parsedMessages.emplace_back(std::move(msg));
     }
 
@@ -650,6 +660,11 @@ MessagePtr FirehoseManager::parseIrcLine(const QByteArray &data,
 
     auto [builtMsg, alert] = MessageBuilder::makeIrcMessage(
         targetChannel, privMsg, args, content, messageOffset);
+
+    if (builtMsg)
+    {
+        MessageBuilder::triggerHighlights(targetChannel, builtMsg, alert);
+    }
 
     delete ircMsg;
 

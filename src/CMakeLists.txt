@@ -261,6 +261,13 @@ set(SOURCE_FILES
         controllers/nicknames/NicknamesModel.hpp
         controllers/nicknames/Nickname.hpp
 
+        controllers/aliases/EmoteAlias.cpp
+        controllers/aliases/EmoteAlias.hpp
+        controllers/aliases/EmoteAliasesModel.cpp
+        controllers/aliases/EmoteAliasesModel.hpp
+        controllers/aliases/EmoteAliasController.cpp
+        controllers/aliases/EmoteAliasController.hpp
+
         controllers/notifications/NotificationController.cpp
         controllers/notifications/NotificationController.hpp
         controllers/notifications/NotificationModel.cpp

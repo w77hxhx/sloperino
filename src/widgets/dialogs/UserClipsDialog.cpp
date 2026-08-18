@@ -941,7 +941,7 @@ void UserClipsDialog::refreshStyle()
     const auto *theme = this->theme;
     auto textColor = theme->window.text;
     auto mutedColor = textColor;
-    mutedColor.setAlpha(160);
+    mutedColor.setAlpha(theme->isLightTheme() ? 190 : 215);
     const auto bg = theme->window.background.name();
     const auto text = textColor.name(QColor::HexArgb);
     const auto border = theme->splits.header.border.name();
@@ -960,6 +960,9 @@ void UserClipsDialog::refreshStyle()
         theme->isLightTheme()
             ? theme->splits.header.background.darker(105).name()
             : theme->splits.header.background.lighter(125).name();
+    const auto categoryColor = theme->isLightTheme()
+                                   ? QStringLiteral("#772ce8")
+                                   : QStringLiteral("#bf94ff");
 
     const bool isBroadcaster =
         (this->activeRole_ == QStringLiteral("BROADCASTER"));
@@ -1066,9 +1069,9 @@ void UserClipsDialog::refreshStyle()
             font-size: 12px;
         }
         QLabel#ClipCardGame {
-            color: %13;
+            color: %18;
             font-size: 11px;
-            font-weight: 500;
+            font-weight: 600;
         }
         QLabel#ClipCardMeta {
             color: %4;
@@ -1079,14 +1082,14 @@ void UserClipsDialog::refreshStyle()
             font-size: 11px;
         }
     )")
-            .arg(bg, text, border, muted, inputBg, QString::number(radius),
-                 QString::number(inputPaddingX),
-                 QString::number(scrollbarWidth),
-                 QString::number(scrollbarRadius),
-                 QString::number(scrollbarMinHeight),
-                 QString::number(inputMinHeight), hoverBg, focusedBorder,
-                 cardBg, QString::number(cardRadius),
-                 QString::number(CLIP_CARD_PADDING), cardHoverBg));
+            .arg(
+                bg, text, border, muted, inputBg, QString::number(radius),
+                QString::number(inputPaddingX), QString::number(scrollbarWidth),
+                QString::number(scrollbarRadius),
+                QString::number(scrollbarMinHeight),
+                QString::number(inputMinHeight), hoverBg, focusedBorder, cardBg,
+                QString::number(cardRadius), QString::number(CLIP_CARD_PADDING),
+                cardHoverBg, categoryColor));
 }
 
 QString UserClipsDialog::authTokenOrMessage()

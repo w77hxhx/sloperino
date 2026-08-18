@@ -8,6 +8,7 @@
 #include "common/Args.hpp"
 #include "common/Modes.hpp"
 #include "common/QLogging.hpp"
+#include "controllers/aliases/EmoteAlias.hpp"
 #include "controllers/filters/FilterRecord.hpp"
 #include "controllers/highlights/HighlightBadge.hpp"
 #include "controllers/highlights/HighlightBlacklistUser.hpp"
@@ -495,6 +496,8 @@ Settings::Settings(const Modes &modes, const Args &args,
                            this->filterRecords);
     initializeSignalVector(this->signalHolder, this->nicknamesSetting,
                            this->nicknames);
+    initializeSignalVector(this->signalHolder, this->customEmoteAliasesSetting,
+                           this->customEmoteAliases);
     initializeSignalVector(this->signalHolder, this->moderationActionsSetting,
                            this->moderationActions);
     initializeSignalVector(this->signalHolder, this->loggedChannelsSetting,

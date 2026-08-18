@@ -22,9 +22,6 @@ Sloperino is a feature-rich, high-performance fork of **Chatterino 2**, combinin
   - **Stalk Channels**: Track any Twitch user's chat messages across all public channels in real-time.
   - **Velocity Metrics**: Built-in Messages-Per-Second (MPS) tracking and real-time buffer statistics.
 
-- 🎨 **7TV & Emote Enhancements**:
-  - **4x Emote Scaling**: High-resolution rendering for 7TV, FFZ, and BTTV emotes.
-
 - ⚙️ **Usercard & Chat Customization**:
   - **Customizable Buttons**: Toggle `clips`, `roles`, `badges`, and `7TV` buttons in settings.
 
@@ -46,11 +43,7 @@ Sloperino is a feature-rich, high-performance fork of **Chatterino 2**, combinin
 
 ![Firehose and Stalk](https://github.com/w77hxhx/sloperino/raw/sloperino/screenshots/firehose_stalk.png)
 
-#### 4. Usercard with 7TV Paints & Custom Actions
-
-![Usercard](https://github.com/w77hxhx/sloperino/raw/sloperino/screenshots/usercard.png)
-
-#### 5. Sloperino Settings Page
+#### 4. Sloperino Settings Page
 
 ![Sloperino Settings](https://github.com/w77hxhx/sloperino/raw/sloperino/screenshots/settings_sloperino.png)
 
