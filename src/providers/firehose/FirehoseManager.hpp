@@ -126,6 +126,23 @@ public:
     bool isNeeded() const;
     void checkConnectionState();
 
+    // Returns a snapshot of connection status for each endpoint (UI use)
+    QVector<EndpointStatusInfo> getEndpointStatuses() const;
+
+    enum class EndpointStatus {
+        Disabled,
+        Connecting,
+        Connected,
+        Reconnecting,
+    };
+
+    struct EndpointStatusInfo {
+        QString name;
+        QUrl url;
+        EndpointStatus status;
+        bool enabled;
+    };
+
 private:
     struct Endpoint {
         QString name;
@@ -135,13 +152,17 @@ private:
         bool isConnected{false};
         int reconnectBackoffMs{2000};
         std::unique_ptr<QTimer> reconnectTimer;
+        // Generation counter: incremented on each disconnect so stale
+        // WebSocketListener callbacks from the previous socket are ignored.
+        std::atomic<uint32_t> epoch{0};
+        EndpointStatus status{EndpointStatus::Disabled};
     };
 
     void initEndpoints();
     void connectEndpoint(size_t index);
     void disconnectEndpoint(size_t index);
-    void scheduleReconnect(size_t index);
-    void onEndpointConnected(size_t index);
+    void scheduleReconnect(size_t index, uint32_t epoch);
+    void onEndpointConnected(size_t index, uint32_t epoch);
 
     void onRawDataReceivedFromWorker(const char *ptr, size_t len);
     void processBatch();

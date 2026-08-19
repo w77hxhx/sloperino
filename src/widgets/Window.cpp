@@ -18,6 +18,7 @@
 #include "singletons/WindowManager.hpp"
 #include "util/RapidJsonSerializeQSize.hpp"
 #include "widgets/AccountSwitchPopup.hpp"
+#include "widgets/buttons/InitUpdateButton.hpp"
 // #include "widgets/buttons/InitMoltorinoUpdateButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/PixmapButton.hpp"
@@ -230,9 +231,9 @@ void Window::addCustomTitlebarButtons()
         },
         TitleBarButtonStyle::Settings);
 
-    // auto *update = this->addTitleBarButton<PixmapButton>([] {});
-    //
-    // initMoltorinoUpdateButton(*update, [] {}, this->signalHolder_);
+    auto *update = this->addTitleBarButton<PixmapButton>([] {});
+
+    initUpdateButton(*update, [] {}, this->signalHolder_);
 
     this->userLabel_ = this->addTitleBarLabel([this] {
         getApp()->getWindows()->showAccountSelectPopup(

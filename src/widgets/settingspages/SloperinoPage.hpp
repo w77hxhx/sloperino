@@ -6,6 +6,10 @@
 
 #include "widgets/settingspages/SettingsPage.hpp"
 
+#include <QLabel>
+#include <QTimer>
+#include <QVector>
+
 namespace chatterino {
 
 class GeneralPageView;
@@ -21,8 +25,13 @@ public:
 
 private:
     void initLayout(GeneralPageView &layout);
+    void refreshEndpointStatuses();
 
     GeneralPageView *view_{};
+
+    // Live endpoint status labels (one per firehose endpoint)
+    QVector<QLabel *> endpointStatusLabels_;
+    QTimer *statusRefreshTimer_{nullptr};
 };
 
 }  // namespace chatterino

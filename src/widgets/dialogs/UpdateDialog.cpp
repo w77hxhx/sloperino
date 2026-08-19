@@ -31,16 +31,7 @@ UpdateDialog::UpdateDialog()
 
     auto buttons = layout.emplace<QDialogButtonBox>();
 
-    const auto *installText = [] {
-        if (Version::instance().isNightly())
-        {
-            return "Yes";
-        }
-
-        return "Install";
-    }();
-    auto *install =
-        buttons->addButton(installText, QDialogButtonBox::AcceptRole);
+    auto *install = buttons->addButton("Install", QDialogButtonBox::AcceptRole);
     this->ui_.installButton = install;
     auto *dismiss = buttons->addButton("Dismiss", QDialogButtonBox::RejectRole);
 

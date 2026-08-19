@@ -4,18 +4,23 @@
 
 #include "widgets/settingspages/SloperinoPage.hpp"
 
+#include "Application.hpp"
 #include "controllers/aliases/EmoteAlias.hpp"
 #include "controllers/aliases/EmoteAliasesModel.hpp"
+#include "providers/firehose/FirehoseManager.hpp"
 #include "singletons/Settings.hpp"
 #include "widgets/BaseWidget.hpp"
 #include "widgets/helper/EditableModelView.hpp"
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
+#include <QCheckBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QLabel>
 #include <QTableView>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace chatterino {
@@ -105,40 +110,64 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
     layout.addDescription(
         "Select active public Twitch chat firehose data sources:");
 
-    SettingWidget::checkbox("wss://logs.spanix.team/firehose",
-                            s.firehoseEnableSpanix)
-        ->addKeywords({"spanix", "firehose", "logs"})
-        ->setTooltip("Enable or disable the Spanix firehose WebSocket feed.")
-        ->addTo(layout);
+    // Build a per-endpoint row: [checkbox][url label][status badge]
+    struct EndpointRow {
+        BoolSetting *setting;
+        QString label;
+    };
+    auto &s2 = s;
+    const std::vector<EndpointRow> rows = {
+        {&s2.firehoseEnableSpanix, "wss://logs.spanix.team/firehose"},
+        {&s2.firehoseEnableSupa, "wss://logs.supa.codes/firehose"},
+        {&s2.firehoseEnableSusgee, "wss://logs.susgee.dev/firehose"},
+        {&s2.firehoseEnableNadeko, "wss://logs.nadeko.net/firehose"},
+        {&s2.firehoseEnableLogxx, "wss://logxx.dev/firehose"},
+        {&s2.firehoseEnableCatquery, "wss://firehose.catquery.com"},
+    };
 
-    SettingWidget::checkbox("wss://logs.supa.codes/firehose",
-                            s.firehoseEnableSupa)
-        ->addKeywords({"supa", "firehose", "logs"})
-        ->setTooltip("Enable or disable the Supa firehose WebSocket feed.")
-        ->addTo(layout);
+    this->endpointStatusLabels_.clear();
+    for (const auto &row : rows)
+    {
+        // Container widget for the row
+        auto *rowWidget = new QWidget;
+        auto *rowLayout = new QHBoxLayout(rowWidget);
+        rowLayout->setContentsMargins(0, 0, 0, 0);
+        rowLayout->setSpacing(6);
 
-    SettingWidget::checkbox("wss://logs.susgee.dev/firehose",
-                            s.firehoseEnableSusgee)
-        ->addKeywords({"susgee", "firehose", "logs"})
-        ->setTooltip("Enable or disable the Susgee firehose WebSocket feed.")
-        ->addTo(layout);
+        // Status badge label (updated by timer)
+        auto *badge = new QLabel("●");
+        badge->setFixedWidth(14);
+        badge->setStyleSheet("color: #666; font-size: 10px;");
+        rowLayout->addWidget(badge);
+        this->endpointStatusLabels_.push_back(badge);
 
-    SettingWidget::checkbox("wss://logs.nadeko.net/firehose",
-                            s.firehoseEnableNadeko)
-        ->addKeywords({"nadeko", "firehose", "logs"})
-        ->setTooltip("Enable or disable the Nadeko firehose WebSocket feed.")
-        ->addTo(layout);
+        // URL label
+        auto *urlLabel = new QLabel(row.label);
+        urlLabel->setStyleSheet("font-family: monospace; font-size: 12px;");
+        rowLayout->addWidget(urlLabel, 1);
 
-    SettingWidget::checkbox("wss://logxx.dev/firehose", s.firehoseEnableLogxx)
-        ->addKeywords({"logxx", "firehose", "logs"})
-        ->setTooltip("Enable or disable the Logxx firehose WebSocket feed.")
-        ->addTo(layout);
+        // Enabled checkbox
+        auto *cb = new QCheckBox;
+        cb->setChecked(row.setting->getValue());
+        QObject::connect(cb, &QCheckBox::toggled,
+                         [setting = row.setting](bool v) {
+                             setting->setValue(v);
+                         });
+        // React to external setting changes
+        QObject::connect(cb, &QCheckBox::destroyed, [] {});
+        rowLayout->addWidget(cb);
 
-    SettingWidget::checkbox("wss://firehose.catquery.com",
-                            s.firehoseEnableCatquery)
-        ->addKeywords({"catquery", "firehose", "logs"})
-        ->setTooltip("Enable or disable the Catquery firehose WebSocket feed.")
-        ->addTo(layout);
+        layout.addWidget(rowWidget);
+    }
+
+    // Refresh status every 1 second
+    this->statusRefreshTimer_ = new QTimer(this);
+    this->statusRefreshTimer_->setInterval(1000);
+    QObject::connect(this->statusRefreshTimer_, &QTimer::timeout, this,
+                     &SloperinoPage::refreshEndpointStatuses);
+    this->statusRefreshTimer_->start();
+    // Initial update
+    this->refreshEndpointStatuses();
 
     // 3. Fun Category
     layout.addTitle("Fun");
@@ -186,6 +215,48 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
     // Invisible element for width
     auto *inv = new BaseWidget(this);
     layout.addWidget(inv);
+}
+
+void SloperinoPage::refreshEndpointStatuses()
+{
+    using Status = FirehoseManager::EndpointStatus;
+
+    const auto *fh = getApp()->getFirehose();
+    if (!fh)
+    {
+        return;
+    }
+    const auto statuses = fh->getEndpointStatuses();
+    for (int i = 0;
+         i < statuses.size() && i < this->endpointStatusLabels_.size(); ++i)
+    {
+        auto *badge = this->endpointStatusLabels_[i];
+        const auto &info = statuses[i];
+
+        switch (info.status)
+        {
+            case Status::Connected:
+                badge->setStyleSheet(
+                    "color: #2ecc71; font-size: 10px;");  // green
+                badge->setToolTip("Connected");
+                break;
+            case Status::Connecting:
+                badge->setStyleSheet(
+                    "color: #f39c12; font-size: 10px;");  // orange
+                badge->setToolTip("Connecting...");
+                break;
+            case Status::Reconnecting:
+                badge->setStyleSheet(
+                    "color: #e67e22; font-size: 10px;");  // amber
+                badge->setToolTip(QStringLiteral("Reconnecting... (backoff)"));
+                break;
+            case Status::Disabled:
+            default:
+                badge->setStyleSheet("color: #555; font-size: 10px;");  // grey
+                badge->setToolTip(info.enabled ? "Disconnected" : "Disabled");
+                break;
+        }
+    }
 }
 
 }  // namespace chatterino

@@ -31,9 +31,10 @@ namespace chatterino {
 class FirehoseWsListener final : public WebSocketListener
 {
 public:
-    FirehoseWsListener(FirehoseManager *mgr, size_t index)
+    FirehoseWsListener(FirehoseManager *mgr, size_t index, uint32_t epoch)
         : mgr_(mgr)
         , index_(index)
+        , epoch_(epoch)
     {
     }
 
@@ -41,19 +42,30 @@ public:
     {
         QMetaObject::invokeMethod(
             this->mgr_,
-            [mgr = this->mgr_, idx = this->index_] {
-                mgr->onEndpointConnected(idx);
+            [mgr = this->mgr_, idx = this->index_, ep = this->epoch_] {
+                mgr->onEndpointConnected(idx, ep);
             },
             Qt::QueuedConnection);
     }
 
     void onTextMessage(QByteArray data) override
     {
+        // Guard against stale delivery after disconnectEndpoint()
+        if (this->mgr_->endpoints_[this->index_].epoch.load(
+                std::memory_order_relaxed) != this->epoch_)
+        {
+            return;
+        }
         this->mgr_->onRawDataReceivedFromWorker(data.constData(), data.size());
     }
 
     void onBinaryMessage(QByteArray data) override
     {
+        if (this->mgr_->endpoints_[this->index_].epoch.load(
+                std::memory_order_relaxed) != this->epoch_)
+        {
+            return;
+        }
         this->mgr_->onRawDataReceivedFromWorker(data.constData(), data.size());
     }
 
@@ -61,8 +73,8 @@ public:
     {
         QMetaObject::invokeMethod(
             this->mgr_,
-            [mgr = this->mgr_, idx = this->index_] {
-                mgr->scheduleReconnect(idx);
+            [mgr = this->mgr_, idx = this->index_, ep = this->epoch_] {
+                mgr->scheduleReconnect(idx, ep);
             },
             Qt::QueuedConnection);
     }
@@ -70,6 +82,7 @@ public:
 private:
     FirehoseManager *mgr_;
     size_t index_;
+    uint32_t epoch_;
 };
 
 FirehoseManager::FirehoseManager()
@@ -296,18 +309,23 @@ void FirehoseManager::connectEndpoint(size_t index)
     }
 
     ep.reconnectTimer->stop();
+    ep.status = EndpointStatus::Connecting;
+
+    // Capture the current epoch so this listener can detect future disconnects
+    uint32_t currentEpoch = ep.epoch.load(std::memory_order_relaxed);
 
     WebSocketOptions options{
         .url = ep.url,
         .headers = {},
     };
 
-    auto listener = std::make_unique<FirehoseWsListener>(this, index);
+    auto listener =
+        std::make_unique<FirehoseWsListener>(this, index, currentEpoch);
     ep.handle =
         this->wsPool_.createSocket(std::move(options), std::move(listener));
 }
 
-void FirehoseManager::onEndpointConnected(size_t index)
+void FirehoseManager::onEndpointConnected(size_t index, uint32_t epoch)
 {
     if (index >= this->endpoints_.size())
     {
@@ -315,7 +333,13 @@ void FirehoseManager::onEndpointConnected(size_t index)
     }
 
     auto &ep = this->endpoints_[index];
+    // Ignore if epoch has already advanced (race with disconnect)
+    if (ep.epoch.load(std::memory_order_relaxed) != epoch)
+    {
+        return;
+    }
     ep.isConnected = true;
+    ep.status = EndpointStatus::Connected;
     ep.reconnectBackoffMs = 2000;
 }
 
@@ -328,12 +352,16 @@ void FirehoseManager::disconnectEndpoint(size_t index)
 
     auto &ep = this->endpoints_[index];
     ep.reconnectTimer->stop();
+    // Advance epoch BEFORE closing the handle so that any in-flight callbacks
+    // from the old socket see a mismatched epoch and drop their data.
+    ep.epoch.fetch_add(1, std::memory_order_relaxed);
     ep.handle.close();
     ep.isConnected = false;
     ep.reconnectBackoffMs = 2000;
+    ep.status = EndpointStatus::Disabled;
 }
 
-void FirehoseManager::scheduleReconnect(size_t index)
+void FirehoseManager::scheduleReconnect(size_t index, uint32_t epoch)
 {
     if (index >= this->endpoints_.size())
     {
@@ -341,22 +369,48 @@ void FirehoseManager::scheduleReconnect(size_t index)
     }
 
     auto &ep = this->endpoints_[index];
+    // If the epoch has already advanced, a newer connect/disconnect cycle
+    // is in progress — don't schedule another reconnect.
+    if (ep.epoch.load(std::memory_order_relaxed) != epoch)
+    {
+        return;
+    }
     ep.isConnected = false;
 
     if (!getSettings()->firehoseAutoReconnect.getValue())
     {
+        ep.status = EndpointStatus::Disabled;
         return;
     }
 
     if (ep.enabledSetting && !ep.enabledSetting->getValue())
     {
+        ep.status = EndpointStatus::Disabled;
         return;
     }
 
+    ep.status = EndpointStatus::Reconnecting;
     int delay = ep.reconnectBackoffMs;
     ep.reconnectBackoffMs = std::min(ep.reconnectBackoffMs * 2, 15000);
 
     ep.reconnectTimer->start(delay);
+}
+
+QVector<FirehoseManager::EndpointStatusInfo>
+    FirehoseManager::getEndpointStatuses() const
+{
+    QVector<EndpointStatusInfo> result;
+    result.reserve(static_cast<int>(this->endpoints_.size()));
+    for (const auto &ep : this->endpoints_)
+    {
+        EndpointStatusInfo info;
+        info.name = ep.name;
+        info.url = ep.url;
+        info.status = ep.status;
+        info.enabled = ep.enabledSetting && ep.enabledSetting->getValue();
+        result.push_back(std::move(info));
+    }
+    return result;
 }
 
 static inline uint64_t hashBytes64(const char *data, size_t len) noexcept

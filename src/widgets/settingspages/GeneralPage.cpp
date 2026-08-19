@@ -17,6 +17,7 @@
 #include "singletons/Paths.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/Theme.hpp"
+#include "singletons/Updates.hpp"
 #include "util/FuzzyConvert.hpp"
 #include "util/Helpers.hpp"
 #include "util/IncognitoBrowser.hpp"
@@ -32,6 +33,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPalette>
+#include <QPushButton>
 #include <QSignalBlocker>
 
 namespace {
@@ -884,22 +886,28 @@ void GeneralPage::initLayout(GeneralPageView &layout)
         });
 
     layout.addNavigationSpacing();
-    layout.addTitle("Beta");
+    layout.addTitle("Updates");
     if (Version::instance().isSupportedOS())
     {
         layout.addDescription(
-            "You can receive updates earlier by ticking the box below. Report "
-            "issues <a href='https://chatterino.com/link/issues'>here</a>.");
+            QStringLiteral(
+                "Current version: <b>%1</b> (commit <a "
+                "href='https://github.com/w77hxhx/sloperino/commit/%2'>%2</a>)")
+                .arg(Version::instance().fullVersion(),
+                     Version::instance().commitHash()));
 
-        SettingWidget::checkbox("Receive beta updates", s.betaUpdates)
-            ->addTo(layout);
+        auto *checkUpdatesBtn = new QPushButton("Check for updates");
+        checkUpdatesBtn->setFixedWidth(160);
+        QObject::connect(checkUpdatesBtn, &QPushButton::clicked, [] {
+            getApp()->getUpdates().checkForUpdates(true);
+        });
+        layout.addWidget(checkUpdatesBtn);
     }
     else
     {
         layout.addDescription(
             "Your operating system is not officially supplied with builds. For "
-            "updates, please rebuild Chatterino from sources. Report "
-            "issues <a href='https://chatterino.com/link/issues'>here</a>.");
+            "updates, please rebuild Sloperino from sources.");
     }
 
     layout.addTitle("Browser Integration");

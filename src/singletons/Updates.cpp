@@ -194,10 +194,10 @@ void Updates::installUpdates()
     if (this->modes.isPortable)
     {
         QMessageBox *box =
-            new QMessageBox(QMessageBox::Information, "Chatterino Update",
-                            "Chatterino is downloading the update "
-                            "in the background and will run the "
-                            "updater once it is finished.");
+            new QMessageBox(QMessageBox::Information, "Sloperino Update",
+                            "Sloperino is downloading the portable update "
+                            "in the background...",
+                            QMessageBox::Ok, QApplication::activeWindow());
         box->setAttribute(Qt::WA_DeleteOnClose);
         box->show();
 
@@ -209,8 +209,9 @@ void Updates::installUpdates()
 
                 postToThread([] {
                     QMessageBox *box = new QMessageBox(
-                        QMessageBox::Information, "Chatterino Update",
-                        "Failed while trying to download the update.");
+                        QMessageBox::Warning, "Sloperino Update",
+                        "Failed while trying to download the update.",
+                        QMessageBox::Ok, QApplication::activeWindow());
                     box->setAttribute(Qt::WA_DeleteOnClose);
                     box->show();
                     box->raise();
@@ -220,10 +221,11 @@ void Updates::installUpdates()
                 if (result.status() != 200)
                 {
                     auto *box = new QMessageBox(
-                        QMessageBox::Information, "Chatterino Update",
+                        QMessageBox::Warning, "Sloperino Update",
                         QStringLiteral("The update couldn't be downloaded "
                                        "(Error: %1).")
-                            .arg(result.formatError()));
+                            .arg(result.formatError()),
+                        QMessageBox::Ok, QApplication::activeWindow());
                     box->setAttribute(Qt::WA_DeleteOnClose);
                     box->exec();
                     return;
@@ -245,26 +247,26 @@ void Updates::installUpdates()
                 if (file.write(object) == -1)
                 {
                     this->setStatus_(WriteFileFailed);
+                    file.close();
                     return;
                 }
                 file.flush();
                 file.close();
 
                 auto updaterPath = Updates::portableUpdaterPath(this->paths);
-                if (!QFile::exists(updaterPath))
+                if (QFile::exists(updaterPath))
                 {
-                    this->setStatus_(MissingPortableUpdater);
-                    return;
-                }
-                bool ok =
-                    QProcess::startDetached(updaterPath, {filename, "restart"});
-                if (!ok)
-                {
-                    this->setStatus_(RunUpdaterFailed);
-                    return;
+                    bool ok = QProcess::startDetached(updaterPath,
+                                                      {filename, "restart"});
+                    if (ok)
+                    {
+                        QApplication::quit();
+                        return;
+                    }
                 }
 
-                QApplication::exit(0);
+                QDesktopServices::openUrl(
+                    QUrl::fromLocalFile(this->paths.miscDirectory));
             })
             .execute();
         this->setStatus_(Downloading);
@@ -272,10 +274,11 @@ void Updates::installUpdates()
     else
     {
         QMessageBox *box =
-            new QMessageBox(QMessageBox::Information, "Chatterino Update",
-                            "Chatterino is downloading the update "
+            new QMessageBox(QMessageBox::Information, "Sloperino Update",
+                            "Sloperino is downloading the update "
                             "in the background and will run the "
-                            "updater once it is finished.");
+                            "installer once it is finished.",
+                            QMessageBox::Ok, QApplication::activeWindow());
         box->setAttribute(Qt::WA_DeleteOnClose);
         box->show();
 
@@ -285,21 +288,25 @@ void Updates::installUpdates()
             .onError([this](NetworkResult) {
                 this->setStatus_(DownloadFailed);
 
-                QMessageBox *box = new QMessageBox(
-                    QMessageBox::Information, "Chatterino Update",
-                    "Failed to download the update. \n\nTry manually "
-                    "downloading the update.");
-                box->setAttribute(Qt::WA_DeleteOnClose);
-                box->exec();
+                postToThread([] {
+                    QMessageBox *box = new QMessageBox(
+                        QMessageBox::Warning, "Sloperino Update",
+                        "Failed to download the update. \n\nTry manually "
+                        "downloading the update from GitHub releases.",
+                        QMessageBox::Ok, QApplication::activeWindow());
+                    box->setAttribute(Qt::WA_DeleteOnClose);
+                    box->exec();
+                });
             })
             .onSuccess([this](auto result) {
                 if (result.status() != 200)
                 {
                     auto *box = new QMessageBox(
-                        QMessageBox::Information, "Chatterino Update",
+                        QMessageBox::Warning, "Sloperino Update",
                         QStringLiteral("The update couldn't be downloaded "
                                        "(Error: %1).")
-                            .arg(result.formatError()));
+                            .arg(result.formatError()),
+                        QMessageBox::Ok, QApplication::activeWindow());
                     box->setAttribute(Qt::WA_DeleteOnClose);
                     box->exec();
                     return;
@@ -311,22 +318,30 @@ void Updates::installUpdates()
 
                 QFile file(filePath);
 
-                std::ignore =
-                    file.open(QIODevice::Truncate | QIODevice::WriteOnly);
+                if (!file.open(QIODevice::Truncate | QIODevice::WriteOnly))
+                {
+                    this->setStatus_(WriteFileFailed);
+                    QDesktopServices::openUrl(QUrl(this->updateExe_));
+                    return;
+                }
 
                 if (file.write(object) == -1)
                 {
                     this->setStatus_(WriteFileFailed);
-                    QMessageBox *box = new QMessageBox(
-                        QMessageBox::Information, "Chatterino Update",
-                        "Failed to save the update file. This could be due to "
-                        "window settings or antivirus software.\n\nTry "
-                        "manually "
-                        "downloading the update.");
-                    box->setAttribute(Qt::WA_DeleteOnClose);
-                    box->exec();
+                    file.close();
+                    postToThread([this] {
+                        QMessageBox *box = new QMessageBox(
+                            QMessageBox::Warning, "Sloperino Update",
+                            "Failed to save the update file. This could be due "
+                            "to "
+                            "window settings or antivirus software.\n\nTry "
+                            "manually downloading the update.",
+                            QMessageBox::Ok, QApplication::activeWindow());
+                        box->setAttribute(Qt::WA_DeleteOnClose);
+                        box->exec();
 
-                    QDesktopServices::openUrl(this->updateExe_);
+                        QDesktopServices::openUrl(QUrl(this->updateExe_));
+                    });
                     return;
                 }
                 file.flush();
@@ -334,21 +349,23 @@ void Updates::installUpdates()
 
                 if (QProcess::startDetached(filePath, {}))
                 {
-                    QApplication::exit(0);
+                    QApplication::quit();
                 }
                 else
                 {
-                    QMessageBox *box = new QMessageBox(
-                        QMessageBox::Information, "Chatterino Update",
-                        "Failed to execute update binary. This could be due to "
-                        "window "
-                        "settings or antivirus software.\n\nTry manually "
-                        "downloading "
-                        "the update.");
-                    box->setAttribute(Qt::WA_DeleteOnClose);
-                    box->exec();
+                    this->setStatus_(RunUpdaterFailed);
+                    postToThread([this] {
+                        QMessageBox *box = new QMessageBox(
+                            QMessageBox::Warning, "Sloperino Update",
+                            "Failed to execute update installer. \n\nTry "
+                            "manually "
+                            "downloading the update.",
+                            QMessageBox::Ok, QApplication::activeWindow());
+                        box->setAttribute(Qt::WA_DeleteOnClose);
+                        box->exec();
 
-                    QDesktopServices::openUrl(this->updateExe_);
+                        QDesktopServices::openUrl(QUrl(this->updateExe_));
+                    });
                 }
             })
             .execute();
@@ -384,7 +401,6 @@ void Updates::checkForUpdates(bool promptUser)
         }
 
         QString tagName = object["tag_name"].toString();
-        QString publishedAt = object["published_at"].toString();
         QJsonArray assets = object["assets"].toArray();
 
         QString cleanVersion = tagName;
@@ -445,8 +461,47 @@ void Updates::checkForUpdates(bool promptUser)
 
         if (tagName == QStringLiteral("nightly-build"))
         {
-            this->onlineVersion_ = QStringLiteral("nightly-build");
-            this->setStatus_(UpdateAvailable);
+            NetworkRequest(
+                QStringLiteral("https://api.github.com/repos/w77hxhx/"
+                               "sloperino/git/ref/tags/nightly-build"))
+                .timeout(15000)
+                .followRedirects(true)
+                .header("User-Agent", "Sloperino-App")
+                .onSuccess([this](const NetworkResult &res) {
+                    const auto obj = res.parseJson();
+                    QString commitSha =
+                        obj["object"].toObject()["sha"].toString();
+
+                    auto currentCommit = Version::instance().commitHash();
+                    if (!commitSha.isEmpty())
+                    {
+                        QString shortSha = commitSha.left(8);
+                        this->onlineVersion_ =
+                            QStringLiteral("Nightly (%1)").arg(shortSha);
+
+                        if (!currentCommit.isEmpty() &&
+                            commitSha.startsWith(currentCommit,
+                                                 Qt::CaseInsensitive))
+                        {
+                            this->setStatus_(NoUpdateAvailable);
+                        }
+                        else
+                        {
+                            this->setStatus_(UpdateAvailable);
+                        }
+                    }
+                    else
+                    {
+                        this->onlineVersion_ = QStringLiteral("Nightly");
+                        this->setStatus_(UpdateAvailable);
+                    }
+                })
+                .onError([this](NetworkResult) {
+                    this->onlineVersion_ = QStringLiteral("Nightly");
+                    this->setStatus_(UpdateAvailable);
+                })
+                .execute();
+
             return true;
         }
 
@@ -578,50 +633,25 @@ bool Updates::isDowngrade() const
 
 QString Updates::buildUpdateAvailableText() const
 {
-    const auto &version = Version::instance();
-
-    if (version.isNightly())
-    {
-        // Since Nightly builds can be installed in many different ways, we ask the user to download the update manually.
-        if (this->isDowngrade())
-        {
-            return QString(
-                       "The version online (%1) seems to be lower than the "
-                       "current (%2).\nEither a version was reverted or "
-                       "you are running a newer build.\n\nDo you want to "
-                       "head to github.com/w77hxhx/sloperino to download it?")
-                .arg(this->getOnlineVersion(), this->getCurrentVersion());
-        }
-
-        return QString(
-                   "An update (%1) is available.\n\nDo you want to head to "
-                   "github.com/w77hxhx/sloperino to download the new update?")
-            .arg(this->getOnlineVersion());
-    }
-
-    if (this->isDowngrade())
-    {
-        return QString("The version online (%1) seems to be lower than the "
-                       "current (%2).\nEither a version was reverted or "
-                       "you are running a newer build.\n\nDo you want to "
-                       "download and install it?")
-            .arg(this->getOnlineVersion(), this->getCurrentVersion());
-    }
-
-    return QString("An update (%1) is available.\n\nDo you want to "
-                   "download and install it?")
+    return QStringLiteral("A new update (%1) is available.\n\n"
+                          "Would you like to download and install it now?")
         .arg(this->getOnlineVersion());
 }
 
 void Updates::setStatus_(Status status)
 {
-    if (this->status_ != status)
-    {
-        this->status_ = status;
-        postToThread([this, status] {
-            this->statusUpdated.invoke(status);
+    bool statusChanged = (this->status_ != status);
+    this->status_ = status;
 
-            if (status == UpdateAvailable && this->promptOnUpdate_)
+    postToThread([this, status, statusChanged] {
+        if (statusChanged)
+        {
+            this->statusUpdated.invoke(status);
+        }
+
+        if (this->promptOnUpdate_)
+        {
+            if (status == UpdateAvailable)
             {
                 this->promptOnUpdate_ = false;
                 QMessageBox box(
@@ -639,8 +669,31 @@ void Updates::setStatus_(Status status)
                     this->installUpdates();
                 }
             }
-        });
-    }
+            else if (status == NoUpdateAvailable)
+            {
+                this->promptOnUpdate_ = false;
+                QMessageBox box(
+                    QMessageBox::Information, "Sloperino Up to Date",
+                    QStringLiteral(
+                        "You are already running the latest version of "
+                        "Sloperino (%1)!")
+                        .arg(Version::instance().commitHash()),
+                    QMessageBox::Ok, QApplication::activeWindow());
+                box.exec();
+            }
+            else if (status == SearchFailed)
+            {
+                this->promptOnUpdate_ = false;
+                QMessageBox box(
+                    QMessageBox::Warning, "Sloperino Update Error",
+                    QStringLiteral(
+                        "Failed to check for updates. Please check your "
+                        "internet connection or visit GitHub releases."),
+                    QMessageBox::Ok, QApplication::activeWindow());
+                box.exec();
+            }
+        }
+    });
 }
 
 }  // namespace chatterino
