@@ -589,8 +589,8 @@ void FirehoseManager::processBatch()
                     {
                         const auto &target = stalk->targetUser();
                         if (!target.isEmpty() &&
-                            (msg->loginName.compare(
-                                 target, Qt::CaseInsensitive) == 0 ||
+                            (msg->loginName.compare(target,
+                                                    Qt::CaseInsensitive) == 0 ||
                              msg->displayName.compare(
                                  target, Qt::CaseInsensitive) == 0))
                         {

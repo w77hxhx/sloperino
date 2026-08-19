@@ -3182,7 +3182,7 @@ void UserInfoPopup::showLogDateMenu()
             margin: 4px 6px;
         }
     )")
-            .arg(bg, text, border, hoverBg));
+                            .arg(bg, text, border, hoverBg));
 
     QString currentYear;
     for (size_t i = 0; i < this->zonianLogMonths_.size(); ++i)
