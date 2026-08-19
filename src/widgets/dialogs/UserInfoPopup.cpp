@@ -3176,21 +3176,19 @@ bool UserInfoPopup::eventFilter(QObject *watched, QEvent *event)
         auto *wheel = static_cast<QWheelEvent *>(event);
         if (!this->isZonianSearchMode_ && !this->zonianLogMonths_.empty())
         {
+            const auto idx = this->zonianSelectedMonthIndex_;
             if (wheel->angleDelta().y() > 0)
             {
-                if (this->zonianSelectedMonthIndex_ > 0)
+                if (idx > 0)
                 {
-                    this->fetchZonianMonthLog(
-                        this->zonianSelectedMonthIndex_ - 1);
+                    this->fetchZonianMonthLog(idx - 1);
                 }
             }
             else if (wheel->angleDelta().y() < 0)
             {
-                if (this->zonianSelectedMonthIndex_ + 1 <
-                    this->zonianLogMonths_.size())
+                if (idx + 1 < this->zonianLogMonths_.size())
                 {
-                    this->fetchZonianMonthLog(
-                        this->zonianSelectedMonthIndex_ + 1);
+                    this->fetchZonianMonthLog(idx + 1);
                 }
             }
             return true;
