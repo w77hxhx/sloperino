@@ -1803,11 +1803,10 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                          this, triggerSearch);
         QObject::connect(searchBtn.getElement(), &Button::leftClicked, this,
                          triggerSearch);
-        QObject::connect(
-            this->ui_.logSearchInput, &QLineEdit::textChanged, this,
-            [this](const QString &text) {
-                this->searchUserLogs(text);
-            });
+        QObject::connect(this->ui_.logSearchInput, &QLineEdit::textChanged,
+                         this, [this](const QString &text) {
+                             this->searchUserLogs(text);
+                         });
 
         auto openUsercard = [this] {
             MessagePlatform platform =
@@ -3179,7 +3178,8 @@ void UserInfoPopup::showLogDateMenu()
             background: %3;
             margin: 4px 6px;
         }
-    )").arg(bg, text, border, hoverBg));
+    )")
+            .arg(bg, text, border, hoverBg));
 
     QString currentYear;
     for (size_t i = 0; i < this->zonianLogMonths_.size(); ++i)
@@ -3219,14 +3219,14 @@ void UserInfoPopup::updateLogControlsStyle()
     const auto border = theme->splits.header.border.name();
     const auto textColor = theme->window.text.name(QColor::HexArgb);
     const auto focusedBorder = theme->splits.header.focusedBorder.name();
-    const auto btnBg =
-        theme->isLightTheme()
-            ? theme->splits.input.background.darker(104).name()
-            : theme->splits.input.background.lighter(108).name();
+    const auto btnBg = theme->isLightTheme()
+                           ? theme->splits.input.background.darker(104).name()
+                           : theme->splits.input.background.lighter(108).name();
 
     if (this->ui_.logSearchInput)
     {
-        this->ui_.logSearchInput->setStyleSheet(QStringLiteral(R"(
+        this->ui_.logSearchInput->setStyleSheet(
+            QStringLiteral(R"(
             QLineEdit {
                 background: %1;
                 color: %2;
@@ -3238,12 +3238,14 @@ void UserInfoPopup::updateLogControlsStyle()
             QLineEdit:focus {
                 border-color: %4;
             }
-        )").arg(inputBg, textColor, border, focusedBorder));
+        )")
+                .arg(inputBg, textColor, border, focusedBorder));
     }
 
     if (this->ui_.logDateButton)
     {
-        this->ui_.logDateButton->setStyleSheet(QStringLiteral(R"(
+        this->ui_.logDateButton->setStyleSheet(
+            QStringLiteral(R"(
             QLabel {
                 background: %1;
                 color: %2;
@@ -3256,7 +3258,8 @@ void UserInfoPopup::updateLogControlsStyle()
             QLabel:hover {
                 border-color: %4;
             }
-        )").arg(inputBg, textColor, border, focusedBorder));
+        )")
+                .arg(inputBg, textColor, border, focusedBorder));
     }
 }
 
@@ -3516,9 +3519,10 @@ void UserInfoPopup::applyLogSearchFilter(const QString &query)
 
         for (const auto &msg : this->zonianCurrentLogMessages_)
         {
-            if (msg && (msg->messageText.contains(trimmed, Qt::CaseInsensitive) ||
-                        msg->displayName.contains(trimmed, Qt::CaseInsensitive) ||
-                        msg->loginName.contains(trimmed, Qt::CaseInsensitive)))
+            if (msg &&
+                (msg->messageText.contains(trimmed, Qt::CaseInsensitive) ||
+                 msg->displayName.contains(trimmed, Qt::CaseInsensitive) ||
+                 msg->loginName.contains(trimmed, Qt::CaseInsensitive)))
             {
                 filtered.push_back(msg);
             }

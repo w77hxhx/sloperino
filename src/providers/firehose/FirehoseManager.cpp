@@ -373,8 +373,8 @@ static bool extractRawMessageHashFast(const char *ptr, size_t size,
     }
 
     size_t i = 0;
-    while (i < size &&
-           (ptr[i] == ' ' || ptr[i] == '\t' || ptr[i] == '\r' || ptr[i] == '\n'))
+    while (i < size && (ptr[i] == ' ' || ptr[i] == '\t' || ptr[i] == '\r' ||
+                        ptr[i] == '\n'))
     {
         i++;
     }
@@ -399,7 +399,8 @@ static bool extractRawMessageHashFast(const char *ptr, size_t size,
             if (quoteStart != std::string_view::npos)
             {
                 size_t quoteEnd = sv.find('"', quoteStart + 1);
-                if (quoteEnd != std::string_view::npos && quoteEnd > quoteStart + 1)
+                if (quoteEnd != std::string_view::npos &&
+                    quoteEnd > quoteStart + 1)
                 {
                     outHash = hashBytes64(sv.data() + quoteStart + 1,
                                           quoteEnd - quoteStart - 1);
@@ -536,9 +537,10 @@ void FirehoseManager::onRawDataReceivedFromWorker(const char *ptr, size_t len)
         std::lock_guard<std::mutex> lock(this->queueMutex_);
         if (this->incomingQueue_.size() < 100000)
         {
-            this->incomingQueue_.insert(this->incomingQueue_.end(),
-                                        std::make_move_iterator(newItems.begin()),
-                                        std::make_move_iterator(newItems.end()));
+            this->incomingQueue_.insert(
+                this->incomingQueue_.end(),
+                std::make_move_iterator(newItems.begin()),
+                std::make_move_iterator(newItems.end()));
         }
     }
 }
@@ -587,8 +589,8 @@ void FirehoseManager::processBatch()
                     {
                         const auto &target = stalk->targetUser();
                         if (!target.isEmpty() &&
-                            (msg->loginName.compare(target,
-                                                   Qt::CaseInsensitive) == 0 ||
+                            (msg->loginName.compare(
+                                 target, Qt::CaseInsensitive) == 0 ||
                              msg->displayName.compare(
                                  target, Qt::CaseInsensitive) == 0))
                         {

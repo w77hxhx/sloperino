@@ -1054,20 +1054,21 @@ void UserRolesDialog::refreshStyle()
 
     this->closeButton_->setColor(textColor);
 
-    const auto modColor =
-        theme->isLightTheme() ? QStringLiteral("#16a34a") : QStringLiteral("#22c55e");
-    const auto vipColor =
-        theme->isLightTheme() ? QStringLiteral("#c026d3") : QStringLiteral("#e005b9");
-    const auto artistColor =
-        theme->isLightTheme() ? QStringLiteral("#d97706") : QStringLiteral("#f59e0b");
-    const auto founderColor =
-        theme->isLightTheme() ? QStringLiteral("#ca8a04") : QStringLiteral("#eab308");
-    const auto subColor =
-        theme->isLightTheme() ? QStringLiteral("#4f46e5") : QStringLiteral("#818cf8");
-    const auto partnerColor =
-        theme->isLightTheme() ? QStringLiteral("#7c3aed") : QStringLiteral("#bf94ff");
-    const auto affiliateColor =
-        theme->isLightTheme() ? QStringLiteral("#0d9488") : QStringLiteral("#00e6cb");
+    const auto modColor = theme->isLightTheme() ? QStringLiteral("#16a34a")
+                                                : QStringLiteral("#22c55e");
+    const auto vipColor = theme->isLightTheme() ? QStringLiteral("#c026d3")
+                                                : QStringLiteral("#e005b9");
+    const auto artistColor = theme->isLightTheme() ? QStringLiteral("#d97706")
+                                                   : QStringLiteral("#f59e0b");
+    const auto founderColor = theme->isLightTheme() ? QStringLiteral("#ca8a04")
+                                                    : QStringLiteral("#eab308");
+    const auto subColor = theme->isLightTheme() ? QStringLiteral("#4f46e5")
+                                                : QStringLiteral("#818cf8");
+    const auto partnerColor = theme->isLightTheme() ? QStringLiteral("#7c3aed")
+                                                    : QStringLiteral("#bf94ff");
+    const auto affiliateColor = theme->isLightTheme()
+                                    ? QStringLiteral("#0d9488")
+                                    : QStringLiteral("#00e6cb");
 
     this->setStyleSheet(
         QStringLiteral(R"(
