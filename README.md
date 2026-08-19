@@ -22,9 +22,6 @@ Sloperino is a feature-rich, high-performance fork of **Chatterino 2**, combinin
   - **Stalk Channels**: Track any Twitch user's chat messages across all public channels in real-time.
   - **Velocity Metrics**: Built-in Messages-Per-Second (MPS) tracking and real-time buffer statistics.
 
-- ⚙️ **Usercard & Chat Customization**:
-  - **Customizable Buttons**: Toggle `clips`, `roles`, `badges`, and `7TV` buttons in settings.
-
 ---
 
 ### Screenshots

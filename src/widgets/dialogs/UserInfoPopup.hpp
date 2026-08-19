@@ -227,8 +227,12 @@ private:
     bool zonianLogsLoading_ = false;
     bool zonianLogsHasMore_ = false;
     bool isZonianSearchMode_ = false;
+    bool zonianRateLimited_ = false;
+    QString zonianErrorMessage_;
     uint64_t zonianRequestGeneration_ = 0;
     std::vector<MessagePtr> zonianCurrentLogMessages_;
+    std::unordered_map<QString, std::vector<MessagePtr>> zonianMonthCache_;
+    std::unordered_map<QString, std::vector<MessagePtr>> zonianSearchCache_;
 
     void fetchZonianLogList();
     void fetchZonianMonthLog(size_t monthIndex);
@@ -327,6 +331,7 @@ private:
         LabelButton *rolesMgmtLabel = nullptr;
         LabelButton *switchAvatars = nullptr;
         LabelButton *addChannelButton = nullptr;
+        QWidget *logToolbar = nullptr;
         LabelButton *logDateButton = nullptr;
         QLineEdit *logSearchInput = nullptr;
         LabelButton *logSearchButton = nullptr;
