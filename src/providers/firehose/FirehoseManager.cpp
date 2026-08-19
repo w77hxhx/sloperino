@@ -49,16 +49,12 @@ public:
 
     void onTextMessage(QByteArray data) override
     {
-        postToThread([mgr = this->mgr_, data = std::move(data)]() mutable {
-            mgr->onRawMessageReceived(std::move(data));
-        });
+        this->mgr_->onRawDataReceivedFromWorker(data.constData(), data.size());
     }
 
     void onBinaryMessage(QByteArray data) override
     {
-        postToThread([mgr = this->mgr_, data = std::move(data)]() mutable {
-            mgr->onRawMessageReceived(std::move(data));
-        });
+        this->mgr_->onRawDataReceivedFromWorker(data.constData(), data.size());
     }
 
     void onClose(std::unique_ptr<WebSocketListener> /*self*/) override
@@ -81,6 +77,19 @@ FirehoseManager::FirehoseManager()
 {
     this->initEndpoints();
 
+    // 16ms batch timer (~60fps smooth UI delivery)
+    this->batchTimer_.setTimerType(Qt::PreciseTimer);
+    this->batchTimer_.setInterval(
+        getSettings()->firehoseBatchIntervalMs.getValue());
+    QObject::connect(&this->batchTimer_, &QTimer::timeout, this,
+                     &FirehoseManager::processBatch);
+
+    getSettings()->firehoseBatchIntervalMs.connect(
+        [this](int ms) {
+            this->batchTimer_.setInterval(std::clamp(ms, 5, 1000));
+        },
+        this->signalHolder_);
+
     // 1-second statistics timer
     this->statsTimer_.setTimerType(Qt::PreciseTimer);
     this->statsTimer_.setInterval(1000);
@@ -96,6 +105,7 @@ FirehoseManager::FirehoseManager()
 
 FirehoseManager::~FirehoseManager()
 {
+    this->batchTimer_.stop();
     this->statsTimer_.stop();
     this->watchdogTimer_.stop();
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
@@ -111,7 +121,8 @@ std::shared_ptr<FirehoseChannel> FirehoseManager::getChannel() const
 
 bool FirehoseManager::isNeeded() const
 {
-    return this->firehoseAttachedCount_ > 0 || !this->stalkChannels_.empty();
+    return this->firehoseAttachedCount_.load(std::memory_order_relaxed) > 0 ||
+           !this->stalkChannels_.empty();
 }
 
 void FirehoseManager::checkConnectionState()
@@ -122,6 +133,7 @@ void FirehoseManager::checkConnectionState()
         {
             this->isRunning_ = true;
             this->initialize();
+            this->batchTimer_.start();
             this->statsTimer_.start();
             this->watchdogTimer_.start();
         }
@@ -131,27 +143,36 @@ void FirehoseManager::checkConnectionState()
         if (this->isRunning_)
         {
             this->isRunning_ = false;
+            this->batchTimer_.stop();
             this->statsTimer_.stop();
             this->watchdogTimer_.stop();
             for (size_t i = 0; i < this->endpoints_.size(); ++i)
             {
                 this->disconnectEndpoint(i);
             }
+            std::lock_guard<std::mutex> lock(this->queueMutex_);
+            this->incomingQueue_.clear();
+            this->dedupCache_.clear();
         }
     }
 }
 
 void FirehoseManager::addFirehoseConsumer()
 {
-    this->firehoseAttachedCount_++;
+    this->firehoseAttachedCount_.fetch_add(1, std::memory_order_relaxed);
     this->checkConnectionState();
 }
 
 void FirehoseManager::removeFirehoseConsumer()
 {
-    if (this->firehoseAttachedCount_ > 0)
+    int current = this->firehoseAttachedCount_.load(std::memory_order_relaxed);
+    while (current > 0)
     {
-        this->firehoseAttachedCount_--;
+        if (this->firehoseAttachedCount_.compare_exchange_weak(
+                current, current - 1, std::memory_order_relaxed))
+        {
+            break;
+        }
     }
     this->checkConnectionState();
 }
@@ -343,18 +364,17 @@ static inline uint64_t hashBytes64(const char *data, size_t len) noexcept
     return hash;
 }
 
-static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
+static bool extractRawMessageHashFast(const char *ptr, size_t size,
+                                      uint64_t &outHash) noexcept
 {
-    const char *ptr = data.constData();
-    const int size = data.size();
     if (size < 4)
     {
         return false;
     }
 
-    int i = 0;
-    while (i < size && (ptr[i] == ' ' || ptr[i] == '\t' || ptr[i] == '\r' ||
-                        ptr[i] == '\n'))
+    size_t i = 0;
+    while (i < size &&
+           (ptr[i] == ' ' || ptr[i] == '\t' || ptr[i] == '\r' || ptr[i] == '\n'))
     {
         i++;
     }
@@ -364,18 +384,25 @@ static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
         return false;
     }
 
-    if (ptr[i] == '{')
+    std::string_view sv(ptr + i, size - i);
+
+    if (sv.front() == '{')
     {
-        int idPos = data.indexOf("\"id\":", i);
-        if (idPos != -1)
+        size_t idPos = sv.find("\"id\":");
+        if (idPos == std::string_view::npos)
         {
-            int start = data.indexOf('"', idPos + 5);
-            if (start != -1)
+            idPos = sv.find("\"id\" :");
+        }
+        if (idPos != std::string_view::npos)
+        {
+            size_t quoteStart = sv.find('"', idPos + 4);
+            if (quoteStart != std::string_view::npos)
             {
-                int finish = data.indexOf('"', start + 1);
-                if (finish != -1 && finish > start)
+                size_t quoteEnd = sv.find('"', quoteStart + 1);
+                if (quoteEnd != std::string_view::npos && quoteEnd > quoteStart + 1)
                 {
-                    outHash = hashBytes64(ptr + start + 1, finish - start - 1);
+                    outHash = hashBytes64(sv.data() + quoteStart + 1,
+                                          quoteEnd - quoteStart - 1);
                     return true;
                 }
             }
@@ -383,45 +410,39 @@ static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
         return false;
     }
 
-    if (ptr[i] == '@')
+    if (sv.front() == '@')
     {
-        int spacePos = data.indexOf(' ', i);
-        if (spacePos == -1)
+        size_t spacePos = sv.find(' ');
+        if (spacePos == std::string_view::npos)
         {
             return false;
         }
 
-        int idPos = -1;
-        if (size >= i + 4 && strncmp(ptr + i, "@id=", 4) == 0)
+        std::string_view tags = sv.substr(0, spacePos);
+        size_t idStart = std::string_view::npos;
+
+        if (tags.starts_with("@id="))
         {
-            idPos = i + 1;
+            idStart = 4;
         }
         else
         {
-            int searchIdx = i;
-            while (searchIdx < spacePos)
+            size_t found = tags.find(";id=");
+            if (found != std::string_view::npos)
             {
-                int found = data.indexOf(";id=", searchIdx);
-                if (found == -1 || found >= spacePos)
-                {
-                    break;
-                }
-                idPos = found + 1;
-                break;
+                idStart = found + 4;
             }
         }
 
-        if (idPos != -1)
+        if (idStart != std::string_view::npos)
         {
-            int start = idPos + 3;
-            int finish = data.indexOf(';', start);
-            if (finish == -1 || finish > spacePos)
+            size_t semi = tags.find(';', idStart);
+            size_t idLen = (semi == std::string_view::npos)
+                               ? (tags.size() - idStart)
+                               : (semi - idStart);
+            if (idLen > 0)
             {
-                finish = spacePos;
-            }
-            if (finish > start)
-            {
-                outHash = hashBytes64(ptr + start, finish - start);
+                outHash = hashBytes64(tags.data() + idStart, idLen);
                 return true;
             }
         }
@@ -430,70 +451,64 @@ static bool extractRawMessageHash(const QByteArray &data, uint64_t &outHash)
     return false;
 }
 
-void FirehoseManager::onRawMessageReceived(QByteArray data)
+void FirehoseManager::onRawDataReceivedFromWorker(const char *ptr, size_t len)
 {
-    if (!this->isNeeded() || data.isEmpty())
+    if (len == 0 || !this->isNeeded())
     {
         return;
     }
 
-    const char *raw = data.constData();
-    const int len = data.size();
-
-    int start = 0;
-    std::vector<MessagePtr> batch;
+    // Count raw incoming messages across all endpoints for atomic rate reporting
+    int rawCount = 0;
+    size_t start = 0;
+    std::vector<QByteArray> newItems;
 
     while (start < len)
     {
-        int next = data.indexOf('\n', start);
-        if (next == -1)
-        {
-            next = len;
-        }
-        int lineLen = next - start;
-        if (lineLen > 0 && raw[start + lineLen - 1] == '\r')
+        const char *nextPtr = static_cast<const char *>(
+            std::memchr(ptr + start, '\n', len - start));
+        size_t next = nextPtr ? (nextPtr - ptr) : len;
+        size_t lineLen = next - start;
+
+        if (lineLen > 0 && ptr[start + lineLen - 1] == '\r')
         {
             lineLen--;
         }
+
         if (lineLen > 0)
         {
-            QByteArray line = data.mid(start, lineLen);
-            uint64_t rawHash = 0;
-            if (extractRawMessageHash(line, rawHash))
+            rawCount++;
+
+            uint64_t hash = 0;
+            if (extractRawMessageHashFast(ptr + start, lineLen, hash))
             {
-                std::lock_guard<std::mutex> lock(this->dedupMutex_);
-                if (this->seenHashes_.find(rawHash) != this->seenHashes_.end())
+                if (!this->dedupCache_.testAndSet(hash))
                 {
                     start = next + 1;
-                    continue;  // Duplicate across multiple firehose endpoints
-                }
-
-                this->seenHashes_.insert(rawHash);
-                this->seenQueue_.push_back(rawHash);
-
-                if (this->seenQueue_.size() > MAX_DEDUP_CACHE_SIZE)
-                {
-                    this->seenHashes_.erase(this->seenQueue_.front());
-                    this->seenQueue_.pop_front();
+                    continue;  // Duplicate across firehose endpoints: dropped in worker thread
                 }
             }
 
-            this->messagesThisSecond_++;
-
-            // If firehose is not attached and we only have stalk channels, quick check before full parse
-            if (this->firehoseAttachedCount_ == 0 &&
-                !this->stalkChannels_.empty())
+            // If firehose is not open and we only have stalk channels, quick check
+            if (this->firehoseAttachedCount_.load(std::memory_order_relaxed) ==
+                0)
             {
                 bool mightMatchStalk = false;
-                for (const auto &weakStalk : this->stalkChannels_)
+                std::string_view lineSv(ptr + start, lineLen);
                 {
-                    if (auto stalk = weakStalk.lock())
+                    std::lock_guard<std::mutex> lock(this->stalkMutex_);
+                    for (const auto &weakStalk : this->stalkChannels_)
                     {
-                        const auto &target = stalk->targetUser();
-                        if (!target.isEmpty() && line.contains(target.toUtf8()))
+                        if (auto stalk = weakStalk.lock())
                         {
-                            mightMatchStalk = true;
-                            break;
+                            const auto &target = stalk->targetUser();
+                            if (!target.isEmpty() &&
+                                lineSv.find(target.toUtf8().constData()) !=
+                                    std::string_view::npos)
+                            {
+                                mightMatchStalk = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -504,60 +519,110 @@ void FirehoseManager::onRawMessageReceived(QByteArray data)
                 }
             }
 
-            QString msgId;
-            auto msg = this->parseRawPayload(line, msgId);
-            if (msg)
-            {
-                // Route message to active stalk channels matching target username
-                if (!this->stalkChannels_.empty())
-                {
-                    for (auto it = this->stalkChannels_.begin();
-                         it != this->stalkChannels_.end();)
-                    {
-                        if (auto stalk = it->lock())
-                        {
-                            const auto &target = stalk->targetUser();
-                            if (!target.isEmpty() &&
-                                (msg->loginName.compare(
-                                     target, Qt::CaseInsensitive) == 0 ||
-                                 msg->displayName.compare(
-                                     target, Qt::CaseInsensitive) == 0))
-                            {
-                                stalk->addMessage(msg,
-                                                  MessageContext::Original);
-                            }
-                            ++it;
-                        }
-                        else
-                        {
-                            it = this->stalkChannels_.erase(it);
-                        }
-                    }
-                }
-
-                // Route message to global /mentions channel without duplicate sound
-                if (msg->flags.has(MessageFlag::Highlighted) &&
-                    msg->flags.has(MessageFlag::ShowInMentions))
-                {
-                    if (auto mentions =
-                            getApp()->getTwitch()->getMentionsChannel())
-                    {
-                        mentions->addMessage(msg, MessageContext::Original);
-                    }
-                }
-
-                if (this->firehoseAttachedCount_ > 0)
-                {
-                    batch.emplace_back(std::move(msg));
-                }
-            }
+            newItems.emplace_back(ptr + start, static_cast<int>(lineLen));
         }
+
         start = next + 1;
     }
 
-    if (!batch.empty() && this->channel_)
+    if (rawCount > 0)
     {
-        this->channel_->addMessagesBatch(batch);
+        this->rawMessagesReceived_.fetch_add(rawCount,
+                                             std::memory_order_relaxed);
+    }
+
+    if (!newItems.empty())
+    {
+        std::lock_guard<std::mutex> lock(this->queueMutex_);
+        if (this->incomingQueue_.size() < 100000)
+        {
+            this->incomingQueue_.insert(this->incomingQueue_.end(),
+                                        std::make_move_iterator(newItems.begin()),
+                                        std::make_move_iterator(newItems.end()));
+        }
+    }
+}
+
+void FirehoseManager::processBatch()
+{
+    if (!this->isNeeded())
+    {
+        return;
+    }
+
+    std::vector<QByteArray> batch;
+    {
+        std::lock_guard<std::mutex> lock(this->queueMutex_);
+        if (this->incomingQueue_.empty())
+        {
+            return;
+        }
+        batch.swap(this->incomingQueue_);
+    }
+
+    std::vector<MessagePtr> parsedMessages;
+    parsedMessages.reserve(std::min(batch.size(), size_t(300)));
+
+    const bool firehoseOpen =
+        (this->firehoseAttachedCount_.load(std::memory_order_relaxed) > 0);
+
+    for (const auto &item : batch)
+    {
+        QString msgId;
+        auto msg = this->parseRawPayload(item, msgId);
+        if (!msg)
+        {
+            continue;
+        }
+
+        // Route message to active stalk channels
+        {
+            std::lock_guard<std::mutex> lock(this->stalkMutex_);
+            if (!this->stalkChannels_.empty())
+            {
+                for (auto it = this->stalkChannels_.begin();
+                     it != this->stalkChannels_.end();)
+                {
+                    if (auto stalk = it->lock())
+                    {
+                        const auto &target = stalk->targetUser();
+                        if (!target.isEmpty() &&
+                            (msg->loginName.compare(target,
+                                                   Qt::CaseInsensitive) == 0 ||
+                             msg->displayName.compare(
+                                 target, Qt::CaseInsensitive) == 0))
+                        {
+                            stalk->addMessage(msg, MessageContext::Original);
+                        }
+                        ++it;
+                    }
+                    else
+                    {
+                        it = this->stalkChannels_.erase(it);
+                    }
+                }
+            }
+        }
+
+        // Route message to global /mentions channel
+        if (msg->flags.has(MessageFlag::Highlighted) &&
+            msg->flags.has(MessageFlag::ShowInMentions))
+        {
+            if (auto mentions = getApp()->getTwitch()->getMentionsChannel())
+            {
+                mentions->addMessage(msg, MessageContext::Original);
+            }
+        }
+
+        if (firehoseOpen)
+        {
+            parsedMessages.emplace_back(std::move(msg));
+        }
+    }
+
+    if (!parsedMessages.empty() && this->channel_)
+    {
+        this->channel_->addMessagesBatch(parsedMessages);
     }
 }
 
@@ -589,18 +654,21 @@ void FirehoseManager::registerStalkChannel(
         return;
     }
 
-    for (const auto &w : this->stalkChannels_)
     {
-        if (auto locked = w.lock())
+        std::lock_guard<std::mutex> lock(this->stalkMutex_);
+        for (const auto &w : this->stalkChannels_)
         {
-            if (locked == channel)
+            if (auto locked = w.lock())
             {
-                return;
+                if (locked == channel)
+                {
+                    return;
+                }
             }
         }
-    }
 
-    this->stalkChannels_.push_back(channel);
+        this->stalkChannels_.push_back(channel);
+    }
     this->checkConnectionState();
 }
 
@@ -612,21 +680,24 @@ void FirehoseManager::unregisterStalkChannel(
         return;
     }
 
-    for (auto it = this->stalkChannels_.begin();
-         it != this->stalkChannels_.end();)
     {
-        if (auto locked = it->lock())
+        std::lock_guard<std::mutex> lock(this->stalkMutex_);
+        for (auto it = this->stalkChannels_.begin();
+             it != this->stalkChannels_.end();)
         {
-            if (locked == channel)
+            if (auto locked = it->lock())
+            {
+                if (locked == channel)
+                {
+                    it = this->stalkChannels_.erase(it);
+                    break;
+                }
+                ++it;
+            }
+            else
             {
                 it = this->stalkChannels_.erase(it);
-                break;
             }
-            ++it;
-        }
-        else
-        {
-            it = this->stalkChannels_.erase(it);
         }
     }
     this->checkConnectionState();
@@ -634,8 +705,8 @@ void FirehoseManager::unregisterStalkChannel(
 
 void FirehoseManager::updateStats()
 {
-    this->currentMsgPerSecond_ = this->messagesThisSecond_;
-    this->messagesThisSecond_ = 0;
+    this->currentMsgPerSecond_ =
+        this->rawMessagesReceived_.exchange(0, std::memory_order_relaxed);
 
     int activeCount = 0;
     int totalCount = static_cast<int>(this->endpoints_.size());

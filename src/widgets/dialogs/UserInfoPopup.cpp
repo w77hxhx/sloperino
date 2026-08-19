@@ -1772,6 +1772,15 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
 
         user->addStretch(1);
 
+        auto dateBtn = user.emplace<LabelButton>("----/-- ▾", this, QSize{4, 2})
+                           .assign(&this->ui_.logDateButton);
+        dateBtn->setToolTip("Select log month");
+        dateBtn->hide();
+        QObject::connect(dateBtn.getElement(), &Button::leftClicked, this,
+                         [this] {
+                             this->showLogDateMenu();
+                         });
+
         auto *searchInput = new QLineEdit(this);
         searchInput->setPlaceholderText("Search logs...");
         searchInput->setClearButtonEnabled(true);
@@ -1782,7 +1791,7 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
 
         auto searchBtn = user.emplace<LabelButton>("Search", this, QSize{2, 2})
                              .assign(&this->ui_.logSearchButton);
-        searchBtn->setToolTip("Search logs on logs.zonian.dev");
+        searchBtn->setToolTip("Search in logs");
 
         auto triggerSearch = [this] {
             if (this->ui_.logSearchInput)
@@ -1797,11 +1806,7 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
         QObject::connect(
             this->ui_.logSearchInput, &QLineEdit::textChanged, this,
             [this](const QString &text) {
-                if (text.trimmed().isEmpty() && this->isZonianSearchMode_)
-                {
-                    this->isZonianSearchMode_ = false;
-                    this->fetchZonianLogList();
-                }
+                this->searchUserLogs(text);
             });
 
         auto openUsercard = [this] {
@@ -2032,6 +2037,7 @@ void UserInfoPopup::themeChangedEvent()
     }
 
     this->updateUsercardStatusIcons();
+    this->updateLogControlsStyle();
 
     if (this->seventvPaint_)
     {
@@ -3132,6 +3138,128 @@ void UserInfoPopup::maybeLoadMoreUsercardMessagesFromScroll()
     }
 }
 
+void UserInfoPopup::showLogDateMenu()
+{
+    if (this->zonianLogMonths_.empty() || !this->ui_.logDateButton)
+    {
+        return;
+    }
+
+    auto *menu = new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    const auto *theme = this->theme;
+    const auto bg = theme->window.background.name();
+    const auto text = theme->window.text.name(QColor::HexArgb);
+    const auto border = theme->splits.header.border.name();
+    const auto hoverBg =
+        theme->isLightTheme()
+            ? theme->splits.input.background.darker(104).name()
+            : theme->splits.input.background.lighter(112).name();
+
+    menu->setStyleSheet(QStringLiteral(R"(
+        QMenu {
+            background-color: %1;
+            color: %2;
+            border: 1px solid %3;
+            border-radius: 6px;
+            padding: 4px;
+        }
+        QMenu::item {
+            padding: 4px 18px 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        QMenu::item:selected {
+            background-color: %4;
+            color: %2;
+        }
+        QMenu::separator {
+            height: 1px;
+            background: %3;
+            margin: 4px 6px;
+        }
+    )").arg(bg, text, border, hoverBg));
+
+    QString currentYear;
+    for (size_t i = 0; i < this->zonianLogMonths_.size(); ++i)
+    {
+        const auto &m = this->zonianLogMonths_[i];
+        if (!currentYear.isEmpty() && m.year != currentYear)
+        {
+            menu->addSeparator();
+        }
+        currentYear = m.year;
+
+        QString label = QStringLiteral("%1-%2").arg(m.year, m.month);
+        if (i == this->zonianSelectedMonthIndex_)
+        {
+            label = QStringLiteral("✓ %1").arg(label);
+        }
+
+        auto *act = menu->addAction(label);
+        QObject::connect(act, &QAction::triggered, this, [this, i] {
+            this->fetchZonianMonthLog(i);
+        });
+    }
+
+    menu->exec(this->ui_.logDateButton->mapToGlobal(
+        QPoint(0, this->ui_.logDateButton->height() + 2)));
+}
+
+void UserInfoPopup::updateLogControlsStyle()
+{
+    const auto *theme = this->theme;
+    if (!theme)
+    {
+        return;
+    }
+
+    const auto inputBg = theme->splits.input.background.name();
+    const auto border = theme->splits.header.border.name();
+    const auto textColor = theme->window.text.name(QColor::HexArgb);
+    const auto focusedBorder = theme->splits.header.focusedBorder.name();
+    const auto btnBg =
+        theme->isLightTheme()
+            ? theme->splits.input.background.darker(104).name()
+            : theme->splits.input.background.lighter(108).name();
+
+    if (this->ui_.logSearchInput)
+    {
+        this->ui_.logSearchInput->setStyleSheet(QStringLiteral(R"(
+            QLineEdit {
+                background: %1;
+                color: %2;
+                border: 1px solid %3;
+                border-radius: 4px;
+                padding: 0 6px;
+                font-size: 11px;
+            }
+            QLineEdit:focus {
+                border-color: %4;
+            }
+        )").arg(inputBg, textColor, border, focusedBorder));
+    }
+
+    if (this->ui_.logDateButton)
+    {
+        this->ui_.logDateButton->setStyleSheet(QStringLiteral(R"(
+            QLabel {
+                background: %1;
+                color: %2;
+                border: 1px solid %3;
+                border-radius: 4px;
+                padding: 2px 6px;
+                font-weight: 700;
+                font-size: 11px;
+            }
+            QLabel:hover {
+                border-color: %4;
+            }
+        )").arg(inputBg, textColor, border, focusedBorder));
+    }
+}
+
 void UserInfoPopup::fetchZonianLogList()
 {
     if (this->isKick_ || this->isYouTube_ || this->userName_.isEmpty())
@@ -3140,13 +3268,20 @@ void UserInfoPopup::fetchZonianLogList()
     }
 
     QString channelName;
-    if (this->underlyingChannel_)
+    if (this->underlyingChannel_ &&
+        this->underlyingChannel_->getType() == Channel::Type::Twitch)
     {
         channelName = this->underlyingChannel_->getName();
-        if (channelName.startsWith('#'))
-        {
-            channelName.remove(0, 1);
-        }
+    }
+    else if (this->channel_ &&
+             this->channel_->getType() == Channel::Type::Twitch)
+    {
+        channelName = this->channel_->getName();
+    }
+
+    if (channelName.startsWith('#') || channelName.startsWith('/'))
+    {
+        channelName = channelName.mid(1);
     }
     if (channelName.isEmpty())
     {
@@ -3160,9 +3295,11 @@ void UserInfoPopup::fetchZonianLogList()
 
     this->zonianLogsLoading_ = true;
     this->zonianLogMonths_.clear();
+    this->zonianSelectedMonthIndex_ = 0;
     this->zonianNextMonthIndex_ = 0;
     this->zonianLogsHasMore_ = false;
     this->isZonianSearchMode_ = false;
+    this->zonianCurrentLogMessages_.clear();
     this->updateUsercardMessagesVisibility();
 
     QString url =
@@ -3197,12 +3334,24 @@ void UserInfoPopup::fetchZonianLogList()
 
             if (!self->zonianLogMonths_.empty())
             {
-                self->zonianNextMonthIndex_ = 0;
-                self->zonianLogsHasMore_ = true;
+                self->zonianSelectedMonthIndex_ = 0;
+                if (self->ui_.logDateButton)
+                {
+                    self->ui_.logDateButton->setText(
+                        QStringLiteral("%1-%2 ▾").arg(
+                            self->zonianLogMonths_[0].year,
+                            self->zonianLogMonths_[0].month));
+                    self->ui_.logDateButton->show();
+                    self->updateLogControlsStyle();
+                }
                 self->fetchZonianMonthLog(0);
             }
             else
             {
+                if (self->ui_.logDateButton)
+                {
+                    self->ui_.logDateButton->hide();
+                }
                 self->zonianLogsLoading_ = false;
                 self->zonianLogsHasMore_ = false;
                 self->updateUsercardMessagesVisibility();
@@ -3231,23 +3380,39 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
     }
 
     QString channelName;
-    if (this->underlyingChannel_)
+    if (this->underlyingChannel_ &&
+        this->underlyingChannel_->getType() == Channel::Type::Twitch)
     {
         channelName = this->underlyingChannel_->getName();
-        if (channelName.startsWith('#'))
-        {
-            channelName.remove(0, 1);
-        }
+    }
+    else if (this->channel_ &&
+             this->channel_->getType() == Channel::Type::Twitch)
+    {
+        channelName = this->channel_->getName();
+    }
+
+    if (channelName.startsWith('#') || channelName.startsWith('/'))
+    {
+        channelName = channelName.mid(1);
     }
     if (channelName.isEmpty())
     {
         return;
     }
 
+    this->zonianSelectedMonthIndex_ = monthIndex;
+    const auto monthData = this->zonianLogMonths_[monthIndex];
+    if (this->ui_.logDateButton)
+    {
+        this->ui_.logDateButton->setText(
+            QStringLiteral("%1-%2 ▾").arg(monthData.year, monthData.month));
+        this->ui_.logDateButton->show();
+        this->updateLogControlsStyle();
+    }
+
     const auto generation = this->zonianRequestGeneration_;
     const auto user = this->userName_.trimmed().toLower();
     const auto chan = channelName.trimmed().toLower();
-    const auto monthData = this->zonianLogMonths_[monthIndex];
     const QPointer<UserInfoPopup> self(this);
 
     this->zonianLogsLoading_ = true;
@@ -3290,6 +3455,8 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
                 }
             }
 
+            self->zonianCurrentLogMessages_ = parsedMessages;
+
             if (!self->usercardMessagesChannel_)
             {
                 self->usercardMessagesChannel_ =
@@ -3300,37 +3467,14 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
                     self->underlyingChannel_);
             }
 
-            if (monthIndex == 0)
-            {
-                self->usercardMessagesChannel_->clearMessages();
-                self->ui_.latestMessages->clearMessages();
-                if (!parsedMessages.empty())
-                {
-                    self->usercardMessagesChannel_->addMessagesAtStart(
-                        parsedMessages);
-                }
-                QTimer::singleShot(50, self.data(), [self] {
-                    if (self && self->ui_.latestMessages)
-                    {
-                        self->ui_.latestMessages->getScrollBar()
-                            .scrollToBottom();
-                    }
-                });
-            }
-            else
-            {
-                if (!parsedMessages.empty())
-                {
-                    self->usercardMessagesChannel_->addMessagesAtStart(
-                        parsedMessages);
-                }
-            }
-
-            self->zonianNextMonthIndex_ = monthIndex + 1;
-            self->zonianLogsHasMore_ =
-                (self->zonianNextMonthIndex_ < self->zonianLogMonths_.size());
             self->zonianLogsLoading_ = false;
-            self->updateUsercardMessagesVisibility();
+
+            QString currentQuery;
+            if (self->ui_.logSearchInput)
+            {
+                currentQuery = self->ui_.logSearchInput->text();
+            }
+            self->applyLogSearchFilter(currentQuery);
         })
         .onError([self, generation](const NetworkResult &) {
             if (!self || generation != self->zonianRequestGeneration_)
@@ -3343,123 +3487,63 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
         .execute();
 }
 
-void UserInfoPopup::searchUserLogs(const QString &query)
+void UserInfoPopup::applyLogSearchFilter(const QString &query)
 {
     QString trimmed = query.trimmed();
+
+    if (!this->usercardMessagesChannel_)
+    {
+        return;
+    }
+
+    this->usercardMessagesChannel_->clearMessages();
+    this->ui_.latestMessages->clearMessages();
+
     if (trimmed.isEmpty())
     {
-        if (this->isZonianSearchMode_)
+        this->isZonianSearchMode_ = false;
+        if (!this->zonianCurrentLogMessages_.empty())
         {
-            this->isZonianSearchMode_ = false;
-            this->fetchZonianLogList();
-        }
-        return;
-    }
-
-    if (this->isKick_ || this->isYouTube_ || this->userName_.isEmpty())
-    {
-        return;
-    }
-
-    QString channelName;
-    if (this->underlyingChannel_)
-    {
-        channelName = this->underlyingChannel_->getName();
-        if (channelName.startsWith('#'))
-        {
-            channelName.remove(0, 1);
+            this->usercardMessagesChannel_->addMessagesAtStart(
+                this->zonianCurrentLogMessages_);
         }
     }
-    if (channelName.isEmpty())
+    else
     {
-        return;
-    }
+        this->isZonianSearchMode_ = true;
+        std::vector<MessagePtr> filtered;
+        filtered.reserve(this->zonianCurrentLogMessages_.size());
 
-    this->isZonianSearchMode_ = true;
-    this->zonianLogsLoading_ = true;
-    this->zonianLogsHasMore_ = false;
-    const auto generation = ++this->zonianRequestGeneration_;
-    const auto user = this->userName_.trimmed().toLower();
-    const auto chan = channelName.trimmed().toLower();
-    const QPointer<UserInfoPopup> self(this);
+        for (const auto &msg : this->zonianCurrentLogMessages_)
+        {
+            if (msg && (msg->messageText.contains(trimmed, Qt::CaseInsensitive) ||
+                        msg->displayName.contains(trimmed, Qt::CaseInsensitive) ||
+                        msg->loginName.contains(trimmed, Qt::CaseInsensitive)))
+            {
+                filtered.push_back(msg);
+            }
+        }
+
+        if (!filtered.empty())
+        {
+            this->usercardMessagesChannel_->addMessagesAtStart(filtered);
+        }
+    }
 
     this->updateUsercardMessagesVisibility();
 
-    QString url =
-        QStringLiteral("https://logs.zonian.dev/channel/%1/user/%2/"
-                       "search?jsonBasic=1&q=%3")
-            .arg(QString::fromLatin1(QUrl::toPercentEncoding(chan)),
-                 QString::fromLatin1(QUrl::toPercentEncoding(user)),
-                 QString::fromLatin1(QUrl::toPercentEncoding(trimmed)));
+    const QPointer<UserInfoPopup> self(this);
+    QTimer::singleShot(50, this, [self] {
+        if (self && self->ui_.latestMessages)
+        {
+            self->ui_.latestMessages->getScrollBar().scrollToBottom();
+        }
+    });
+}
 
-    NetworkRequest(url)
-        .timeout(25000)
-        .header("User-Agent", "Sloperino-App")
-        .onSuccess([self, generation, chan, user](const NetworkResult &result) {
-            if (!self || generation != self->zonianRequestGeneration_)
-            {
-                return;
-            }
-
-            auto obj = result.parseJson();
-            auto msgsArr = obj.value(QStringLiteral("messages")).toArray();
-
-            auto *renderChannel =
-                dynamic_cast<TwitchChannel *>(self->underlyingChannel_.get());
-
-            std::vector<MessagePtr> parsedMessages;
-            parsedMessages.reserve(static_cast<size_t>(msgsArr.size()));
-
-            for (const auto &msgVal : msgsArr)
-            {
-                auto msgObj = msgVal.toObject();
-                auto msg =
-                    makeZonianLogMessage(msgObj, renderChannel, chan, user);
-                if (msg)
-                {
-                    parsedMessages.push_back(msg);
-                }
-            }
-
-            if (!self->usercardMessagesChannel_)
-            {
-                self->usercardMessagesChannel_ =
-                    std::make_shared<TwitchChannel>(chan);
-                self->ui_.latestMessages->setChannel(
-                    self->usercardMessagesChannel_);
-                self->ui_.latestMessages->setSourceChannel(
-                    self->underlyingChannel_);
-            }
-
-            self->usercardMessagesChannel_->clearMessages();
-            self->ui_.latestMessages->clearMessages();
-            if (!parsedMessages.empty())
-            {
-                self->usercardMessagesChannel_->addMessagesAtStart(
-                    parsedMessages);
-            }
-
-            self->zonianLogsLoading_ = false;
-            self->zonianLogsHasMore_ = false;
-            self->updateUsercardMessagesVisibility();
-
-            QTimer::singleShot(50, self.data(), [self] {
-                if (self && self->ui_.latestMessages)
-                {
-                    self->ui_.latestMessages->getScrollBar().scrollToBottom();
-                }
-            });
-        })
-        .onError([self, generation](const NetworkResult &) {
-            if (!self || generation != self->zonianRequestGeneration_)
-            {
-                return;
-            }
-            self->zonianLogsLoading_ = false;
-            self->zonianLogsHasMore_ = false;
-            self->updateUsercardMessagesVisibility();
-        })
-        .execute();
+void UserInfoPopup::searchUserLogs(const QString &query)
+{
+    this->applyLogSearchFilter(query);
 }
 
 void UserInfoPopup::fetchMoreUsercardMessages(int emptyPageSkipsLeft,

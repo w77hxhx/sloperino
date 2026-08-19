@@ -961,8 +961,8 @@ void UserClipsDialog::refreshStyle()
             ? theme->splits.header.background.darker(105).name()
             : theme->splits.header.background.lighter(125).name();
     const auto categoryColor = theme->isLightTheme()
-                                   ? QStringLiteral("#772ce8")
-                                   : QStringLiteral("#bf94ff");
+                                   ? QStringLiteral("#18181b")
+                                   : QStringLiteral("#ffffff");
 
     const bool isBroadcaster =
         (this->activeRole_ == QStringLiteral("BROADCASTER"));

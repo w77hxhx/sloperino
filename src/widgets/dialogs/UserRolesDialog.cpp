@@ -1054,6 +1054,21 @@ void UserRolesDialog::refreshStyle()
 
     this->closeButton_->setColor(textColor);
 
+    const auto modColor =
+        theme->isLightTheme() ? QStringLiteral("#16a34a") : QStringLiteral("#22c55e");
+    const auto vipColor =
+        theme->isLightTheme() ? QStringLiteral("#c026d3") : QStringLiteral("#e005b9");
+    const auto artistColor =
+        theme->isLightTheme() ? QStringLiteral("#d97706") : QStringLiteral("#f59e0b");
+    const auto founderColor =
+        theme->isLightTheme() ? QStringLiteral("#ca8a04") : QStringLiteral("#eab308");
+    const auto subColor =
+        theme->isLightTheme() ? QStringLiteral("#4f46e5") : QStringLiteral("#818cf8");
+    const auto partnerColor =
+        theme->isLightTheme() ? QStringLiteral("#7c3aed") : QStringLiteral("#bf94ff");
+    const auto affiliateColor =
+        theme->isLightTheme() ? QStringLiteral("#0d9488") : QStringLiteral("#00e6cb");
+
     this->setStyleSheet(
         QStringLiteral(R"(
         QWidget#UserRolesDialogRoot {
@@ -1132,37 +1147,37 @@ void UserRolesDialog::refreshStyle()
         }
         QLabel#RoleCardBadge,
         QLabel#RoleCardBadge_moderators {
-            color: #22c55e;
+            color: %17;
             font-weight: 700;
             font-size: 11px;
         }
         QLabel#RoleCardBadge_vips {
-            color: #e005b9;
+            color: %18;
             font-weight: 700;
             font-size: 11px;
         }
         QLabel#RoleCardBadge_artists {
-            color: #f59e0b;
+            color: %19;
             font-weight: 700;
             font-size: 11px;
         }
         QLabel#RoleCardBadge_founders {
-            color: #eab308;
+            color: %20;
             font-weight: 700;
             font-size: 11px;
         }
         QLabel#RoleCardBadge_subscribers {
-            color: #818cf8;
+            color: %21;
             font-weight: 700;
             font-size: 11px;
         }
         QLabel#RoleCardPartner {
-            color: #bf94ff;
+            color: %22;
             font-weight: 700;
             font-size: 11px;
         }
         QLabel#RoleCardAffiliate {
-            color: #00e6cb;
+            color: %23;
             font-weight: 700;
             font-size: 11px;
         }
@@ -1173,7 +1188,9 @@ void UserRolesDialog::refreshStyle()
                  QString::number(scrollbarRadius),
                  QString::number(scrollbarMinHeight),
                  QString::number(inputMinHeight), hoverBg, focusedBorder,
-                 cardBg, QString::number(cardRadius), cardHoverBg));
+                 cardBg, QString::number(cardRadius), cardHoverBg, modColor,
+                 vipColor, artistColor, founderColor, subColor, partnerColor,
+                 affiliateColor));
 }
 
 }  // namespace chatterino

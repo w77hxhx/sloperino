@@ -71,9 +71,15 @@ void FirehoseChannel::addMessagesBatch(const std::vector<MessagePtr> &messages)
         return;
     }
 
-    for (const auto &msg : messages)
+    size_t start = 0;
+    if (messages.size() > 150)
     {
-        this->addMessage(msg, MessageContext::Original);
+        start = messages.size() - 150;
+    }
+
+    for (size_t i = start; i < messages.size(); ++i)
+    {
+        this->addMessage(messages[i], MessageContext::Original);
     }
 }
 

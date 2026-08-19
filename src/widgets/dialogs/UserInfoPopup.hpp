@@ -221,15 +221,20 @@ private:
         QString month;
     };
     std::vector<ZonianLogMonth> zonianLogMonths_;
+    size_t zonianSelectedMonthIndex_ = 0;
     size_t zonianNextMonthIndex_ = 0;
     bool zonianLogsLoading_ = false;
     bool zonianLogsHasMore_ = false;
     bool isZonianSearchMode_ = false;
     uint64_t zonianRequestGeneration_ = 0;
+    std::vector<MessagePtr> zonianCurrentLogMessages_;
 
     void fetchZonianLogList();
     void fetchZonianMonthLog(size_t monthIndex);
     void searchUserLogs(const QString &query = QString());
+    void showLogDateMenu();
+    void applyLogSearchFilter(const QString &query);
+    void updateLogControlsStyle();
 
     QString kickUserSlug_;
     QPointer<QWidget> moderationReasonPopup_;
@@ -320,6 +325,7 @@ private:
         LabelButton *rolesMgmtLabel = nullptr;
         LabelButton *switchAvatars = nullptr;
         LabelButton *addChannelButton = nullptr;
+        LabelButton *logDateButton = nullptr;
         QLineEdit *logSearchInput = nullptr;
         LabelButton *logSearchButton = nullptr;
 

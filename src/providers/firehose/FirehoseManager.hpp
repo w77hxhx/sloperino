@@ -16,6 +16,8 @@
 #include <QTimer>
 #include <QUrl>
 
+#include <array>
+#include <atomic>
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -30,6 +32,76 @@ class Channel;
 using ChannelPtr = std::shared_ptr<Channel>;
 class FirehoseWsListener;
 class StalkChannel;
+
+class FastDedupCache
+{
+public:
+    static constexpr size_t NUM_SHARDS = 64;
+    static constexpr size_t SHARD_CAPACITY = 2048;  // 64 * 2048 = 131,072 items
+
+    FastDedupCache()
+    {
+        for (auto &shard : this->shards_)
+        {
+            shard.ring.resize(SHARD_CAPACITY, 0);
+            shard.set.reserve(SHARD_CAPACITY);
+        }
+    }
+
+    bool testAndSet(uint64_t hash)
+    {
+        if (hash == 0)
+        {
+            return true;
+        }
+
+        auto &shard = this->shards_[hash % NUM_SHARDS];
+        std::lock_guard<std::mutex> lock(shard.mtx);
+
+        if (shard.set.find(hash) != shard.set.end())
+        {
+            return false;  // Duplicate across endpoints
+        }
+
+        if (shard.count < SHARD_CAPACITY)
+        {
+            shard.ring[shard.count] = hash;
+            shard.count++;
+        }
+        else
+        {
+            uint64_t old = shard.ring[shard.head];
+            shard.set.erase(old);
+            shard.ring[shard.head] = hash;
+            shard.head = (shard.head + 1) % SHARD_CAPACITY;
+        }
+
+        shard.set.insert(hash);
+        return true;  // New unique item
+    }
+
+    void clear()
+    {
+        for (auto &shard : this->shards_)
+        {
+            std::lock_guard<std::mutex> lock(shard.mtx);
+            shard.set.clear();
+            shard.head = 0;
+            shard.count = 0;
+        }
+    }
+
+private:
+    struct Shard {
+        std::mutex mtx;
+        std::unordered_set<uint64_t> set;
+        std::vector<uint64_t> ring;
+        size_t head{0};
+        size_t count{0};
+    };
+
+    std::array<Shard, NUM_SHARDS> shards_;
+};
 
 class FirehoseManager final : public QObject
 {
@@ -71,7 +143,8 @@ private:
     void scheduleReconnect(size_t index);
     void onEndpointConnected(size_t index);
 
-    void onRawMessageReceived(QByteArray data);
+    void onRawDataReceivedFromWorker(const char *ptr, size_t len);
+    void processBatch();
     void updateStats();
     void runWatchdog();
 
@@ -84,28 +157,32 @@ private:
 
     std::vector<Endpoint> endpoints_;
 
-    // Deduplication ring-buffer cache using 64-bit hashes (zero string allocations)
-    mutable std::mutex dedupMutex_;
-    std::unordered_set<uint64_t> seenHashes_;
-    std::deque<uint64_t> seenQueue_;
-    static constexpr size_t MAX_DEDUP_CACHE_SIZE = 50000;
+    // Ultra-fast sharded deduplication cache (zero allocations during streaming)
+    FastDedupCache dedupCache_;
+
+    // Thread-safe batch queue from worker threads to GUI processing
+    std::mutex queueMutex_;
+    std::vector<QByteArray> incomingQueue_;
 
     // Timers
+    QTimer batchTimer_;
     QTimer statsTimer_;
     QTimer watchdogTimer_;
 
     // Consumer state
-    int firehoseAttachedCount_{0};
+    std::atomic<int> firehoseAttachedCount_{0};
     bool isRunning_{false};
 
-    // Statistics
-    int messagesThisSecond_{0};
+    // Atomic throughput statistics
+    std::atomic<int> rawMessagesReceived_{0};
     int currentMsgPerSecond_{0};
 
     QHash<QString, std::shared_ptr<Channel>> fallbackChannels_;
+    std::mutex stalkMutex_;
     std::vector<std::weak_ptr<StalkChannel>> stalkChannels_;
 
     pajlada::Signals::SignalHolder signalHolder_;
 };
 
 }  // namespace chatterino
+
