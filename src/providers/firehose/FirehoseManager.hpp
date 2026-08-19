@@ -126,9 +126,6 @@ public:
     bool isNeeded() const;
     void checkConnectionState();
 
-    // Returns a snapshot of connection status for each endpoint (UI use)
-    QVector<EndpointStatusInfo> getEndpointStatuses() const;
-
     enum class EndpointStatus {
         Disabled,
         Connecting,
@@ -142,6 +139,9 @@ public:
         EndpointStatus status;
         bool enabled;
     };
+
+    // Returns a snapshot of connection status for each endpoint (UI use)
+    QVector<EndpointStatusInfo> getEndpointStatuses() const;
 
 private:
     struct Endpoint {
