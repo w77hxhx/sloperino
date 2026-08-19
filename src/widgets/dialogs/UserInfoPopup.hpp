@@ -233,7 +233,6 @@ private:
     void fetchZonianMonthLog(size_t monthIndex);
     void searchUserLogs(const QString &query = QString());
     void showLogDateMenu();
-    void applyLogSearchFilter(const QString &query);
     void updateLogControlsStyle();
 
     QString kickUserSlug_;
