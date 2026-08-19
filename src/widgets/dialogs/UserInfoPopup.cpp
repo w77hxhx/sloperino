@@ -788,12 +788,13 @@ MessagePtr makeUsercardModLogMessage(const GqlUsercardMessage &message,
                 }
 
                 builtMessage->elements.erase(
-                    std::remove_if(builtMessage->elements.begin(),
-                                   builtMessage->elements.end(),
-                                   [](const std::unique_ptr<MessageElement> &el) {
-                                       return dynamic_cast<TimestampElement *>(
-                                                  el.get()) != nullptr;
-                                   }),
+                    std::remove_if(
+                        builtMessage->elements.begin(),
+                        builtMessage->elements.end(),
+                        [](const std::unique_ptr<MessageElement> &el) {
+                            return dynamic_cast<TimestampElement *>(el.get()) !=
+                                   nullptr;
+                        }),
                     builtMessage->elements.end());
 
                 const QString dateStr =
@@ -2019,14 +2020,14 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
         QObject::connect(this->ui_.logSearchInput, &QLineEdit::returnPressed,
                          this, triggerSearch);
         QObject::connect(searchBtn, &Button::leftClicked, this, triggerSearch);
-        QObject::connect(this->ui_.logSearchInput, &QLineEdit::textChanged,
-                         this, [this](const QString &text) {
-                             if (text.trimmed().isEmpty() &&
-                                 this->isZonianSearchMode_)
-                             {
-                                 this->searchUserLogs(QString());
-                             }
-                         });
+        QObject::connect(
+            this->ui_.logSearchInput, &QLineEdit::textChanged, this,
+            [this](const QString &text) {
+                if (text.trimmed().isEmpty() && this->isZonianSearchMode_)
+                {
+                    this->searchUserLogs(QString());
+                }
+            });
 
         logs->addWidget(logToolbarWidget);
 
@@ -3336,10 +3337,11 @@ void UserInfoPopup::showLogDateMenu()
 
         const QString monthStr = m.month.rightJustified(2, '0');
         const QString dateText = QStringLiteral("%1-%2").arg(m.year, monthStr);
-        const bool isSelected =
-            (!this->isZonianSearchMode_ && i == this->zonianSelectedMonthIndex_);
-        const QString labelText = isSelected ? QStringLiteral("✓  %1").arg(dateText)
-                                             : QStringLiteral("    %1").arg(dateText);
+        const bool isSelected = (!this->isZonianSearchMode_ &&
+                                 i == this->zonianSelectedMonthIndex_);
+        const QString labelText = isSelected
+                                      ? QStringLiteral("✓  %1").arg(dateText)
+                                      : QStringLiteral("    %1").arg(dateText);
 
         auto *itemBtn = new QPushButton(labelText, container);
         itemBtn->setFlat(true);
@@ -3365,18 +3367,17 @@ void UserInfoPopup::showLogDateMenu()
                      isSelected ? QStringLiteral("700") : QStringLiteral("600"),
                      hoverBg));
 
-        QObject::connect(itemBtn, &QPushButton::clicked, this,
-                         [this, popup, i] {
-                             popup->close();
-                             if (this->ui_.logSearchInput)
-                             {
-                                 QSignalBlocker blocker(
-                                     this->ui_.logSearchInput);
-                                 this->ui_.logSearchInput->clear();
-                             }
-                             this->isZonianSearchMode_ = false;
-                             this->fetchZonianMonthLog(i);
-                         });
+        QObject::connect(
+            itemBtn, &QPushButton::clicked, this, [this, popup, i] {
+                popup->close();
+                if (this->ui_.logSearchInput)
+                {
+                    QSignalBlocker blocker(this->ui_.logSearchInput);
+                    this->ui_.logSearchInput->clear();
+                }
+                this->isZonianSearchMode_ = false;
+                this->fetchZonianMonthLog(i);
+            });
 
         containerLayout->addWidget(itemBtn);
     }
@@ -3498,13 +3499,11 @@ void UserInfoPopup::fetchZonianLogList()
     }
 
     QString channelName;
-    if (this->underlyingChannel_ &&
-        this->underlyingChannel_->isTwitchChannel())
+    if (this->underlyingChannel_ && this->underlyingChannel_->isTwitchChannel())
     {
         channelName = this->underlyingChannel_->getName();
     }
-    else if (this->channel_ &&
-             this->channel_->isTwitchChannel())
+    else if (this->channel_ && this->channel_->isTwitchChannel())
     {
         channelName = this->channel_->getName();
     }
@@ -3642,8 +3641,10 @@ void UserInfoPopup::fetchZonianLogList()
                     isRateLimit ? QStringLiteral("rate limited")
                                 : QStringLiteral("no logs"));
                 self->ui_.logDateButton->setToolTip(
-                    isRateLimit ? QStringLiteral("Log rate limit reached. Please wait a moment.")
-                                : QStringLiteral("No logs available"));
+                    isRateLimit
+                        ? QStringLiteral(
+                              "Log rate limit reached. Please wait a moment.")
+                        : QStringLiteral("No logs available"));
                 self->ui_.logDateButton->show();
                 self->updateLogControlsStyle();
             }
@@ -3670,13 +3671,11 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
     }
 
     QString channelName;
-    if (this->underlyingChannel_ &&
-        this->underlyingChannel_->isTwitchChannel())
+    if (this->underlyingChannel_ && this->underlyingChannel_->isTwitchChannel())
     {
         channelName = this->underlyingChannel_->getName();
     }
-    else if (this->channel_ &&
-             this->channel_->isTwitchChannel())
+    else if (this->channel_ && this->channel_->isTwitchChannel())
     {
         channelName = this->channel_->getName();
     }
@@ -3698,9 +3697,8 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
     const auto monthData = this->zonianLogMonths_[monthIndex];
     if (this->ui_.logDateButton)
     {
-        this->ui_.logDateButton->setText(
-            QStringLiteral("%1-%2 ▾").arg(
-                monthData.year, monthData.month.rightJustified(2, '0')));
+        this->ui_.logDateButton->setText(QStringLiteral("%1-%2 ▾").arg(
+            monthData.year, monthData.month.rightJustified(2, '0')));
         this->ui_.logDateButton->setToolTip(
             QStringLiteral("Select log month (scroll to change date)"));
         this->ui_.logDateButton->show();
@@ -3779,8 +3777,8 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
     NetworkRequest(url)
         .timeout(20000)
         .header("User-Agent", "Sloperino-App")
-        .onSuccess([self, generation, chan, user,
-                    monthIndex, cacheKey](const NetworkResult &result) {
+        .onSuccess([self, generation, chan, user, monthIndex,
+                    cacheKey](const NetworkResult &result) {
             if (!self || generation != self->zonianRequestGeneration_)
             {
                 return;
@@ -3869,8 +3867,8 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
                 {
                     self->ui_.logDateButton->setText(
                         QStringLiteral("rate limited"));
-                    self->ui_.logDateButton->setToolTip(
-                        QStringLiteral("Log rate limit reached. Please wait a moment."));
+                    self->ui_.logDateButton->setToolTip(QStringLiteral(
+                        "Log rate limit reached. Please wait a moment."));
                 }
                 if (self->usercardMessagesChannel_)
                 {
@@ -3896,13 +3894,11 @@ void UserInfoPopup::searchUserLogs(const QString &query)
     QString trimmed = query.trimmed();
 
     QString channelName;
-    if (this->underlyingChannel_ &&
-        this->underlyingChannel_->isTwitchChannel())
+    if (this->underlyingChannel_ && this->underlyingChannel_->isTwitchChannel())
     {
         channelName = this->underlyingChannel_->getName();
     }
-    else if (this->channel_ &&
-             this->channel_->isTwitchChannel())
+    else if (this->channel_ && this->channel_->isTwitchChannel())
     {
         channelName = this->channel_->getName();
     }
@@ -3924,10 +3920,8 @@ void UserInfoPopup::searchUserLogs(const QString &query)
     {
         this->usercardMessagesChannel_ =
             std::make_shared<TwitchChannel>(channelName);
-        this->ui_.latestMessages->setChannel(
-            this->usercardMessagesChannel_);
-        this->ui_.latestMessages->setSourceChannel(
-            this->underlyingChannel_);
+        this->ui_.latestMessages->setChannel(this->usercardMessagesChannel_);
+        this->ui_.latestMessages->setSourceChannel(this->underlyingChannel_);
     }
 
     if (trimmed.isEmpty())
@@ -3943,9 +3937,8 @@ void UserInfoPopup::searchUserLogs(const QString &query)
                 this->zonianLogMonths_[this->zonianSelectedMonthIndex_];
             if (this->ui_.logDateButton)
             {
-                this->ui_.logDateButton->setText(
-                    QStringLiteral("%1-%2 ▾").arg(
-                        m.year, m.month.rightJustified(2, '0')));
+                this->ui_.logDateButton->setText(QStringLiteral("%1-%2 ▾").arg(
+                    m.year, m.month.rightJustified(2, '0')));
                 this->ui_.logDateButton->setToolTip(
                     QStringLiteral("Select log month (scroll to change date)"));
                 this->ui_.logDateButton->show();
@@ -3998,8 +3991,9 @@ void UserInfoPopup::searchUserLogs(const QString &query)
         if (this->ui_.logDateButton)
         {
             this->ui_.logDateButton->setText(QStringLiteral("all-time ▾"));
-            this->ui_.logDateButton->setToolTip(QStringLiteral(
-                "Searching all logs (click or scroll to select a specific month)"));
+            this->ui_.logDateButton->setToolTip(
+                QStringLiteral("Searching all logs (click or scroll to select "
+                               "a specific month)"));
             this->ui_.logDateButton->show();
             this->updateLogControlsStyle();
         }
@@ -4122,21 +4116,23 @@ void UserInfoPopup::searchUserLogs(const QString &query)
             self->zonianRateLimited_ = isRateLimit;
             if (isRateLimit)
             {
-                self->zonianErrorMessage_ = QStringLiteral(
-                    "Rate limit exceeded for log search. Please wait a moment.");
+                self->zonianErrorMessage_ =
+                    QStringLiteral("Rate limit exceeded for log search. Please "
+                                   "wait a moment.");
                 if (self->ui_.logDateButton)
                 {
                     self->ui_.logDateButton->setText(
                         QStringLiteral("rate limited"));
-                    self->ui_.logDateButton->setToolTip(
-                        QStringLiteral("Log rate limit reached. Please wait a moment."));
+                    self->ui_.logDateButton->setToolTip(QStringLiteral(
+                        "Log rate limit reached. Please wait a moment."));
                 }
                 if (self->usercardMessagesChannel_)
                 {
                     self->usercardMessagesChannel_->addSystemMessage(
-                        QStringLiteral("Rate limit reached for search requests. "
-                                       "Please wait a moment before trying "
-                                       "again."));
+                        QStringLiteral(
+                            "Rate limit reached for search requests. "
+                            "Please wait a moment before trying "
+                            "again."));
                 }
             }
             else
