@@ -90,6 +90,7 @@ protected:
     void scaleChangedEvent(float scale) override;
     void windowDeactivationEvent() override;
     void keyPressEvent(QKeyEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void registerMnemonicButton(LabelButton *button, int key,
@@ -257,6 +258,8 @@ private:
         followingStatusChangedConnection_;
 
     std::unique_ptr<pajlada::Signals::ScopedConnection> refreshConnection_;
+    std::unique_ptr<pajlada::Signals::ScopedConnection>
+        channelRefreshConnection_;
     std::unique_ptr<pajlada::Signals::ScopedConnection>
         twitchUserStateConnection_;
     std::unique_ptr<pajlada::Signals::ScopedConnection>

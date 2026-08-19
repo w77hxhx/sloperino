@@ -97,6 +97,7 @@
 #include <QPainter>
 #include <QPointer>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QShowEvent>
 #include <QStringBuilder>
 #include <QSvgRenderer>
@@ -105,6 +106,7 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 #include <QWidgetAction>
 
 #include <algorithm>
@@ -1774,11 +1776,16 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
 
         auto dateBtn = user.emplace<LabelButton>("----/-- ▾", this, QSize{4, 2})
                            .assign(&this->ui_.logDateButton);
-        dateBtn->setToolTip("Select log month");
+        dateBtn->setToolTip("Select log month (scroll to change date)");
         dateBtn->hide();
+        dateBtn.getElement()->installEventFilter(this);
         QObject::connect(dateBtn.getElement(), &Button::leftClicked, this,
                          [this] {
-                             this->showLogDateMenu();
+                             if (!this->isZonianSearchMode_ &&
+                                 !this->zonianLogMonths_.empty())
+                             {
+                                 this->showLogDateMenu();
+                             }
                          });
 
         auto *searchInput = new QLineEdit(this);
@@ -2913,34 +2920,56 @@ void UserInfoPopup::updateLatestMessages()
         this->maybeStartUsercardMessageAutoLoad();
     }
 
-    this->refreshConnection_ =
-        std::make_unique<pajlada::Signals::ScopedConnection>(
-            this->underlyingChannel_->messageAppended.connect(
-                [this](auto message, auto) {
-                    if (this->updateTargetModerationStatusFromMessage(message))
-                    {
-                        this->userStateChanged_.invoke();
-                    }
+    const auto onNewMessage = [this](auto message) {
+        if (!checkMessageUserName(this->userName_, message))
+        {
+            return;
+        }
 
-                    if (!checkMessageUserName(this->userName_, message))
-                    {
-                        return;
-                    }
+        if (this->usercardMessagesChannel_)
+        {
+            this->usercardMessagesChannel_->addMessage(message,
+                                                       MessageContext::Repost);
+            if (!this->isZonianSearchMode_)
+            {
+                this->zonianCurrentLogMessages_.push_back(message);
+            }
+            this->updateUsercardMessagesVisibility();
+            if (this->ui_.latestMessages)
+            {
+                this->ui_.latestMessages->getScrollBar().scrollToBottom();
+            }
+        }
+        else
+        {
+            this->updateLatestMessages();
+        }
+    };
 
-                    if (this->usercardMessagesChannel_ &&
-                        this->usercardMessagesChannel_->hasMessages())
-                    {
-                        this->usercardMessagesChannel_->addMessage(
-                            message, MessageContext::Repost);
-                        this->updateUsercardMessagesVisibility();
-                    }
-                    else
-                    {
-                        // The ChannelView is currently hidden, so manually refresh
-                        // and display the latest messages
-                        this->updateLatestMessages();
-                    }
-                }));
+    if (this->underlyingChannel_)
+    {
+        this->refreshConnection_ =
+            std::make_unique<pajlada::Signals::ScopedConnection>(
+                this->underlyingChannel_->messageAppended.connect(
+                    [this, onNewMessage](auto message, auto) {
+                        if (this->updateTargetModerationStatusFromMessage(
+                                message))
+                        {
+                            this->userStateChanged_.invoke();
+                        }
+                        onNewMessage(message);
+                    }));
+    }
+
+    if (this->channel_ && this->channel_ != this->underlyingChannel_)
+    {
+        this->channelRefreshConnection_ =
+            std::make_unique<pajlada::Signals::ScopedConnection>(
+                this->channel_->messageAppended.connect(
+                    [onNewMessage](auto message, auto) {
+                        onNewMessage(message);
+                    }));
+    }
 }
 
 void UserInfoPopup::updateUsercardMessagesVisibility()
@@ -3140,6 +3169,36 @@ void UserInfoPopup::maybeLoadMoreUsercardMessagesFromScroll()
     }
 }
 
+bool UserInfoPopup::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == this->ui_.logDateButton && event->type() == QEvent::Wheel)
+    {
+        auto *wheel = static_cast<QWheelEvent *>(event);
+        if (!this->isZonianSearchMode_ && !this->zonianLogMonths_.empty())
+        {
+            if (wheel->angleDelta().y() > 0)
+            {
+                if (this->zonianSelectedMonthIndex_ > 0)
+                {
+                    this->fetchZonianMonthLog(
+                        this->zonianSelectedMonthIndex_ - 1);
+                }
+            }
+            else if (wheel->angleDelta().y() < 0)
+            {
+                if (this->zonianSelectedMonthIndex_ + 1 <
+                    this->zonianLogMonths_.size())
+                {
+                    this->fetchZonianMonthLog(
+                        this->zonianSelectedMonthIndex_ + 1);
+                }
+            }
+            return true;
+        }
+    }
+    return DraggablePopup::eventFilter(watched, event);
+}
+
 void UserInfoPopup::showLogDateMenu()
 {
     if (this->zonianLogMonths_.empty() || !this->ui_.logDateButton)
@@ -3147,8 +3206,8 @@ void UserInfoPopup::showLogDateMenu()
         return;
     }
 
-    auto *menu = new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
+    auto *popup = new QDialog(this, Qt::Popup | Qt::FramelessWindowHint);
+    popup->setAttribute(Qt::WA_DeleteOnClose);
 
     const auto *theme = this->theme;
     const auto bg = theme->window.background.name();
@@ -3158,31 +3217,25 @@ void UserInfoPopup::showLogDateMenu()
         theme->isLightTheme()
             ? theme->splits.input.background.darker(104).name()
             : theme->splits.input.background.lighter(112).name();
+    const auto scrollbarBg =
+        theme->isLightTheme()
+            ? theme->splits.input.background.darker(110).name()
+            : theme->splits.input.background.lighter(120).name();
 
-    menu->setStyleSheet(QStringLiteral(R"(
-        QMenu {
-            background-color: %1;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: 6px;
-            padding: 4px;
-        }
-        QMenu::item {
-            padding: 4px 18px 4px 12px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-        QMenu::item:selected {
-            background-color: %4;
-            color: %2;
-        }
-        QMenu::separator {
-            height: 1px;
-            background: %3;
-            margin: 4px 6px;
-        }
-    )")
-                            .arg(bg, text, border, hoverBg));
+    auto *mainLayout = new QVBoxLayout(popup);
+    mainLayout->setContentsMargins(1, 1, 1, 1);
+    mainLayout->setSpacing(0);
+
+    auto *scrollArea = new QScrollArea(popup);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setWidgetResizable(true);
+
+    auto *container = new QWidget(scrollArea);
+    auto *containerLayout = new QVBoxLayout(container);
+    containerLayout->setContentsMargins(4, 4, 4, 4);
+    containerLayout->setSpacing(2);
 
     QString currentYear;
     for (size_t i = 0; i < this->zonianLogMonths_.size(); ++i)
@@ -3190,24 +3243,95 @@ void UserInfoPopup::showLogDateMenu()
         const auto &m = this->zonianLogMonths_[i];
         if (!currentYear.isEmpty() && m.year != currentYear)
         {
-            menu->addSeparator();
+            auto *sep = new QFrame(container);
+            sep->setFrameShape(QFrame::HLine);
+            sep->setFrameShadow(QFrame::Plain);
+            sep->setFixedHeight(1);
+            sep->setStyleSheet(
+                QStringLiteral("background: %1; margin: 4px 2px;").arg(border));
+            containerLayout->addWidget(sep);
         }
         currentYear = m.year;
 
-        QString label = QStringLiteral("%1-%2").arg(m.year, m.month);
-        if (i == this->zonianSelectedMonthIndex_)
+        QString labelText = QStringLiteral("%1-%2").arg(m.year, m.month);
+        const bool isSelected = (i == this->zonianSelectedMonthIndex_);
+        if (isSelected)
         {
-            label = QStringLiteral("✓ %1").arg(label);
+            labelText = QStringLiteral("✓ %1").arg(labelText);
         }
 
-        auto *act = menu->addAction(label);
-        QObject::connect(act, &QAction::triggered, this, [this, i] {
-            this->fetchZonianMonthLog(i);
-        });
+        auto *itemBtn = new QPushButton(labelText, container);
+        itemBtn->setFlat(true);
+        itemBtn->setCursor(Qt::PointingHandCursor);
+        itemBtn->setStyleSheet(
+            QStringLiteral(R"(
+            QPushButton {
+                background-color: %1;
+                color: %2;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 12px;
+                text-align: left;
+                font-weight: %3;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: %4;
+            }
+        )")
+                .arg(isSelected ? hoverBg : QStringLiteral("transparent"), text,
+                     isSelected ? QStringLiteral("700") : QStringLiteral("600"),
+                     hoverBg));
+
+        QObject::connect(itemBtn, &QPushButton::clicked, this,
+                         [this, popup, i] {
+                             popup->close();
+                             this->fetchZonianMonthLog(i);
+                         });
+
+        containerLayout->addWidget(itemBtn);
     }
 
-    menu->exec(this->ui_.logDateButton->mapToGlobal(
-        QPoint(0, this->ui_.logDateButton->height() + 2)));
+    containerLayout->addStretch();
+    scrollArea->setWidget(container);
+
+    const int totalHeight = std::min(
+        static_cast<int>(this->zonianLogMonths_.size() * 26 + 40), 280);
+    scrollArea->setFixedHeight(totalHeight);
+    scrollArea->setFixedWidth(130);
+
+    popup->setStyleSheet(QStringLiteral(R"(
+        QDialog {
+            background-color: %1;
+            border: 1px solid %2;
+            border-radius: 6px;
+        }
+        QScrollArea {
+            background: transparent;
+            border: none;
+        }
+        QScrollBar:vertical {
+            background: transparent;
+            width: 6px;
+            margin: 2px 1px 2px 0px;
+        }
+        QScrollBar::handle:vertical {
+            background: %3;
+            border-radius: 3px;
+            min-height: 20px;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0px;
+        }
+    )")
+                             .arg(bg, border, scrollbarBg));
+
+    mainLayout->addWidget(scrollArea);
+
+    const QPoint globalPos = this->ui_.logDateButton->mapToGlobal(
+        QPoint(0, this->ui_.logDateButton->height() + 2));
+    popup->move(globalPos);
+    popup->show();
 }
 
 void UserInfoPopup::updateLogControlsStyle()
@@ -3306,6 +3430,12 @@ void UserInfoPopup::fetchZonianLogList()
     this->zonianLogsHasMore_ = false;
     this->isZonianSearchMode_ = false;
     this->zonianCurrentLogMessages_.clear();
+    if (this->ui_.logDateButton)
+    {
+        this->ui_.logDateButton->setText(QStringLiteral("loading..."));
+        this->ui_.logDateButton->show();
+        this->updateLogControlsStyle();
+    }
     this->updateUsercardMessagesVisibility();
 
     QString url =
@@ -3354,13 +3484,22 @@ void UserInfoPopup::fetchZonianLogList()
             }
             else
             {
-                if (self->ui_.logDateButton)
-                {
-                    self->ui_.logDateButton->hide();
-                }
                 self->zonianLogsLoading_ = false;
                 self->zonianLogsHasMore_ = false;
+                if (self->ui_.logDateButton)
+                {
+                    self->ui_.logDateButton->setText(QStringLiteral("no logs"));
+                    self->ui_.logDateButton->show();
+                    self->updateLogControlsStyle();
+                }
+                self->usercardMessagesChannel_ =
+                    filterMessages(self->userName_, self->underlyingChannel_);
+                self->ui_.latestMessages->setChannel(
+                    self->usercardMessagesChannel_);
+                self->ui_.latestMessages->setSourceChannel(
+                    self->underlyingChannel_);
                 self->updateUsercardMessagesVisibility();
+                self->maybeStartUsercardMessageAutoLoad();
             }
         })
         .onError([self, generation](const NetworkResult &) {
@@ -3370,7 +3509,20 @@ void UserInfoPopup::fetchZonianLogList()
             }
             self->zonianLogsLoading_ = false;
             self->zonianLogsHasMore_ = false;
+            if (self->ui_.logDateButton)
+            {
+                self->ui_.logDateButton->setText(QStringLiteral("no logs"));
+                self->ui_.logDateButton->show();
+                self->updateLogControlsStyle();
+            }
+            self->usercardMessagesChannel_ =
+                filterMessages(self->userName_, self->underlyingChannel_);
+            self->ui_.latestMessages->setChannel(
+                self->usercardMessagesChannel_);
+            self->ui_.latestMessages->setSourceChannel(
+                self->underlyingChannel_);
             self->updateUsercardMessagesVisibility();
+            self->maybeStartUsercardMessageAutoLoad();
         })
         .execute();
 }
@@ -3531,10 +3683,37 @@ void UserInfoPopup::searchUserLogs(const QString &query)
         this->isZonianSearchMode_ = false;
         this->usercardMessagesChannel_->clearMessages();
         this->ui_.latestMessages->clearMessages();
-        if (!this->zonianCurrentLogMessages_.empty())
+        if (!this->zonianLogMonths_.empty())
         {
-            this->usercardMessagesChannel_->addMessagesAtStart(
-                this->zonianCurrentLogMessages_);
+            const auto &m =
+                this->zonianLogMonths_[this->zonianSelectedMonthIndex_];
+            if (this->ui_.logDateButton)
+            {
+                this->ui_.logDateButton->setText(
+                    QStringLiteral("%1-%2 ▾").arg(m.year, m.month));
+                this->ui_.logDateButton->show();
+                this->updateLogControlsStyle();
+            }
+            if (!this->zonianCurrentLogMessages_.empty())
+            {
+                this->usercardMessagesChannel_->addMessagesAtStart(
+                    this->zonianCurrentLogMessages_);
+            }
+        }
+        else
+        {
+            if (this->ui_.logDateButton)
+            {
+                this->ui_.logDateButton->setText(QStringLiteral("no logs"));
+                this->ui_.logDateButton->show();
+                this->updateLogControlsStyle();
+            }
+            this->usercardMessagesChannel_ =
+                filterMessages(this->userName_, this->underlyingChannel_);
+            this->ui_.latestMessages->setChannel(
+                this->usercardMessagesChannel_);
+            this->ui_.latestMessages->setSourceChannel(
+                this->underlyingChannel_);
         }
         this->updateUsercardMessagesVisibility();
 
@@ -3565,6 +3744,12 @@ void UserInfoPopup::searchUserLogs(const QString &query)
 
     this->isZonianSearchMode_ = true;
     this->zonianLogsLoading_ = true;
+    if (this->ui_.logDateButton)
+    {
+        this->ui_.logDateButton->setText(QStringLiteral("all-time"));
+        this->ui_.logDateButton->show();
+        this->updateLogControlsStyle();
+    }
     this->usercardMessagesChannel_->clearMessages();
     this->ui_.latestMessages->clearMessages();
     this->updateUsercardMessagesVisibility();
