@@ -3304,6 +3304,7 @@ void UserInfoPopup::showLogDateMenu()
             : theme->splits.input.background.lighter(120).name();
 
     auto *mainLayout = new QVBoxLayout(popup);
+    mainLayout->setSizeConstraint(QLayout::SetFixedSize);
     mainLayout->setContentsMargins(1, 1, 1, 1);
     mainLayout->setSpacing(0);
 
@@ -3315,7 +3316,7 @@ void UserInfoPopup::showLogDateMenu()
 
     auto *container = new QWidget(scrollArea);
     auto *containerLayout = new QVBoxLayout(container);
-    containerLayout->setContentsMargins(3, 3, 3, 3);
+    containerLayout->setContentsMargins(2, 2, 2, 2);
     containerLayout->setSpacing(1);
 
     QString currentYear;
@@ -3330,7 +3331,7 @@ void UserInfoPopup::showLogDateMenu()
             sep->setFixedHeight(1);
             sep->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             sep->setStyleSheet(
-                QStringLiteral("background: %1; margin: 3px 2px;").arg(border));
+                QStringLiteral("background: %1; margin: 2px 1px;").arg(border));
             containerLayout->addWidget(sep);
         }
         currentYear = m.year;
@@ -3354,7 +3355,7 @@ void UserInfoPopup::showLogDateMenu()
                 color: %2;
                 border: none;
                 border-radius: 4px;
-                padding: 4px 8px;
+                padding: 3px 5px;
                 text-align: left;
                 font-weight: %3;
                 font-size: 11px;
@@ -3386,9 +3387,10 @@ void UserInfoPopup::showLogDateMenu()
     scrollArea->setWidget(container);
 
     const int totalHeight = std::min(
-        static_cast<int>(this->zonianLogMonths_.size() * 25 + 30), 260);
+        static_cast<int>(this->zonianLogMonths_.size() * 24 + 20), 240);
     scrollArea->setFixedHeight(totalHeight);
-    scrollArea->setFixedWidth(106);
+    scrollArea->setFixedWidth(92);
+    popup->setFixedWidth(94);
 
     popup->setStyleSheet(QStringLiteral(R"(
         QDialog {
@@ -3402,12 +3404,12 @@ void UserInfoPopup::showLogDateMenu()
         }
         QScrollBar:vertical {
             background: transparent;
-            width: 6px;
+            width: 5px;
             margin: 2px 1px 2px 0px;
         }
         QScrollBar::handle:vertical {
             background: %3;
-            border-radius: 3px;
+            border-radius: 2px;
             min-height: 20px;
         }
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {

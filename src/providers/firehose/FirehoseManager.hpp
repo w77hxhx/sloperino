@@ -176,6 +176,7 @@ private:
     // Atomic throughput statistics
     std::atomic<int> rawMessagesReceived_{0};
     int currentMsgPerSecond_{0};
+    int secondsSinceLastSpeedCheck_{0};
 
     QHash<QString, std::shared_ptr<Channel>> fallbackChannels_;
     std::mutex stalkMutex_;

@@ -132,6 +132,7 @@ void FirehoseManager::checkConnectionState()
         if (!this->isRunning_)
         {
             this->isRunning_ = true;
+            this->secondsSinceLastSpeedCheck_ = 0;
             this->initialize();
             this->batchTimer_.start();
             this->statsTimer_.start();
@@ -143,6 +144,7 @@ void FirehoseManager::checkConnectionState()
         if (this->isRunning_)
         {
             this->isRunning_ = false;
+            this->secondsSinceLastSpeedCheck_ = 0;
             this->batchTimer_.stop();
             this->statsTimer_.stop();
             this->watchdogTimer_.stop();
@@ -248,6 +250,8 @@ void FirehoseManager::initialize()
         return;
     }
 
+    this->secondsSinceLastSpeedCheck_ = 0;
+
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
         auto &ep = this->endpoints_[i];
@@ -264,6 +268,8 @@ void FirehoseManager::reconnectAll()
     {
         return;
     }
+
+    this->secondsSinceLastSpeedCheck_ = 0;
 
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
@@ -722,6 +728,23 @@ void FirehoseManager::updateStats()
 
     this->channel_->updateStatus(this->currentMsgPerSecond_, activeCount,
                                  totalCount);
+
+    if (this->isNeeded() && this->isRunning_)
+    {
+        this->secondsSinceLastSpeedCheck_++;
+        if (this->secondsSinceLastSpeedCheck_ >= 60)
+        {
+            this->secondsSinceLastSpeedCheck_ = 0;
+            if (this->currentMsgPerSecond_ < 1000)
+            {
+                qCDebug(chatterinoWebsocket)
+                    << "Firehose speed is below 1000 msg/s ("
+                    << this->currentMsgPerSecond_
+                    << " msg/s). Reconnecting to firehose...";
+                this->reconnectAll();
+            }
+        }
+    }
 }
 
 MessagePtr FirehoseManager::parseRawPayload(const QByteArray &data,
