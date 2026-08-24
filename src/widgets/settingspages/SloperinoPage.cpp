@@ -31,6 +31,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QPointer>
 #include <QPushButton>
 #include <QTableView>
 #include <QTimer>
@@ -52,20 +53,33 @@ QString decodeJwtUserId(const QString &jwt)
     }
 
     auto payload = parts[1].toUtf8();
+    auto json = QByteArray::fromBase64(
+        payload,
+        QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
+    auto doc = QJsonDocument::fromJson(json);
+    if (doc.isObject())
+    {
+        const auto sub = doc.object().value("sub").toString().trimmed();
+        if (!sub.isEmpty())
+        {
+            return sub;
+        }
+    }
+
     payload.replace('-', '+').replace('_', '/');
     while (payload.size() % 4 != 0)
     {
         payload.append('=');
     }
 
-    const auto json = QByteArray::fromBase64(payload);
-    const auto doc = QJsonDocument::fromJson(json);
-    if (!doc.isObject())
+    const auto fallbackDoc =
+        QJsonDocument::fromJson(QByteArray::fromBase64(payload));
+    if (fallbackDoc.isObject())
     {
-        return {};
+        return fallbackDoc.object().value("sub").toString().trimmed();
     }
 
-    return doc.object().value("sub").toString().trimmed();
+    return {};
 }
 
 void validateSeventvToken(
@@ -84,45 +98,112 @@ void validateSeventvToken(
         return;
     }
 
-    const auto jwtId = decodeJwtUserId(trimmed);
-    const auto urlStr =
-        !jwtId.isEmpty()
-            ? QStringLiteral("https://7tv.io/v3/users/%1").arg(jwtId)
-            : QStringLiteral("https://7tv.io/v3/users/@me");
+    QJsonObject gqlQuery;
+    gqlQuery.insert(
+        QStringLiteral("query"),
+        QStringLiteral("{ user: actor { id username display_name } }"));
 
-    NetworkRequest(QUrl(urlStr), NetworkRequestType::Get)
+    NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/gql")),
+                   NetworkRequestType::Post)
         .header("Authorization",
                 QStringLiteral("Bearer %1").arg(trimmed).toUtf8())
+        .header("Content-Type", "application/json")
         .header("Accept", "application/json")
+        .header("User-Agent", "Chatterino")
+        .json(gqlQuery)
         .timeout(15000)
-        .onSuccess([onSuccess, onError](const NetworkResult &res) {
+        .onSuccess([onSuccess, onError, trimmed](const NetworkResult &res) {
             const auto obj = res.parseJson();
-            if (obj.isEmpty())
+            const auto dataObj = obj.value("data").toObject();
+            const auto userObj = dataObj.value("user").toObject();
+
+            auto id = userObj.value("id").toString().trimmed();
+            auto username = userObj.value("username").toString().trimmed();
+            auto displayName =
+                userObj.value("display_name").toString().trimmed();
+
+            if (id.isEmpty())
             {
+                const auto jwtId = decodeJwtUserId(trimmed);
+                if (!jwtId.isEmpty())
+                {
+                    NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/users/%1")
+                                            .arg(jwtId)),
+                                   NetworkRequestType::Get)
+                        .header("Authorization",
+                                QStringLiteral("Bearer %1").arg(trimmed).toUtf8())
+                        .header("Accept", "application/json")
+                        .header("User-Agent", "Chatterino")
+                        .timeout(15000)
+                        .onSuccess([onSuccess,
+                                    onError](const NetworkResult &restRes) {
+                            const auto restObj = restRes.parseJson();
+                            const auto rId =
+                                restObj.value("id").toString().trimmed();
+                            auto rUsername =
+                                restObj.value("username").toString().trimmed();
+                            const auto rDisplayName =
+                                restObj.value("display_name")
+                                    .toString()
+                                    .trimmed();
+
+                            if (rUsername.isEmpty() && !rDisplayName.isEmpty())
+                            {
+                                rUsername = rDisplayName;
+                            }
+                            if (rId.isEmpty())
+                            {
+                                if (onError)
+                                {
+                                    onError("7TV API did not return user ID");
+                                }
+                                return;
+                            }
+                            if (onSuccess)
+                            {
+                                onSuccess(rId, rUsername, rDisplayName);
+                            }
+                        })
+                        .onError([onError](const NetworkResult &restRes) {
+                            if (!onError)
+                            {
+                                return;
+                            }
+                            if (restRes.status() == 401 ||
+                                restRes.status() == 403)
+                            {
+                                onError("Invalid or expired 7TV token");
+                                return;
+                            }
+                            onError(restRes.formatError());
+                        })
+                        .execute();
+                    return;
+                }
+
                 if (onError)
                 {
-                    onError("Failed to parse 7TV API response");
+                    const auto errorsArr = obj.value("errors").toArray();
+                    if (!errorsArr.isEmpty())
+                    {
+                        const auto firstErr = errorsArr.at(0)
+                                                  .toObject()
+                                                  .value("message")
+                                                  .toString();
+                        if (!firstErr.isEmpty())
+                        {
+                            onError(firstErr);
+                            return;
+                        }
+                    }
+                    onError("Failed to authenticate with 7TV");
                 }
                 return;
             }
-
-            const auto id = obj.value("id").toString().trimmed();
-            auto username = obj.value("username").toString().trimmed();
-            const auto displayName =
-                obj.value("display_name").toString().trimmed();
 
             if (username.isEmpty() && !displayName.isEmpty())
             {
                 username = displayName;
-            }
-
-            if (id.isEmpty())
-            {
-                if (onError)
-                {
-                    onError("7TV API did not return user ID");
-                }
-                return;
             }
 
             if (onSuccess)
@@ -130,7 +211,58 @@ void validateSeventvToken(
                 onSuccess(id, username, displayName);
             }
         })
-        .onError([onError](const NetworkResult &res) {
+        .onError([onSuccess, onError, trimmed](const NetworkResult &res) {
+            const auto jwtId = decodeJwtUserId(trimmed);
+            if (!jwtId.isEmpty() && res.status() != 401 && res.status() != 403)
+            {
+                NetworkRequest(
+                    QUrl(QStringLiteral("https://7tv.io/v3/users/%1").arg(jwtId)),
+                    NetworkRequestType::Get)
+                    .header("Authorization",
+                            QStringLiteral("Bearer %1").arg(trimmed).toUtf8())
+                    .header("Accept", "application/json")
+                    .header("User-Agent", "Chatterino")
+                    .timeout(15000)
+                    .onSuccess([onSuccess,
+                                onError](const NetworkResult &restRes) {
+                        const auto restObj = restRes.parseJson();
+                        const auto rId =
+                            restObj.value("id").toString().trimmed();
+                        auto rUsername =
+                            restObj.value("username").toString().trimmed();
+                        const auto rDisplayName =
+                            restObj.value("display_name").toString().trimmed();
+
+                        if (rUsername.isEmpty() && !rDisplayName.isEmpty())
+                        {
+                            rUsername = rDisplayName;
+                        }
+                        if (!rId.isEmpty() && onSuccess)
+                        {
+                            onSuccess(rId, rUsername, rDisplayName);
+                            return;
+                        }
+                        if (onError)
+                        {
+                            onError("7TV API did not return user ID");
+                        }
+                    })
+                    .onError([onError](const NetworkResult &restRes) {
+                        if (!onError)
+                        {
+                            return;
+                        }
+                        if (restRes.status() == 401 || restRes.status() == 403)
+                        {
+                            onError("Invalid or expired 7TV token");
+                            return;
+                        }
+                        onError(restRes.formatError());
+                    })
+                    .execute();
+                return;
+            }
+
             if (!onError)
             {
                 return;
@@ -143,6 +275,13 @@ void validateSeventvToken(
             const auto body = QString::fromUtf8(res.getData()).trimmed();
             if (!body.isEmpty())
             {
+                const auto json = res.parseJson();
+                const auto errorMsg = json.value("error").toString();
+                if (!errorMsg.isEmpty())
+                {
+                    onError(errorMsg);
+                    return;
+                }
                 onError(QString("7TV API error: %1").arg(body.left(120)));
                 return;
             }
@@ -152,6 +291,7 @@ void validateSeventvToken(
 }
 
 }  // namespace
+
 
 namespace chatterino {
 
@@ -503,46 +643,68 @@ void SloperinoPage::openSeventvAuthDialog()
 
     auto *btnBox = new QDialogButtonBox(&dialog);
     auto *saveBtn =
-        btnBox->addButton("Verify & Save", QDialogButtonBox::AcceptRole);
+        btnBox->addButton("Verify & Save", QDialogButtonBox::ActionRole);
     auto *cancelBtn = btnBox->addButton(QDialogButtonBox::Cancel);
     layout->addWidget(btnBox);
 
     QObject::connect(cancelBtn, &QPushButton::clicked, &dialog,
                      &QDialog::reject);
 
+    const QPointer<QDialog> dialogPtr(&dialog);
+    const QPointer<QLabel> statusPtr(dialogStatus);
+    const QPointer<QPushButton> saveBtnPtr(saveBtn);
+
     QObject::connect(
         saveBtn, &QPushButton::clicked, &dialog,
-        [this, &dialog, tokenInput, saveBtn, dialogStatus] {
+        [this, dialogPtr, tokenInput, saveBtnPtr, statusPtr] {
             const auto token = tokenInput->text().trimmed();
             if (token.isEmpty())
             {
-                dialogStatus->setText("Please enter a 7TV token.");
-                dialogStatus->setStyleSheet("QLabel { color: #f44336; }");
-                dialogStatus->show();
+                if (statusPtr)
+                {
+                    statusPtr->setText("Please enter a 7TV token.");
+                    statusPtr->setStyleSheet("QLabel { color: #f44336; }");
+                    statusPtr->show();
+                }
                 return;
             }
 
-            saveBtn->setEnabled(false);
-            dialogStatus->setText("Verifying with 7TV API...");
-            dialogStatus->setStyleSheet("QLabel { color: #9aa0a6; }");
-            dialogStatus->show();
+            if (saveBtnPtr)
+            {
+                saveBtnPtr->setEnabled(false);
+            }
+            if (statusPtr)
+            {
+                statusPtr->setText("Verifying with 7TV API...");
+                statusPtr->setStyleSheet("QLabel { color: #9aa0a6; }");
+                statusPtr->show();
+            }
 
             validateSeventvToken(
                 token,
-                [this, &dialog, token, dialogStatus](
+                [this, dialogPtr, token](
                     QString userId, QString username, QString /*displayName*/) {
                     getSettings()->seventvToken.setValue(token);
                     getSettings()->seventvUserId.setValue(userId);
                     getSettings()->seventvUsername.setValue(username);
                     this->updateSeventvStatus();
-                    dialog.accept();
+                    if (dialogPtr)
+                    {
+                        dialogPtr->accept();
+                    }
                 },
-                [saveBtn, dialogStatus](QString error) {
-                    saveBtn->setEnabled(true);
-                    dialogStatus->setText(
-                        QString("Validation failed: %1").arg(error));
-                    dialogStatus->setStyleSheet("QLabel { color: #f44336; }");
-                    dialogStatus->show();
+                [saveBtnPtr, statusPtr](QString error) {
+                    if (saveBtnPtr)
+                    {
+                        saveBtnPtr->setEnabled(true);
+                    }
+                    if (statusPtr)
+                    {
+                        statusPtr->setText(
+                            QString("Validation failed: %1").arg(error));
+                        statusPtr->setStyleSheet("QLabel { color: #f44336; }");
+                        statusPtr->show();
+                    }
                 });
         });
 
