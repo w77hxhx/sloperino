@@ -509,7 +509,7 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
     this->contentWidget_->setObjectName("UserRolesDialogContent");
     this->contentLayout_ = new QVBoxLayout(this->contentWidget_);
     this->contentLayout_->setContentsMargins(0, 0, 0, 0);
-    this->contentLayout_->setSpacing(ROLE_CARD_SPACING);
+    this->contentLayout_->setSpacing(scaledMetric(this->scale(), 6, 3));
 
     this->statusLabel_ = new QLabel(this->contentWidget_);
     this->statusLabel_->setObjectName("UserRolesStatus");
@@ -942,8 +942,6 @@ void UserRolesDialog::refreshStyle()
 {
     const float rawScale = this->scale();
     const int radius = std::max(4, static_cast<int>(std::round(4 * rawScale)));
-    const int pillRadius =
-        std::max(4, static_cast<int>(std::round(14 * rawScale)));
     const int inputPaddingX =
         std::max(8, static_cast<int>(std::round(8 * rawScale)));
     const int scrollbarWidth =

@@ -462,8 +462,8 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     tabRow->setContentsMargins(0, scaledMetric(this->scale(), 6, 3), 0, 0);
     tabRow->setSpacing(6);
 
-    this->broadcasterTab_ = new LabelButton(this->headerWidget_);
-    this->broadcasterTab_->setText("Broadcaster");
+    this->broadcasterTab_ =
+        new LabelButton(QStringLiteral("Broadcaster"), this);
     this->broadcasterTab_->setCursor(Qt::PointingHandCursor);
     this->broadcasterTab_->setSizePolicy(QSizePolicy::Fixed,
                                          QSizePolicy::Fixed);
@@ -472,8 +472,7 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     });
     tabRow->addWidget(this->broadcasterTab_);
 
-    this->curatorTab_ = new LabelButton(this->headerWidget_);
-    this->curatorTab_->setText("Curator");
+    this->curatorTab_ = new LabelButton(QStringLiteral("Curator"), this);
     this->curatorTab_->setCursor(Qt::PointingHandCursor);
     this->curatorTab_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     QObject::connect(this->curatorTab_, &Button::leftClicked, this, [this] {
