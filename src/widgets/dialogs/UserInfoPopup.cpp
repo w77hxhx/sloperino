@@ -2137,14 +2137,14 @@ void UserInfoPopup::scaleChangedEvent(float scale)
 
 void UserInfoPopup::windowDeactivationEvent()
 {
-    if (this->isPinned_)
+    if (this->isPinned())
     {
         return;
     }
 
     QPointer<UserInfoPopup> self = this;
     QTimer::singleShot(50, this, [self] {
-        if (!self || self->isPinned_)
+        if (!self || self->isPinned())
         {
             return;
         }

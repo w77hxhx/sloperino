@@ -21,6 +21,11 @@ class DraggablePopup : public BaseWindow
 public:
     DraggablePopup(bool closeAutomatically, QWidget *parent);
 
+    [[nodiscard]] bool isPinned() const noexcept
+    {
+        return this->isPinned_;
+    }
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
