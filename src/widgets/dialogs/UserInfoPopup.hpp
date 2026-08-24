@@ -56,6 +56,9 @@ class LiveIndicator;
 class Paint;
 class PixmapButton;
 class SvgButton;
+class UserClipsDialog;
+class UserBadgesDialog;
+class UserRolesDialog;
 
 class UserInfoPopup final : public DraggablePopup
 {
@@ -242,6 +245,9 @@ private:
 
     QString kickUserSlug_;
     QPointer<QWidget> moderationReasonPopup_;
+    QPointer<UserClipsDialog> clipsDialog_;
+    QPointer<UserBadgesDialog> badgesDialog_;
+    QPointer<UserRolesDialog> rolesDialog_;
 
     // The channel the popup was opened from (e.g. /mentions or #forsen). Can be a special channel.
     ChannelPtr channel_;

@@ -34,11 +34,11 @@ public:
                      TwitchChannel *channel = nullptr,
                      QWidget *parent = nullptr);
 
-    static void showDialog(const QString &userLogin,
-                           const QString &channelLogin,
-                           const QString &displayName = {},
-                           TwitchChannel *channel = nullptr,
-                           QWidget *parent = nullptr);
+    static UserBadgesDialog *showDialog(const QString &userLogin,
+                                        const QString &channelLogin,
+                                        const QString &displayName = {},
+                                        TwitchChannel *channel = nullptr,
+                                        QWidget *parent = nullptr);
 
 protected:
     void themeChangedEvent() override;
@@ -54,7 +54,6 @@ private:
     void setStatus(const QString &text, bool error = false);
     void applySizeConstraints();
     void openBadgeInChatVault(const GqlBadge &badge);
-    void scheduleUnpinParentOnClose(QWidget *parent);
     [[nodiscard]] int badgeGridColumns() const;
     [[nodiscard]] QString authTokenOrMessage();
 
@@ -82,7 +81,6 @@ private:
     bool statusIsError_ = false;
     QString searchQuery_;
     int lastBadgeGridColumns_ = -1;
-    bool parentUnpinScheduled_ = false;
 
     static std::vector<QPointer<UserBadgesDialog>> activeDialogs_;
 };

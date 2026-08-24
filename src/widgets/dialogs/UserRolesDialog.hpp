@@ -33,10 +33,10 @@ public:
     UserRolesDialog(const QString &targetLogin, const QString &displayName = {},
                     const QString &channelName = {}, QWidget *parent = nullptr);
 
-    static void showDialog(const QString &targetLogin,
-                           const QString &displayName = {},
-                           const QString &channelName = {},
-                           QWidget *parent = nullptr);
+    static UserRolesDialog *showDialog(const QString &targetLogin,
+                                       const QString &displayName = {},
+                                       const QString &channelName = {},
+                                       QWidget *parent = nullptr);
 
 protected:
     void themeChangedEvent() override;
@@ -56,7 +56,6 @@ private:
     void updateTabCounters();
     void setStatus(const QString &text, bool error = false);
     void applySizeConstraints();
-    void scheduleUnpinParentOnClose(QWidget *parent);
 
     QString targetLogin_;
     QString displayName_;
@@ -98,7 +97,6 @@ private:
     QString statusText_;
     bool statusIsError_ = false;
     QString searchQuery_;
-    bool parentUnpinScheduled_ = false;
 
     static std::vector<QPointer<UserRolesDialog>> activeDialogs_;
 };

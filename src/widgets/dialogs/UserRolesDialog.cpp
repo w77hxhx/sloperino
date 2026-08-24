@@ -379,7 +379,7 @@ std::vector<QPointer<UserRolesDialog>> UserRolesDialog::activeDialogs_;
 UserRolesDialog::UserRolesDialog(const QString &targetLogin,
                                  const QString &displayName,
                                  const QString &channelName, QWidget *parent)
-    : DraggablePopup(false, parent)
+    : DraggablePopup(true, parent)
     , targetLogin_(targetLogin.trimmed().toLower())
     , displayName_(displayName.trimmed().isEmpty() ? targetLogin
                                                    : displayName.trimmed())
@@ -509,48 +509,46 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
     this->contentWidget_->setObjectName("UserRolesDialogContent");
     this->contentLayout_ = new QVBoxLayout(this->contentWidget_);
     this->contentLayout_->setContentsMargins(0, 0, 0, 0);
-    this->contentLayout_->setSpacing(6);
+    this->contentLayout_->setSpacing(ROLE_CARD_SPACING);
 
     this->statusLabel_ = new QLabel(this->contentWidget_);
     this->statusLabel_->setObjectName("UserRolesStatus");
     this->statusLabel_->setAlignment(Qt::AlignCenter);
     this->statusLabel_->setWordWrap(true);
+    this->statusLabel_->hide();
     this->contentLayout_->addWidget(this->statusLabel_);
-    this->contentLayout_->addStretch(1);
 
     this->scrollArea_->setWidget(this->contentWidget_);
     this->mainLayout_->addWidget(this->scrollArea_, 1);
 
-    // Infinite scroll connection
-    QObject::connect(
-        this->scrollArea_->verticalScrollBar(), &QScrollBar::valueChanged,
-        [this](int value) {
-            auto *bar = this->scrollArea_->verticalScrollBar();
-            if (bar && bar->maximum() > 0 && value >= bar->maximum() - 80)
-            {
-                this->loadNextPage();
-            }
-        });
+    // Infinite scroll detection
+    auto *vScrollBar = this->scrollArea_->verticalScrollBar();
+    QObject::connect(vScrollBar, &QScrollBar::valueChanged, this,
+                     [this, vScrollBar](int value) {
+                         if (this->hasNextPage_ && !this->itemsLoading_ &&
+                             value >= vScrollBar->maximum() - 50)
+                         {
+                             this->loadNextPage();
+                         }
+                     });
 
-    this->applySizeConstraints();
     this->refreshStyle();
+    this->applySizeConstraints();
     this->loadSummary();
     this->loadRoles(false);
 }
 
-void UserRolesDialog::showDialog(const QString &targetLogin,
-                                 const QString &displayName,
-                                 const QString &channelName, QWidget *parent)
+UserRolesDialog *UserRolesDialog::showDialog(const QString &targetLogin,
+                                             const QString &displayName,
+                                             const QString &channelName,
+                                             QWidget *parent)
 {
     const auto cleaned = targetLogin.trimmed().toLower();
     if (cleaned.isEmpty())
     {
-        return;
+        return nullptr;
     }
 
-    const bool wasAutoPinned = DraggablePopup::pinParentIfNeeded(parent);
-
-    UserRolesDialog *dialog = nullptr;
     for (auto it = activeDialogs_.begin(); it != activeDialogs_.end();)
     {
         if (!*it)
@@ -561,65 +559,32 @@ void UserRolesDialog::showDialog(const QString &targetLogin,
 
         if ((*it)->targetLogin_ == cleaned)
         {
-            dialog = it->data();
-            break;
+            auto *dialog = it->data();
+            dialog->show();
+            dialog->raise();
+            dialog->activateWindow();
+            return dialog;
         }
         ++it;
     }
 
-    if (dialog == nullptr)
+    auto *dialog =
+        new UserRolesDialog(targetLogin, displayName, channelName, parent);
+    activeDialogs_.emplace_back(dialog);
+
+    QPoint center = QCursor::pos();
+    if (parent != nullptr && parent->window() != nullptr)
     {
-        QWidget *ownershipParent = parent;
-        if (qobject_cast<DraggablePopup *>(parent) != nullptr)
-        {
-            ownershipParent = nullptr;
-        }
-
-        dialog = new UserRolesDialog(targetLogin, displayName, channelName,
-                                     ownershipParent);
-        activeDialogs_.emplace_back(dialog);
-
-        QPoint center = QCursor::pos();
-        if (parent != nullptr && parent->window() != nullptr)
-        {
-            center = parent->window()->geometry().center();
-        }
-
-        dialog->show();
-        const auto size = dialog->size();
-        dialog->showAndMoveTo(
-            center - QPoint(size.width() / 2, size.height() / 2),
-            widgets::BoundsChecking::DesiredPosition);
-        dialog->raise();
-        dialog->activateWindow();
-    }
-    else
-    {
-        dialog->raise();
-        dialog->activateWindow();
+        center = parent->window()->geometry().center();
     }
 
-    if (wasAutoPinned)
-    {
-        dialog->scheduleUnpinParentOnClose(parent);
-    }
-}
-
-void UserRolesDialog::scheduleUnpinParentOnClose(QWidget *parent)
-{
-    if (this->parentUnpinScheduled_ || parent == nullptr)
-    {
-        return;
-    }
-
-    this->parentUnpinScheduled_ = true;
-    QPointer<QWidget> parentPtr(parent);
-    QObject::connect(this, &QObject::destroyed, parent, [parentPtr] {
-        if (parentPtr)
-        {
-            DraggablePopup::unpinParentIfNeeded(parentPtr);
-        }
-    });
+    dialog->show();
+    const auto size = dialog->size();
+    dialog->showAndMoveTo(center - QPoint(size.width() / 2, size.height() / 2),
+                          widgets::BoundsChecking::DesiredPosition);
+    dialog->raise();
+    dialog->activateWindow();
+    return dialog;
 }
 
 void UserRolesDialog::themeChangedEvent()

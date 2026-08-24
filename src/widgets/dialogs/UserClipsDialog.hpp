@@ -33,9 +33,9 @@ public:
     UserClipsDialog(const QString &userLogin, const QString &displayName = {},
                     QWidget *parent = nullptr);
 
-    static void showDialog(const QString &userLogin,
-                           const QString &displayName = {},
-                           QWidget *parent = nullptr);
+    static UserClipsDialog *showDialog(const QString &userLogin,
+                                       const QString &displayName = {},
+                                       QWidget *parent = nullptr);
 
 protected:
     void themeChangedEvent() override;
@@ -51,7 +51,6 @@ private:
     void refreshStyle();
     void setStatus(const QString &text, bool error = false);
     void applySizeConstraints();
-    void scheduleUnpinParentOnClose(QWidget *parent);
     void setActiveRole(const QString &role);
     [[nodiscard]] QString authTokenOrMessage();
 
@@ -81,7 +80,6 @@ private:
     QString statusText_;
     bool statusIsError_ = false;
     QString searchQuery_;
-    bool parentUnpinScheduled_ = false;
 
     static std::vector<QPointer<UserClipsDialog>> activeDialogs_;
 };

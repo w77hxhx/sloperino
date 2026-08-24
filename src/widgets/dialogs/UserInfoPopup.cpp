@@ -2137,11 +2137,76 @@ void UserInfoPopup::scaleChangedEvent(float scale)
 
 void UserInfoPopup::windowDeactivationEvent()
 {
-    if (this->editUserNotesDialog_.isNull() ||
-        !this->editUserNotesDialog_->isVisible())
+    if (this->isPinned_)
     {
-        BaseWindow::windowDeactivationEvent();
+        return;
     }
+
+    QPointer<UserInfoPopup> self = this;
+    QTimer::singleShot(50, this, [self] {
+        if (!self || self->isPinned_)
+        {
+            return;
+        }
+
+        if (self->isActiveWindow())
+        {
+            return;
+        }
+
+        if (!self->editUserNotesDialog_.isNull() &&
+            self->editUserNotesDialog_->isVisible())
+        {
+            return;
+        }
+
+        if (!self->clipsDialog_.isNull() && self->clipsDialog_->isVisible())
+        {
+            return;
+        }
+
+        if (!self->badgesDialog_.isNull() && self->badgesDialog_->isVisible())
+        {
+            return;
+        }
+
+        if (!self->rolesDialog_.isNull() && self->rolesDialog_->isVisible())
+        {
+            return;
+        }
+
+        if (!self->nameHistoryMenu_.isNull() &&
+            self->nameHistoryMenu_->isVisible())
+        {
+            return;
+        }
+
+        if (!self->moderationReasonPopup_.isNull() &&
+            self->moderationReasonPopup_->isVisible())
+        {
+            return;
+        }
+
+        if (QApplication::activePopupWidget() != nullptr)
+        {
+            return;
+        }
+
+        auto *activeWin = QApplication::activeWindow();
+        if (activeWin != nullptr)
+        {
+            if (activeWin == self->clipsDialog_ ||
+                activeWin == self->badgesDialog_ ||
+                activeWin == self->rolesDialog_ ||
+                activeWin == self->editUserNotesDialog_ ||
+                activeWin == self.data())
+            {
+                return;
+            }
+        }
+
+        self->BaseWindow::windowDeactivationEvent();
+    });
 }
 
 void UserInfoPopup::registerMnemonicButton(LabelButton *button, int key,
@@ -6101,7 +6166,8 @@ void UserInfoPopup::openClipsDialog()
     const auto displayName = this->ui_.nameLabel != nullptr
                                  ? this->ui_.nameLabel->getText()
                                  : this->userName_;
-    UserClipsDialog::showDialog(this->userName_, displayName, this);
+    this->clipsDialog_ =
+        UserClipsDialog::showDialog(this->userName_, displayName, this);
 }
 
 void UserInfoPopup::updateRolesButton()
@@ -6139,8 +6205,8 @@ void UserInfoPopup::openRolesDialog()
                                  ? this->underlyingChannel_->getName()
                                  : QString{};
 
-    UserRolesDialog::showDialog(this->userName_, displayName, channelName,
-                                this);
+    this->rolesDialog_ = UserRolesDialog::showDialog(
+        this->userName_, displayName, channelName, this);
 }
 
 void UserInfoPopup::openBadgesDialog()
@@ -6162,8 +6228,8 @@ void UserInfoPopup::openBadgesDialog()
                                  : this->userName_;
     auto *twitchChannel =
         dynamic_cast<TwitchChannel *>(this->underlyingChannel_.get());
-    UserBadgesDialog::showDialog(this->userName_, channelName, displayName,
-                                 twitchChannel, this);
+    this->badgesDialog_ = UserBadgesDialog::showDialog(
+        this->userName_, channelName, displayName, twitchChannel, this);
 }
 
 void UserInfoPopup::showNameHistoryMenu()

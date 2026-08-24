@@ -439,6 +439,7 @@ public:
                                            true};
     QStringSetting seventvToken = {"/auth/seventvToken", ""};
     QStringSetting seventvUserId = {"/auth/seventvUserId", ""};
+    QStringSetting seventvUsername = {"/auth/seventvUsername", ""};
     BoolSetting animateSevenTVBadges = {"/appearance/badges/animateSeventv",
                                         true};
     BoolSetting showUserinfoPopupChatters = {

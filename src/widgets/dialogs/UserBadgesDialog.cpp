@@ -281,7 +281,7 @@ UserBadgesDialog::UserBadgesDialog(const QString &userLogin,
                                    const QString &channelLogin,
                                    const QString &displayName,
                                    TwitchChannel *channel, QWidget *parent)
-    : DraggablePopup(false, parent)
+    : DraggablePopup(true, parent)
     , userLogin_(userLogin)
     , channelLogin_(channelLogin)
     , displayName_(displayName.isEmpty() ? userLogin : displayName)
@@ -330,9 +330,10 @@ UserBadgesDialog::UserBadgesDialog(const QString &userLogin,
     separator->setFixedHeight(scaledSeparatorHeight(this->scale()));
     this->mainLayout_->addWidget(separator);
 
+    // Search input
     this->searchInput_ = new QLineEdit(container);
     this->searchInput_->setObjectName("UserBadgesSearch");
-    this->searchInput_->setPlaceholderText("Search...");
+    this->searchInput_->setPlaceholderText("Search badges by name...");
     this->searchInput_->setClearButtonEnabled(true);
     QObject::connect(this->searchInput_, &QLineEdit::textChanged, this,
                      [this](const QString &text) {
@@ -346,11 +347,12 @@ UserBadgesDialog::UserBadgesDialog(const QString &userLogin,
                          }
                      });
     auto *searchRow = new QHBoxLayout();
-    searchRow->setContentsMargins(0, scaledMetric(this->scale(), 4, 2), 0,
-                                  scaledMetric(this->scale(), 4, 2));
+    searchRow->setContentsMargins(0, scaledMetric(this->scale(), 6, 3), 0,
+                                  scaledMetric(this->scale(), 6, 3));
     searchRow->addWidget(this->searchInput_);
     this->mainLayout_->addLayout(searchRow);
 
+    // Scroll area
     this->scrollArea_ = new QScrollArea(container);
     this->scrollArea_->setObjectName("UserBadgesScrollArea");
     this->scrollArea_->setFrameShape(QFrame::NoFrame);
@@ -367,7 +369,7 @@ UserBadgesDialog::UserBadgesDialog(const QString &userLogin,
                                         QSizePolicy::Preferred);
     this->contentLayout_ = new QVBoxLayout(this->contentWidget_);
     this->contentLayout_->setContentsMargins(
-        0, scaledMetric(this->scale(), 7, 4), 0,
+        0, scaledMetric(this->scale(), 4, 2), 0,
         scaledMetric(this->scale(), 8, 4));
     this->contentLayout_->setSpacing(scaledMetric(this->scale(), 7, 4));
     this->scrollArea_->setWidget(this->contentWidget_);
@@ -377,19 +379,16 @@ UserBadgesDialog::UserBadgesDialog(const QString &userLogin,
     this->rebuildContent();
 }
 
-void UserBadgesDialog::showDialog(const QString &userLogin,
-                                  const QString &channelLogin,
-                                  const QString &displayName,
-                                  TwitchChannel *channel, QWidget *parent)
+UserBadgesDialog *UserBadgesDialog::showDialog(const QString &userLogin,
+                                               const QString &channelLogin,
+                                               const QString &displayName,
+                                               TwitchChannel *channel,
+                                               QWidget *parent)
 {
     if (userLogin.isEmpty() || channelLogin.isEmpty())
     {
-        return;
+        return nullptr;
     }
-
-    const bool wasAutoPinned = DraggablePopup::pinParentIfNeeded(parent);
-
-    UserBadgesDialog *dialog = nullptr;
 
     for (auto it = activeDialogs_.begin(); it != activeDialogs_.end();)
     {
@@ -402,69 +401,35 @@ void UserBadgesDialog::showDialog(const QString &userLogin,
             (*it)->channelLogin_.compare(channelLogin, Qt::CaseInsensitive) ==
                 0)
         {
-            dialog = *it;
+            auto *dialog = it->data();
             dialog->channel_ = channel;
+            dialog->show();
             dialog->raise();
             dialog->activateWindow();
             dialog->loadBadges(true);
-            break;
+            return dialog;
         }
         ++it;
     }
 
-    if (dialog == nullptr)
+    auto *dialog = new UserBadgesDialog(userLogin, channelLogin, displayName,
+                                        channel, parent);
+    activeDialogs_.push_back(dialog);
+
+    QPoint center = QCursor::pos();
+    if (parent != nullptr && parent->window() != nullptr)
     {
-        // Keep using `parent` for auto-pin and placement, but do not make
-        // another DraggablePopup the QObject owner. Otherwise closing that
-        // popup destroys this dialog with it.
-        QWidget *ownershipParent = parent;
-        if (qobject_cast<DraggablePopup *>(parent) != nullptr)
-        {
-            ownershipParent = nullptr;
-        }
-
-        dialog = new UserBadgesDialog(userLogin, channelLogin, displayName,
-                                      channel, ownershipParent);
-        activeDialogs_.push_back(dialog);
-
-        QPoint center = QCursor::pos();
-        if (parent != nullptr && parent->window() != nullptr)
-        {
-            center = parent->window()->geometry().center();
-        }
-
-        dialog->show();
-        const auto size = dialog->size();
-        dialog->showAndMoveTo(
-            center - QPoint(size.width() / 2, size.height() / 2),
-            widgets::BoundsChecking::DesiredPosition);
-        dialog->raise();
-        dialog->activateWindow();
-        dialog->loadBadges(false);
+        center = parent->window()->geometry().center();
     }
 
-    if (wasAutoPinned)
-    {
-        dialog->scheduleUnpinParentOnClose(parent);
-    }
-}
-
-void UserBadgesDialog::scheduleUnpinParentOnClose(QWidget *parent)
-{
-    if (this->parentUnpinScheduled_ || parent == nullptr)
-    {
-        return;
-    }
-
-    this->parentUnpinScheduled_ = true;
-
-    QPointer<QWidget> parentPtr(parent);
-    QObject::connect(this, &QObject::destroyed, parent, [parentPtr] {
-        if (parentPtr)
-        {
-            DraggablePopup::unpinParentIfNeeded(parentPtr);
-        }
-    });
+    dialog->show();
+    const auto size = dialog->size();
+    dialog->showAndMoveTo(center - QPoint(size.width() / 2, size.height() / 2),
+                          widgets::BoundsChecking::DesiredPosition);
+    dialog->raise();
+    dialog->activateWindow();
+    dialog->loadBadges(false);
+    return dialog;
 }
 
 void UserBadgesDialog::themeChangedEvent()

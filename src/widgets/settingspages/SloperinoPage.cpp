@@ -5,10 +5,13 @@
 #include "widgets/settingspages/SloperinoPage.hpp"
 
 #include "Application.hpp"
+#include "common/network/NetworkRequest.hpp"
+#include "common/network/NetworkResult.hpp"
 #include "controllers/aliases/EmoteAlias.hpp"
 #include "controllers/aliases/EmoteAliasesModel.hpp"
 #include "providers/firehose/FirehoseManager.hpp"
 #include "singletons/Settings.hpp"
+#include "util/Clipboard.hpp"
 #include "widgets/BaseWidget.hpp"
 #include "widgets/dialogs/MoltorinoAuthDialog.hpp"
 #include "widgets/helper/EditableModelView.hpp"
@@ -16,14 +19,135 @@
 #include "widgets/settingspages/SettingWidget.hpp"
 
 #include <QCheckBox>
+#include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
+#include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QTableView>
 #include <QTimer>
+#include <QUrl>
 #include <QVBoxLayout>
+
+namespace {
+
+QString decodeJwtUserId(const QString &jwt)
+{
+    const auto parts = jwt.split('.');
+    if (parts.size() < 2)
+    {
+        return {};
+    }
+
+    auto payload = parts[1].toUtf8();
+    payload.replace('-', '+').replace('_', '/');
+    while (payload.size() % 4 != 0)
+    {
+        payload.append('=');
+    }
+
+    const auto json = QByteArray::fromBase64(payload);
+    const auto doc = QJsonDocument::fromJson(json);
+    if (!doc.isObject())
+    {
+        return {};
+    }
+
+    return doc.object().value("sub").toString().trimmed();
+}
+
+void validateSeventvToken(
+    const QString &token,
+    std::function<void(QString userId, QString username, QString displayName)>
+        onSuccess,
+    std::function<void(QString error)> onError)
+{
+    const auto trimmed = token.trimmed();
+    if (trimmed.isEmpty())
+    {
+        if (onError)
+        {
+            onError("No token provided");
+        }
+        return;
+    }
+
+    const auto jwtId = decodeJwtUserId(trimmed);
+    const auto urlStr =
+        !jwtId.isEmpty()
+            ? QStringLiteral("https://7tv.io/v3/users/%1").arg(jwtId)
+            : QStringLiteral("https://7tv.io/v3/users/@me");
+
+    NetworkRequest(QUrl(urlStr), NetworkRequestType::Get)
+        .header("Authorization",
+                QStringLiteral("Bearer %1").arg(trimmed).toUtf8())
+        .header("Accept", "application/json")
+        .timeout(15000)
+        .onSuccess([onSuccess, onError](const NetworkResult &res) {
+            const auto obj = res.parseJson();
+            if (obj.isEmpty())
+            {
+                if (onError)
+                {
+                    onError("Failed to parse 7TV API response");
+                }
+                return;
+            }
+
+            const auto id = obj.value("id").toString().trimmed();
+            auto username = obj.value("username").toString().trimmed();
+            const auto displayName =
+                obj.value("display_name").toString().trimmed();
+
+            if (username.isEmpty() && !displayName.isEmpty())
+            {
+                username = displayName;
+            }
+
+            if (id.isEmpty())
+            {
+                if (onError)
+                {
+                    onError("7TV API did not return user ID");
+                }
+                return;
+            }
+
+            if (onSuccess)
+            {
+                onSuccess(id, username, displayName);
+            }
+        })
+        .onError([onError](const NetworkResult &res) {
+            if (!onError)
+            {
+                return;
+            }
+            if (res.status() == 401 || res.status() == 403)
+            {
+                onError("Invalid or expired 7TV token");
+                return;
+            }
+            const auto body = QString::fromUtf8(res.getData()).trimmed();
+            if (!body.isEmpty())
+            {
+                onError(QString("7TV API error: %1").arg(body.left(120)));
+                return;
+            }
+            onError(res.formatError());
+        })
+        .execute();
+}
+
+}  // namespace
 
 namespace chatterino {
 
@@ -57,23 +181,51 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
 {
     auto &s = *getSettings();
 
-    // 0. Authentication Category
+    // 0. Authentication Category (7TV)
     layout.addTitle("Authentication");
     layout.addDescription("Manage 7TV authentication and accounts.");
 
+    auto *authFrame = new QFrame;
+    auto *authLayout = new QVBoxLayout(authFrame);
+    authLayout->setContentsMargins(0, 0, 0, 0);
+    authLayout->setSpacing(6);
+
+    this->seventvStatusLabel_ = new QLabel(authFrame);
+    this->seventvStatusLabel_->setStyleSheet(
+        "QLabel { font-weight: 600; font-size: 13px; }");
+    authLayout->addWidget(this->seventvStatusLabel_);
+
+    this->seventvDetailsLabel_ = new QLabel(authFrame);
+    this->seventvDetailsLabel_->setWordWrap(true);
+    this->seventvDetailsLabel_->setStyleSheet(
+        "QLabel { color: #9aa0a6; font-size: 12px; }");
+    authLayout->addWidget(this->seventvDetailsLabel_);
+
     auto *authRow = new QHBoxLayout;
-    auto *addAccountBtn = new QPushButton("Add account");
-    auto *refreshAccountBtn = new QPushButton("Refresh Account");
-    QObject::connect(addAccountBtn, &QPushButton::clicked, this, [this] {
-        showMoltorinoAuthDialog(this, "Manage Accounts");
+    this->addSeventvBtn_ = new QPushButton("Add Token", authFrame);
+    this->refreshSeventvBtn_ = new QPushButton("Refresh Account", authFrame);
+    this->removeSeventvBtn_ = new QPushButton("Log Out", authFrame);
+
+    QObject::connect(this->addSeventvBtn_, &QPushButton::clicked, this, [this] {
+        this->openSeventvAuthDialog();
     });
-    QObject::connect(refreshAccountBtn, &QPushButton::clicked, this, [this] {
-        showMoltorinoAuthDialog(this, "Manage Accounts");
-    });
-    authRow->addWidget(addAccountBtn);
-    authRow->addWidget(refreshAccountBtn);
+    QObject::connect(this->refreshSeventvBtn_, &QPushButton::clicked, this,
+                     [this] {
+                         this->refreshSeventvAccount();
+                     });
+    QObject::connect(this->removeSeventvBtn_, &QPushButton::clicked, this,
+                     [this] {
+                         this->removeSeventvAccount();
+                     });
+
+    authRow->addWidget(this->addSeventvBtn_);
+    authRow->addWidget(this->refreshSeventvBtn_);
+    authRow->addWidget(this->removeSeventvBtn_);
     authRow->addStretch(1);
-    layout.addLayout(authRow);
+    authLayout->addLayout(authRow);
+
+    layout.addWidget(authFrame);
+    this->updateSeventvStatus();
 
     // 1. Usercard Category
     layout.addTitle("Usercard");
@@ -276,6 +428,210 @@ void SloperinoPage::refreshEndpointStatuses()
                 badge->setToolTip(info.enabled ? "Disconnected" : "Disabled");
                 break;
         }
+    }
+}
+
+void SloperinoPage::openSeventvAuthDialog()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle("7TV Authentication");
+    dialog.setMinimumWidth(440);
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setSpacing(10);
+
+    auto *desc =
+        new QLabel("Paste your 7TV personal authentication token below.\n"
+                   "You can retrieve it from 7tv.app using the helper script:",
+                   &dialog);
+    desc->setWordWrap(true);
+    layout->addWidget(desc);
+
+    auto *scriptBtn = new QPushButton("Copy Script & Open 7tv.app", &dialog);
+    scriptBtn->setToolTip(
+        "Copies token extraction command and opens 7TV in your browser");
+    QObject::connect(scriptBtn, &QPushButton::clicked, &dialog, [&dialog] {
+        const auto script = QStringLiteral(
+            "const token = localStorage.getItem('7tv-token');\n"
+            "if (token) {\n"
+            "    const input = document.createElement('input');\n"
+            "    input.value = token;\n"
+            "    document.body.appendChild(input);\n"
+            "    input.select();\n"
+            "    document.execCommand('copy');\n"
+            "    document.body.removeChild(input);\n"
+            "    console.log('Token copied, return to Sloperino', token);\n"
+            "} else {\n"
+            "    console.log('Token not found');\n"
+            "}");
+        crossPlatformCopy(script);
+        QDesktopServices::openUrl(QUrl("https://7tv.app/store"));
+
+        QMessageBox box(&dialog);
+        box.setWindowTitle("Script Copied");
+        box.setIcon(QMessageBox::Information);
+        box.setText(
+            "1. 7tv.app opened in your browser.\n"
+            "2. Press F12, go to Console, paste the script and hit Enter.\n"
+            "3. Return here and click 'Paste'.");
+        box.exec();
+    });
+    layout->addWidget(scriptBtn);
+
+    auto *tokenRow = new QHBoxLayout();
+    auto *tokenInput = new QLineEdit(&dialog);
+    tokenInput->setPlaceholderText("Paste 7TV token here...");
+    tokenInput->setEchoMode(QLineEdit::Password);
+    tokenInput->setText(getSettings()->seventvToken.getValue().trimmed());
+    tokenRow->addWidget(tokenInput);
+
+    auto *pasteBtn = new QPushButton("Paste", &dialog);
+    QObject::connect(pasteBtn, &QPushButton::clicked, tokenInput, [tokenInput] {
+        tokenInput->setText(getClipboardText().trimmed());
+    });
+    tokenRow->addWidget(pasteBtn);
+    layout->addLayout(tokenRow);
+
+    auto *dialogStatus = new QLabel(&dialog);
+    dialogStatus->setWordWrap(true);
+    dialogStatus->hide();
+    layout->addWidget(dialogStatus);
+
+    auto *btnBox = new QDialogButtonBox(&dialog);
+    auto *saveBtn =
+        btnBox->addButton("Verify & Save", QDialogButtonBox::AcceptRole);
+    auto *cancelBtn = btnBox->addButton(QDialogButtonBox::Cancel);
+    layout->addWidget(btnBox);
+
+    QObject::connect(cancelBtn, &QPushButton::clicked, &dialog,
+                     &QDialog::reject);
+
+    QObject::connect(
+        saveBtn, &QPushButton::clicked, &dialog,
+        [this, &dialog, tokenInput, saveBtn, dialogStatus] {
+            const auto token = tokenInput->text().trimmed();
+            if (token.isEmpty())
+            {
+                dialogStatus->setText("Please enter a 7TV token.");
+                dialogStatus->setStyleSheet("QLabel { color: #f44336; }");
+                dialogStatus->show();
+                return;
+            }
+
+            saveBtn->setEnabled(false);
+            dialogStatus->setText("Verifying with 7TV API...");
+            dialogStatus->setStyleSheet("QLabel { color: #9aa0a6; }");
+            dialogStatus->show();
+
+            validateSeventvToken(
+                token,
+                [this, &dialog, token, dialogStatus](
+                    QString userId, QString username, QString /*displayName*/) {
+                    getSettings()->seventvToken.setValue(token);
+                    getSettings()->seventvUserId.setValue(userId);
+                    getSettings()->seventvUsername.setValue(username);
+                    this->updateSeventvStatus();
+                    dialog.accept();
+                },
+                [saveBtn, dialogStatus](QString error) {
+                    saveBtn->setEnabled(true);
+                    dialogStatus->setText(
+                        QString("Validation failed: %1").arg(error));
+                    dialogStatus->setStyleSheet("QLabel { color: #f44336; }");
+                    dialogStatus->show();
+                });
+        });
+
+    dialog.exec();
+}
+
+void SloperinoPage::refreshSeventvAccount()
+{
+    const auto token = getSettings()->seventvToken.getValue().trimmed();
+    if (token.isEmpty())
+    {
+        this->updateSeventvStatus();
+        return;
+    }
+
+    if (this->seventvDetailsLabel_ != nullptr)
+    {
+        this->seventvDetailsLabel_->setText(
+            "Refreshing account via 7TV API...");
+    }
+
+    validateSeventvToken(
+        token,
+        [this](QString userId, QString username, QString /*displayName*/) {
+            getSettings()->seventvUserId.setValue(userId);
+            getSettings()->seventvUsername.setValue(username);
+            this->updateSeventvStatus();
+        },
+        [this](QString error) {
+            if (this->seventvDetailsLabel_ != nullptr)
+            {
+                this->seventvDetailsLabel_->setText(
+                    QString("7TV verification error: %1").arg(error));
+            }
+        });
+}
+
+void SloperinoPage::removeSeventvAccount()
+{
+    getSettings()->seventvToken.setValue(QString());
+    getSettings()->seventvUserId.setValue(QString());
+    getSettings()->seventvUsername.setValue(QString());
+    this->updateSeventvStatus();
+}
+
+void SloperinoPage::updateSeventvStatus()
+{
+    const auto token = getSettings()->seventvToken.getValue().trimmed();
+    const auto username = getSettings()->seventvUsername.getValue().trimmed();
+    const auto userId = getSettings()->seventvUserId.getValue().trimmed();
+
+    const bool isLoggedIn = !token.isEmpty();
+
+    if (this->seventvStatusLabel_ != nullptr)
+    {
+        if (isLoggedIn)
+        {
+            const auto displayName =
+                !username.isEmpty()
+                    ? username
+                    : (!userId.isEmpty() ? userId
+                                         : QStringLiteral("Connected"));
+            this->seventvStatusLabel_->setText(
+                QStringLiteral("Logged in as <b>%1</b> (7TV ID: %2)")
+                    .arg(displayName, userId.isEmpty() ? "unknown" : userId));
+        }
+        else
+        {
+            this->seventvStatusLabel_->setText("Not logged in to 7TV.");
+        }
+    }
+
+    if (this->seventvDetailsLabel_ != nullptr)
+    {
+        this->seventvDetailsLabel_->setText(
+            isLoggedIn ? "7TV token is active. Cosmetics, badges, and paints "
+                         "are synced."
+                       : "Add your 7TV token to enable 7TV badges, paints, and "
+                         "cosmetics.");
+    }
+
+    if (this->addSeventvBtn_ != nullptr)
+    {
+        this->addSeventvBtn_->setText(isLoggedIn ? "Change Token"
+                                                 : "Add Token");
+    }
+    if (this->refreshSeventvBtn_ != nullptr)
+    {
+        this->refreshSeventvBtn_->setVisible(isLoggedIn);
+    }
+    if (this->removeSeventvBtn_ != nullptr)
+    {
+        this->removeSeventvBtn_->setVisible(isLoggedIn);
     }
 }
 

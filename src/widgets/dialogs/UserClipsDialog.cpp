@@ -231,13 +231,14 @@ private:
 class ClipCardWidget final : public QFrame
 {
 public:
-    ClipCardWidget(const GqlClip &clip, float scale, QWidget *parent)
+    ClipCardWidget(const GqlClip &clip, bool isCuratorTab, float scale,
+                   QWidget *parent)
         : QFrame(parent)
         , clip_(clip)
     {
         this->setCursor(Qt::PointingHandCursor);
         this->setObjectName("ClipCard");
-        this->setFrameShape(QFrame::StyledPanel);
+        this->setFrameShape(QFrame::NoFrame);
 
         auto *mainLayout = new QHBoxLayout(this);
         mainLayout->setContentsMargins(CLIP_CARD_PADDING, CLIP_CARD_PADDING,
@@ -273,7 +274,20 @@ public:
             infoLayout->addWidget(gameLabel);
         }
 
-        if (!clip.curatorDisplayName.isEmpty())
+        if (isCuratorTab)
+        {
+            const auto channel = !clip.broadcasterLogin.isEmpty()
+                                     ? clip.broadcasterLogin
+                                     : clip.broadcasterDisplayName;
+            auto *channelLabel =
+                new QLabel(QStringLiteral("clip on #%1").arg(channel), this);
+            channelLabel->setObjectName("ClipCardInfo");
+            channelLabel->setToolTip(
+                QStringLiteral("Channel: %1 (%2)")
+                    .arg(clip.broadcasterDisplayName, clip.broadcasterLogin));
+            infoLayout->addWidget(channelLabel);
+        }
+        else if (!clip.curatorDisplayName.isEmpty())
         {
             auto *curatorLabel = new QLabel(
                 QStringLiteral("Clipped by %1").arg(clip.curatorDisplayName),
@@ -283,16 +297,6 @@ public:
                 QStringLiteral("Clipped by %1 (%2)")
                     .arg(clip.curatorDisplayName, clip.curatorLogin));
             infoLayout->addWidget(curatorLabel);
-        }
-        else if (!clip.broadcasterDisplayName.isEmpty())
-        {
-            auto *broadcasterLabel =
-                new QLabel(clip.broadcasterDisplayName, this);
-            broadcasterLabel->setObjectName("ClipCardInfo");
-            broadcasterLabel->setToolTip(
-                QStringLiteral("Streamer: %1 (%2)")
-                    .arg(clip.broadcasterDisplayName, clip.broadcasterLogin));
-            infoLayout->addWidget(broadcasterLabel);
         }
 
         infoLayout->addStretch(1);
@@ -405,7 +409,7 @@ std::vector<QPointer<UserClipsDialog>> UserClipsDialog::activeDialogs_;
 
 UserClipsDialog::UserClipsDialog(const QString &userLogin,
                                  const QString &displayName, QWidget *parent)
-    : DraggablePopup(false, parent)
+    : DraggablePopup(true, parent)
     , userLogin_(userLogin)
     , displayName_(displayName.isEmpty() ? userLogin : displayName)
 {
@@ -458,25 +462,29 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     tabRow->setContentsMargins(0, scaledMetric(this->scale(), 6, 3), 0, 0);
     tabRow->setSpacing(6);
 
-    this->broadcasterTab_ = new LabelButton("Broadcaster", this, QSize{8, 4});
-    this->broadcasterTab_->setToolTip("Clips created on this channel");
+    this->broadcasterTab_ = new LabelButton(this->headerWidget_);
+    this->broadcasterTab_->setText("Broadcaster");
+    this->broadcasterTab_->setCursor(Qt::PointingHandCursor);
+    this->broadcasterTab_->setSizePolicy(QSizePolicy::Fixed,
+                                         QSizePolicy::Fixed);
+    QObject::connect(this->broadcasterTab_, &Button::leftClicked, this, [this] {
+        this->setActiveRole(QStringLiteral("BROADCASTER"));
+    });
     tabRow->addWidget(this->broadcasterTab_);
 
-    this->curatorTab_ = new LabelButton("Curator", this, QSize{8, 4});
-    this->curatorTab_->setToolTip("Clips created by this user");
+    this->curatorTab_ = new LabelButton(this->headerWidget_);
+    this->curatorTab_->setText("Curator");
+    this->curatorTab_->setCursor(Qt::PointingHandCursor);
+    this->curatorTab_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    QObject::connect(this->curatorTab_, &Button::leftClicked, this, [this] {
+        this->setActiveRole(QStringLiteral("CURATOR"));
+    });
     tabRow->addWidget(this->curatorTab_);
 
     tabRow->addStretch(1);
     this->mainLayout_->addLayout(tabRow);
 
-    QObject::connect(this->broadcasterTab_, &Button::leftClicked, this, [this] {
-        this->setActiveRole(QStringLiteral("BROADCASTER"));
-    });
-    QObject::connect(this->curatorTab_, &Button::leftClicked, this, [this] {
-        this->setActiveRole(QStringLiteral("CURATOR"));
-    });
-
-    // Search input
+    // Search bar
     this->searchInput_ = new QLineEdit(container);
     this->searchInput_->setObjectName("UserClipsSearch");
     this->searchInput_->setPlaceholderText(
@@ -484,82 +492,59 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     this->searchInput_->setClearButtonEnabled(true);
     QObject::connect(this->searchInput_, &QLineEdit::textChanged, this,
                      [this](const QString &text) {
-                         this->searchQuery_ = text;
+                         this->searchQuery_ = text.trimmed();
                          this->rebuildContent();
-                         if (this->searchInput_ != nullptr)
-                         {
-                             this->searchInput_->setFocus(Qt::OtherFocusReason);
-                             this->searchInput_->setCursorPosition(
-                                 this->searchQuery_.size());
-                         }
                      });
-    auto *searchRow = new QHBoxLayout();
-    searchRow->setContentsMargins(0, scaledMetric(this->scale(), 6, 3), 0,
-                                  scaledMetric(this->scale(), 6, 3));
-    searchRow->addWidget(this->searchInput_);
-    this->mainLayout_->addLayout(searchRow);  // Scroll area
+    this->mainLayout_->addWidget(this->searchInput_);
+
+    // Scroll Area
     this->scrollArea_ = new QScrollArea(container);
     this->scrollArea_->setObjectName("UserClipsScrollArea");
-    this->scrollArea_->setFrameShape(QFrame::NoFrame);
     this->scrollArea_->setWidgetResizable(true);
+    this->scrollArea_->setFrameShape(QFrame::NoFrame);
     this->scrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     this->scrollArea_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    this->scrollArea_->viewport()->setAutoFillBackground(false);
+
+    this->contentWidget_ = new QWidget(this->scrollArea_);
+    this->contentWidget_->setObjectName("UserClipsDialogContent");
+    this->contentLayout_ = new QVBoxLayout(this->contentWidget_);
+    this->contentLayout_->setContentsMargins(0, 0, 0, 0);
+    this->contentLayout_->setSpacing(CLIP_CARD_SPACING);
+
+    this->statusLabel_ = new QLabel(this->contentWidget_);
+    this->statusLabel_->setObjectName("UserClipsStatus");
+    this->statusLabel_->setAlignment(Qt::AlignCenter);
+    this->statusLabel_->setWordWrap(true);
+    this->statusLabel_->hide();
+    this->contentLayout_->addWidget(this->statusLabel_);
+
+    this->scrollArea_->setWidget(this->contentWidget_);
     this->mainLayout_->addWidget(this->scrollArea_, 1);
 
-    // Auto-pagination on scroll
-    auto checkAutoPagination = [this] {
-        auto *bar = this->scrollArea_->verticalScrollBar();
-        if (bar == nullptr)
-        {
-            return;
-        }
-        // Load more when within 300px of the bottom
-        if (bar->maximum() - bar->value() < 300 && this->hasNextPage_ &&
-            !this->clipsLoading_)
-        {
-            this->loadNextPage();
-        }
-    };
-    QObject::connect(this->scrollArea_->verticalScrollBar(),
-                     &QScrollBar::valueChanged, this,
-                     [checkAutoPagination](int /*val*/) {
-                         checkAutoPagination();
+    // Infinite scroll detection
+    auto *vScrollBar = this->scrollArea_->verticalScrollBar();
+    QObject::connect(vScrollBar, &QScrollBar::valueChanged, this,
+                     [this, vScrollBar](int value) {
+                         if (this->hasNextPage_ && !this->clipsLoading_ &&
+                             value >= vScrollBar->maximum() - 50)
+                         {
+                             this->loadNextPage();
+                         }
                      });
-    QObject::connect(this->scrollArea_->verticalScrollBar(),
-                     &QScrollBar::rangeChanged, this,
-                     [checkAutoPagination](int /*min*/, int /*max*/) {
-                         checkAutoPagination();
-                     });
-
-    this->contentWidget_ = new QWidget();
-    this->contentWidget_->setObjectName("UserClipsDialogContent");
-    this->contentWidget_->setMinimumWidth(0);
-    this->contentWidget_->setSizePolicy(QSizePolicy::Ignored,
-                                        QSizePolicy::Preferred);
-    this->contentLayout_ = new QVBoxLayout(this->contentWidget_);
-    this->contentLayout_->setContentsMargins(
-        0, scaledMetric(this->scale(), 4, 2), 0,
-        scaledMetric(this->scale(), 8, 4));
-    this->contentLayout_->setSpacing(CLIP_CARD_SPACING);
-    this->scrollArea_->setWidget(this->contentWidget_);
 
     this->refreshStyle();
     this->applySizeConstraints();
     this->rebuildContent();
 }
 
-void UserClipsDialog::showDialog(const QString &userLogin,
-                                 const QString &displayName, QWidget *parent)
+UserClipsDialog *UserClipsDialog::showDialog(const QString &userLogin,
+                                             const QString &displayName,
+                                             QWidget *parent)
 {
     if (userLogin.isEmpty())
     {
-        return;
+        return nullptr;
     }
-
-    const bool wasAutoPinned = DraggablePopup::pinParentIfNeeded(parent);
-
-    UserClipsDialog *dialog = nullptr;
 
     for (auto it = activeDialogs_.begin(); it != activeDialogs_.end();)
     {
@@ -570,64 +555,33 @@ void UserClipsDialog::showDialog(const QString &userLogin,
         }
         if ((*it)->userLogin_.compare(userLogin, Qt::CaseInsensitive) == 0)
         {
-            dialog = *it;
+            auto *dialog = it->data();
+            dialog->show();
             dialog->raise();
             dialog->activateWindow();
             dialog->loadClips(true);
-            break;
+            return dialog;
         }
         ++it;
     }
 
-    if (dialog == nullptr)
+    auto *dialog = new UserClipsDialog(userLogin, displayName, parent);
+    activeDialogs_.push_back(dialog);
+
+    QPoint center = QCursor::pos();
+    if (parent != nullptr && parent->window() != nullptr)
     {
-        QWidget *ownershipParent = parent;
-        if (qobject_cast<DraggablePopup *>(parent) != nullptr)
-        {
-            ownershipParent = nullptr;
-        }
-
-        dialog = new UserClipsDialog(userLogin, displayName, ownershipParent);
-        activeDialogs_.push_back(dialog);
-
-        QPoint center = QCursor::pos();
-        if (parent != nullptr && parent->window() != nullptr)
-        {
-            center = parent->window()->geometry().center();
-        }
-
-        dialog->show();
-        const auto size = dialog->size();
-        dialog->showAndMoveTo(
-            center - QPoint(size.width() / 2, size.height() / 2),
-            widgets::BoundsChecking::DesiredPosition);
-        dialog->raise();
-        dialog->activateWindow();
-        dialog->loadClips(false);
+        center = parent->window()->geometry().center();
     }
 
-    if (wasAutoPinned)
-    {
-        dialog->scheduleUnpinParentOnClose(parent);
-    }
-}
-
-void UserClipsDialog::scheduleUnpinParentOnClose(QWidget *parent)
-{
-    if (this->parentUnpinScheduled_ || parent == nullptr)
-    {
-        return;
-    }
-
-    this->parentUnpinScheduled_ = true;
-
-    QPointer<QWidget> parentPtr(parent);
-    QObject::connect(this, &QObject::destroyed, parent, [parentPtr] {
-        if (parentPtr)
-        {
-            DraggablePopup::unpinParentIfNeeded(parentPtr);
-        }
-    });
+    dialog->show();
+    const auto size = dialog->size();
+    dialog->showAndMoveTo(center - QPoint(size.width() / 2, size.height() / 2),
+                          widgets::BoundsChecking::DesiredPosition);
+    dialog->raise();
+    dialog->activateWindow();
+    dialog->loadClips(false);
+    return dialog;
 }
 
 void UserClipsDialog::themeChangedEvent()
@@ -819,6 +773,7 @@ void UserClipsDialog::rebuildContent()
     }
 
     const auto needle = this->searchQuery_.trimmed();
+    const bool isCurator = (this->activeRole_ == QStringLiteral("CURATOR"));
     int matchCount = 0;
 
     for (const auto &clip : this->clips_)
@@ -828,8 +783,8 @@ void UserClipsDialog::rebuildContent()
             continue;
         }
 
-        auto *card =
-            new ClipCardWidget(clip, this->scale(), this->contentWidget_);
+        auto *card = new ClipCardWidget(clip, isCurator, this->scale(),
+                                        this->contentWidget_);
         this->contentLayout_->addWidget(card);
         matchCount++;
     }
@@ -971,13 +926,10 @@ void UserClipsDialog::refreshStyle()
                                               : QStringLiteral("#18181b");
     const auto cardHoverBg = theme->isLightTheme() ? QStringLiteral("#ebebef")
                                                    : QStringLiteral("#26262c");
-    const auto cardBorder = theme->isLightTheme() ? QStringLiteral("#e5e5e9")
-                                                  : QStringLiteral("#303036");
     const auto categoryColor = theme->isLightTheme()
-                                   ? QStringLiteral("#772ce8")
-                                   : QStringLiteral("#bf94ff");
-    const auto titleColor = theme->isLightTheme() ? QStringLiteral("#0e0e10")
-                                                  : QStringLiteral("#efeff1");
+                                   ? QStringLiteral("#5c16c5")
+                                   : QStringLiteral("#ffffff");
+    const auto titleColor = text;
     const auto metaColor = theme->isLightTheme() ? QStringLiteral("#53535f")
                                                  : QStringLiteral("#adadb8");
 
@@ -1012,101 +964,59 @@ void UserClipsDialog::refreshStyle()
 
     this->closeButton_->setColor(textColor);
 
-    this->setStyleSheet(
-        QStringLiteral(R"(
-        QWidget#UserClipsDialogRoot {
-            background: %1;
-            color: %2;
-        }
-        QWidget#UserClipsHeader {
-            background: transparent;
-        }
-        QFrame#UserClipsDialogSeparator,
-        QWidget#UserClipsDialogSeparator {
-            background: %3;
-        }
-        QScrollArea#UserClipsScrollArea {
-            background: transparent;
-            border: 0;
-        }
-        QWidget#UserClipsDialogContent {
-            background: transparent;
-            color: %2;
-        }
-        QLabel#UserClipsTitle {
-            color: %2;
-            font-weight: 700;
-        }
-        QLabel#UserClipsStatus,
-        QLabel#UserClipsEmpty {
-            color: %4;
-            padding: 12px;
-        }
-        QScrollBar:vertical {
-            width: %8px;
-            background: transparent;
-            margin: 0;
-        }
-        QScrollBar::handle:vertical {
-            background: %3;
-            min-height: %10px;
-            border-radius: %9px;
-        }
-        QScrollBar::add-line:vertical,
-        QScrollBar::sub-line:vertical,
-        QScrollBar::add-page:vertical,
-        QScrollBar::sub-page:vertical {
-            background: transparent;
-            height: 0;
-        }
-        QLineEdit#UserClipsSearch {
-            background: %5;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: %6px;
-            padding: 0 %7px;
-            min-height: %11px;
-            selection-background-color: %12;
-        }
-        QLineEdit#UserClipsSearch:focus {
-            border-color: %13;
-        }
-        QFrame#ClipCard {
-            background: %14;
-            border: 1px solid %19;
-            border-radius: %15px;
-        }
-        QFrame#ClipCard[hovered="true"] {
-            background: %17;
-            border-color: %13;
-        }
-        QLabel#ClipCardTitle {
-            color: %20;
-            font-weight: 600;
-            font-size: 12px;
-        }
-        QLabel#ClipCardGame {
-            color: %18;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        QLabel#ClipCardMeta {
-            color: %21;
-            font-size: 11px;
-        }
-        QLabel#ClipCardInfo {
-            color: %21;
-            font-size: 11px;
-        }
-    )")
-            .arg(
-                bg, text, border, muted, inputBg, QString::number(radius),
-                QString::number(inputPaddingX), QString::number(scrollbarWidth),
-                QString::number(scrollbarRadius),
-                QString::number(scrollbarMinHeight),
-                QString::number(inputMinHeight), hoverBg, focusedBorder, cardBg,
-                QString::number(cardRadius), QString::number(CLIP_CARD_PADDING),
-                cardHoverBg, categoryColor, cardBorder, titleColor, metaColor));
+    QString ss;
+    ss.append(QStringLiteral(
+                  "QWidget#UserClipsDialogRoot { background: %1; color: %2; }\n"
+                  "QWidget#UserClipsHeader { background: transparent; }\n"
+                  "QFrame#UserClipsDialogSeparator, "
+                  "QWidget#UserClipsDialogSeparator { background: %3; }\n"
+                  "QScrollArea#UserClipsScrollArea { background: transparent; "
+                  "border: 0; }\n"
+                  "QWidget#UserClipsDialogContent { background: transparent; "
+                  "color: %2; }\n"
+                  "QLabel#UserClipsTitle { color: %2; font-weight: 700; }\n"
+                  "QLabel#UserClipsStatus, QLabel#UserClipsEmpty { color: %4; "
+                  "padding: 12px; }\n")
+                  .arg(bg, text, border, muted));
+
+    ss.append(
+        QStringLiteral(
+            "QScrollBar:vertical { width: %1px; background: transparent; "
+            "margin: 0; }\n"
+            "QScrollBar::handle:vertical { background: %2; min-height: %3px; "
+            "border-radius: %4px; }\n"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical, "
+            "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { "
+            "background: transparent; height: 0; }\n")
+            .arg(QString::number(scrollbarWidth), border,
+                 QString::number(scrollbarMinHeight),
+                 QString::number(scrollbarRadius)));
+
+    ss.append(QStringLiteral(
+                  "QLineEdit#UserClipsSearch { background: %1; color: %2; "
+                  "border: 1px solid %3; border-radius: %4px; padding: 0 %5px; "
+                  "min-height: %6px; selection-background-color: %7; }\n"
+                  "QLineEdit#UserClipsSearch:focus { border-color: %8; }\n")
+                  .arg(inputBg, text, border, QString::number(radius),
+                       QString::number(inputPaddingX),
+                       QString::number(inputMinHeight), hoverBg,
+                       focusedBorder));
+
+    ss.append(
+        QStringLiteral("QFrame#ClipCard { background: %1; border: none; "
+                       "border-radius: %2px; }\n"
+                       "QFrame#ClipCard[hovered=\"true\"] { background: %3; "
+                       "border: none; }\n"
+                       "QLabel#ClipCardTitle { color: %4; font-weight: 600; "
+                       "font-size: 12px; }\n"
+                       "QLabel#ClipCardGame { color: %5; font-size: 11px; "
+                       "font-weight: 600; }\n"
+                       "QLabel#ClipCardMeta { color: %6; font-size: 11px; }\n"
+                       "QLabel#ClipCardInfo { color: %6; font-size: 11px; }\n")
+            .arg(cardBg, QString::number(cardRadius), cardHoverBg, titleColor,
+                 categoryColor, metaColor));
+
+    this->setStyleSheet(ss);
 }
 
 QString UserClipsDialog::authTokenOrMessage()

@@ -26,8 +26,19 @@ public:
 private:
     void initLayout(GeneralPageView &layout);
     void refreshEndpointStatuses();
+    void updateSeventvStatus();
+    void openSeventvAuthDialog();
+    void refreshSeventvAccount();
+    void removeSeventvAccount();
 
     GeneralPageView *view_{};
+
+    // 7TV Authentication widgets
+    QLabel *seventvStatusLabel_{nullptr};
+    QLabel *seventvDetailsLabel_{nullptr};
+    QPushButton *addSeventvBtn_{nullptr};
+    QPushButton *refreshSeventvBtn_{nullptr};
+    QPushButton *removeSeventvBtn_{nullptr};
 
     // Live endpoint status labels (one per firehose endpoint)
     QVector<QLabel *> endpointStatusLabels_;
