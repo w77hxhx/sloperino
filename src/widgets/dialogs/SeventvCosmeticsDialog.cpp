@@ -339,7 +339,7 @@ protected:
         const int centerY = 38;
 
         // Badge
-        if (!this->badgeImages_.isEmpty())
+        if (!this->badgeImages_.getImage1()->isEmpty())
         {
             const auto &img = this->badgeImages_.getImageOrLoaded(1.0F);
             if (auto pixmap = img->pixmapOrLoad())
@@ -479,7 +479,7 @@ protected:
         int textStartX = radioX + radioRadius + 12;
 
         // Badge Image
-        if (!this->images_.isEmpty())
+        if (!this->images_.getImage1()->isEmpty())
         {
             const auto &img = this->images_.getImageOrLoaded(1.0F);
             if (auto pixmap = img->pixmapOrLoad())
