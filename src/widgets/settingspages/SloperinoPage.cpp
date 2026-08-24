@@ -39,6 +39,10 @@
 
 namespace {
 
+using chatterino::NetworkRequest;
+using chatterino::NetworkRequestType;
+using chatterino::NetworkResult;
+
 QString decodeJwtUserId(const QString &jwt)
 {
     const auto parts = jwt.split('.');

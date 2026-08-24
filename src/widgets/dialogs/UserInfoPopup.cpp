@@ -79,6 +79,7 @@
 #include <QFontMetrics>
 #include <QFrame>
 #include <QGridLayout>
+#include <QApplication>
 #include <QGuiApplication>
 #include <QHash>
 #include <QHBoxLayout>

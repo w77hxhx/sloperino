@@ -3228,11 +3228,6 @@ void TwitchChannel::loadRecentMessages()
         return;
     }
 
-    if (this->hasModRights() || this->isMod() || this->isBroadcaster())
-    {
-        return;
-    }
-
     if (this->loadingRecentMessages_.test_and_set())
     {
         return;  // already loading
@@ -3246,12 +3241,6 @@ void TwitchChannel::loadRecentMessages()
             auto tc = weak.lock();
             if (!tc)
             {
-                return;
-            }
-
-            if (tc->hasModRights() || tc->isMod() || tc->isBroadcaster())
-            {
-                tc->loadingRecentMessages_.clear();
                 return;
             }
 
@@ -3294,11 +3283,6 @@ void TwitchChannel::loadRecentMessagesReconnect()
         return;
     }
 
-    if (this->hasModRights() || this->isMod() || this->isBroadcaster())
-    {
-        return;
-    }
-
     if (this->loadingRecentMessages_.test_and_set())
     {
         return;  // already loading
@@ -3326,13 +3310,6 @@ void TwitchChannel::loadRecentMessagesReconnect()
             auto shared = weak.lock();
             if (!shared)
             {
-                return;
-            }
-
-            if (shared->hasModRights() || shared->isMod() ||
-                shared->isBroadcaster())
-            {
-                shared->loadingRecentMessages_.clear();
                 return;
             }
 
