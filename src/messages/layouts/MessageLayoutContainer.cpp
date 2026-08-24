@@ -458,7 +458,39 @@ void MessageLayoutContainer::paintTriggerWordHighlights(
             continue;
         }
 
-        const auto &text = element->getText();
+        const auto flags = element->getCreator().getFlags();
+        if (flags.hasAny({
+                MessageElementFlag::Timestamp,
+                MessageElementFlag::Badges,
+                MessageElementFlag::ChannelName,
+            }))
+        {
+            continue;
+        }
+
+        QString text = element->getText();
+        if (text.isEmpty())
+        {
+            if (const auto *emoteElement =
+                    dynamic_cast<const EmoteElement *>(&element->getCreator()))
+            {
+                if (const auto emote = emoteElement->getEmote())
+                {
+                    text = emote->name.string;
+                }
+            }
+            else if (const auto *layeredEmoteElement =
+                         dynamic_cast<const LayeredEmoteElement *>(
+                             &element->getCreator()))
+            {
+                const auto &emotes = layeredEmoteElement->getEmotes();
+                if (!emotes.empty() && emotes.front())
+                {
+                    text = emotes.front()->name.string;
+                }
+            }
+        }
+
         if (text.isEmpty())
         {
             continue;

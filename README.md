@@ -6,6 +6,12 @@ Sloperino is a feature-rich, high-performance fork of **Chatterino 2**, combinin
 
 ### Features of Sloperino
 
+- 🎨 **7TV Cosmetics & Presence (Paints & Badges)**:
+  - **Paints & Badges Selector**: Browse, select, and equip your 7TV Paints and Badges with instant nickname preview.
+  - **7TV Chat Button**: One-click cosmetics launcher in the chat input toolbar.
+  - **7TV Presence**: Automatically reports your active Twitch channel presence to 7TV (`7tv.io/v3/users/{userId}/presences`).
+  - **7TV Authentication**: Seamless authentication in Settings -> Authentication -> Manage Accounts with automated token extraction script.
+
 - 👑 **Roles Lookup ([roles.tv](https://roles.tv))**:
   - **Channel Mode**: Browse and search all moderators, VIPs, artists, founders, and subscribers for any channel.
   - **User Mode**: Discover all Twitch channels where a specific user holds moderator, VIP, artist, or founder roles.
@@ -15,12 +21,19 @@ Sloperino is a feature-rich, high-performance fork of **Chatterino 2**, combinin
 - 🎬 **Twitch Clips Manager**:
   - **Broadcaster & Curator Views**: Switch between clips made on a streamer's channel and clips created by a curator.
   - **Interactive Clip Cards**: Previews with duration badges, view counts, relative dates, game tags, and direct playback links.
-  - **Search & Filtering**: Real-time search across titles, games, and curators.
+  - **Search & Auto-Pagination**: Smooth continuous scrolling and real-time search across titles, games, and curators.
 
 - 🌐 **Chat Firehose & User Stalking**:
   - **Multi-Stream Firehose**: Stream live chat messages across public Twitch log feeds (_Spanix, Supa, Susgee, Nadeko, Logxx, Catquery_).
+  - **5-Minute Auto-Reconnection**: Periodic full reconnection ensures reliable streaming without silent socket dropouts.
   - **Stalk Channels**: Track any Twitch user's chat messages across all public channels in real-time.
   - **Velocity Metrics**: Built-in Messages-Per-Second (MPS) tracking and real-time buffer statistics.
+
+- 📌 **Always on Top Popups & Chat Improvements**:
+  - **Always on Top When Pinned**: All pinned popups (Clips, Roles, Badges, 7TV Cosmetics, Usercards, Polls) stay on top of all windows.
+  - **Mentions & Emote Highlights**: Accurate highlight trigger words on emotes in mentions without boxing `#channel` names or timestamps.
+  - **Mod Channel Log Control**: Suppress automatic message history loading on moderated channels while keeping search fully available.
+  - **Go to Message Navigation**: Seamless jumping to messages in live chat directly from logs and usercard history.
 
 ---
 

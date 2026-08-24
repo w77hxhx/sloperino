@@ -2529,6 +2529,11 @@ MessageElementFlags ChannelView::getFlags() const
 
 bool ChannelView::scrollToMessage(const MessagePtr &message)
 {
+    if (!message)
+    {
+        return false;
+    }
+
     if (!this->mayContainMessage(message))
     {
         return false;
@@ -2549,7 +2554,12 @@ bool ChannelView::scrollToMessage(const MessagePtr &message)
     size_t messageIdx = messagesSnapshot.size() - 1;
     for (; messageIdx < SIZE_MAX; messageIdx--)
     {
-        if (messagesSnapshot[messageIdx]->getMessagePtr() == message)
+        const auto &msg = messagesSnapshot[messageIdx]->getMessagePtr();
+        if (msg == message)
+        {
+            break;
+        }
+        if (!message->id.isEmpty() && msg->id == message->id)
         {
             break;
         }
@@ -4062,8 +4072,8 @@ void ChannelView::addMessageContextMenuItems(QMenu *menu,
     bool isAutomod = this->channel()->getType() == Channel::Type::TwitchAutomod;
     if (isSearch || isMentions || isReplyOrUserCard || isAutomod)
     {
-        const auto &messagePtr = layout->getMessagePtr();
-        menu->addAction("&Go to message", [this, &messagePtr, isSearch,
+        const auto messagePtr = layout->getMessagePtr();
+        menu->addAction("&Go to message", [this, messagePtr, isSearch,
                                            isMentions, isReplyOrUserCard,
                                            isAutomod] {
             if (isSearch)

@@ -10,6 +10,7 @@
 #include "providers/firehose/FirehoseManager.hpp"
 #include "singletons/Settings.hpp"
 #include "widgets/BaseWidget.hpp"
+#include "widgets/dialogs/MoltorinoAuthDialog.hpp"
 #include "widgets/helper/EditableModelView.hpp"
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
@@ -19,6 +20,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QPushButton>
 #include <QTableView>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -54,6 +56,24 @@ bool SloperinoPage::filterElements(const QString &query)
 void SloperinoPage::initLayout(GeneralPageView &layout)
 {
     auto &s = *getSettings();
+
+    // 0. Authentication Category
+    layout.addTitle("Authentication");
+    layout.addDescription("Manage 7TV authentication and accounts.");
+
+    auto *authRow = new QHBoxLayout;
+    auto *addAccountBtn = new QPushButton("Add account");
+    auto *refreshAccountBtn = new QPushButton("Refresh Account");
+    QObject::connect(addAccountBtn, &QPushButton::clicked, this, [this] {
+        showMoltorinoAuthDialog(this, "Manage Accounts");
+    });
+    QObject::connect(refreshAccountBtn, &QPushButton::clicked, this, [this] {
+        showMoltorinoAuthDialog(this, "Manage Accounts");
+    });
+    authRow->addWidget(addAccountBtn);
+    authRow->addWidget(refreshAccountBtn);
+    authRow->addStretch(1);
+    layout.addLayout(authRow);
 
     // 1. Usercard Category
     layout.addTitle("Usercard");

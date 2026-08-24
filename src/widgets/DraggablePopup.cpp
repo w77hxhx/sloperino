@@ -112,6 +112,8 @@ void DraggablePopup::togglePinned()
     {
         this->windowDeactivateAction = WindowDeactivateAction::Nothing;
         this->pinButton_->setSource(this->pinEnabledSource_);
+        this->setWindowFlag(Qt::WindowStaysOnTopHint, true);
+        this->show();
     }
     else
     {
@@ -119,6 +121,8 @@ void DraggablePopup::togglePinned()
                                            ? WindowDeactivateAction::Delete
                                            : WindowDeactivateAction::Nothing;
         this->pinButton_->setSource(this->pinDisabledSource_);
+        this->setWindowFlag(Qt::WindowStaysOnTopHint, false);
+        this->show();
     }
 }
 Button *DraggablePopup::createPinButton()

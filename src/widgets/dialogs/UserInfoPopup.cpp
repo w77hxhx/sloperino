@@ -771,8 +771,11 @@ MessagePtr makeUsercardModLogMessage(const GqlUsercardMessage &message,
         {
             MessageParseArgs args;
             args.allowIgnore = false;
+            QString content = body;
+            int messageOffset =
+                stripLeadingReplyMention(fakeMessage->tags(), content);
             auto result = MessageBuilder::makeIrcMessage(
-                twitchChannel, fakeMessage, args, body, 0);
+                twitchChannel, fakeMessage, args, content, messageOffset);
             auto builtMessage = std::move(result.first);
             fakeMessage->deleteLater();
             fakeMessage = nullptr;
@@ -932,8 +935,11 @@ MessagePtr makeZonianLogMessage(const QJsonObject &obj,
     {
         MessageParseArgs args;
         args.allowIgnore = false;
-        auto result = MessageBuilder::makeIrcMessage(twitchChannel, fakeMessage,
-                                                     args, text, 0);
+        QString content = text;
+        int messageOffset =
+            stripLeadingReplyMention(fakeMessage->tags(), content);
+        auto result = MessageBuilder::makeIrcMessage(
+            twitchChannel, fakeMessage, args, content, messageOffset);
         auto builtMessage = std::move(result.first);
         fakeMessage->deleteLater();
         fakeMessage = nullptr;

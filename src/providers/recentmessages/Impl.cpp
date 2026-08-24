@@ -30,10 +30,8 @@ std::vector<Communi::IrcMessage *> parseRecentMessages(
 
     for (const auto &jsonMessage : jsonMessages)
     {
-        auto content = unescapeZeroWidthJoiner(jsonMessage.toString());
-
-        auto *message =
-            Communi::IrcMessage::fromData(content.toUtf8(), nullptr);
+        auto *message = Communi::IrcMessage::fromData(
+            jsonMessage.toString().toUtf8(), nullptr);
 
         messages.emplace_back(message);
     }

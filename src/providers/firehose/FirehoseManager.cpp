@@ -114,6 +114,12 @@ FirehoseManager::FirehoseManager()
     this->watchdogTimer_.setInterval(15000);
     QObject::connect(&this->watchdogTimer_, &QTimer::timeout, this,
                      &FirehoseManager::runWatchdog);
+
+    // 5-minute periodic full reconnect timer
+    this->periodicReconnectTimer_.setTimerType(Qt::VeryCoarseTimer);
+    this->periodicReconnectTimer_.setInterval(5 * 60 * 1000);
+    QObject::connect(&this->periodicReconnectTimer_, &QTimer::timeout, this,
+                     &FirehoseManager::reconnectAll);
 }
 
 FirehoseManager::~FirehoseManager()
@@ -121,6 +127,7 @@ FirehoseManager::~FirehoseManager()
     this->batchTimer_.stop();
     this->statsTimer_.stop();
     this->watchdogTimer_.stop();
+    this->periodicReconnectTimer_.stop();
     for (size_t i = 0; i < this->endpoints_.size(); ++i)
     {
         this->disconnectEndpoint(i);
@@ -150,6 +157,7 @@ void FirehoseManager::checkConnectionState()
             this->batchTimer_.start();
             this->statsTimer_.start();
             this->watchdogTimer_.start();
+            this->periodicReconnectTimer_.start();
         }
     }
     else
@@ -161,6 +169,7 @@ void FirehoseManager::checkConnectionState()
             this->batchTimer_.stop();
             this->statsTimer_.stop();
             this->watchdogTimer_.stop();
+            this->periodicReconnectTimer_.stop();
             for (size_t i = 0; i < this->endpoints_.size(); ++i)
             {
                 this->disconnectEndpoint(i);

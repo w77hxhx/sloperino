@@ -156,6 +156,40 @@ private:
         // WebSocketListener callbacks from the previous socket are ignored.
         std::atomic<uint32_t> epoch{0};
         EndpointStatus status{EndpointStatus::Disabled};
+
+        Endpoint() = default;
+        Endpoint(Endpoint &&other) noexcept
+            : name(std::move(other.name))
+            , url(std::move(other.url))
+            , enabledSetting(other.enabledSetting)
+            , handle(std::move(other.handle))
+            , isConnected(other.isConnected)
+            , reconnectBackoffMs(other.reconnectBackoffMs)
+            , reconnectTimer(std::move(other.reconnectTimer))
+            , epoch(other.epoch.load())
+            , status(other.status)
+        {
+        }
+
+        Endpoint &operator=(Endpoint &&other) noexcept
+        {
+            if (this != &other)
+            {
+                name = std::move(other.name);
+                url = std::move(other.url);
+                enabledSetting = other.enabledSetting;
+                handle = std::move(other.handle);
+                isConnected = other.isConnected;
+                reconnectBackoffMs = other.reconnectBackoffMs;
+                reconnectTimer = std::move(other.reconnectTimer);
+                epoch.store(other.epoch.load());
+                status = other.status;
+            }
+            return *this;
+        }
+
+        Endpoint(const Endpoint &) = delete;
+        Endpoint &operator=(const Endpoint &) = delete;
     };
 
     void initEndpoints();
@@ -189,6 +223,7 @@ private:
     QTimer batchTimer_;
     QTimer statsTimer_;
     QTimer watchdogTimer_;
+    QTimer periodicReconnectTimer_;
 
     // Consumer state
     std::atomic<int> firehoseAttachedCount_{0};

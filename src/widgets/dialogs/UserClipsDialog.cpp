@@ -497,9 +497,7 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     searchRow->setContentsMargins(0, scaledMetric(this->scale(), 6, 3), 0,
                                   scaledMetric(this->scale(), 6, 3));
     searchRow->addWidget(this->searchInput_);
-    this->mainLayout_->addLayout(searchRow);
-
-    // Scroll area
+    this->mainLayout_->addLayout(searchRow);    // Scroll area
     this->scrollArea_ = new QScrollArea(container);
     this->scrollArea_->setObjectName("UserClipsScrollArea");
     this->scrollArea_->setFrameShape(QFrame::NoFrame);
@@ -510,26 +508,35 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     this->mainLayout_->addWidget(this->scrollArea_, 1);
 
     // Auto-pagination on scroll
+    auto checkAutoPagination = [this] {
+        auto *bar = this->scrollArea_->verticalScrollBar();
+        if (bar == nullptr)
+        {
+            return;
+        }
+        // Load more when within 300px of the bottom
+        if (bar->maximum() - bar->value() < 300 && this->hasNextPage_ &&
+            !this->clipsLoading_)
+        {
+            this->loadNextPage();
+        }
+    };
     QObject::connect(this->scrollArea_->verticalScrollBar(),
-                     &QScrollBar::valueChanged, this, [this](int value) {
-                         auto *bar = this->scrollArea_->verticalScrollBar();
-                         if (bar == nullptr)
-                         {
-                             return;
-                         }
-                         // Load more when within 150px of the bottom
-                         if (bar->maximum() - value < 150 &&
-                             this->hasNextPage_ && !this->clipsLoading_)
-                         {
-                             this->loadNextPage();
-                         }
+                     &QScrollBar::valueChanged, this,
+                     [checkAutoPagination](int /*val*/) {
+                         checkAutoPagination();
+                     });
+    QObject::connect(this->scrollArea_->verticalScrollBar(),
+                     &QScrollBar::rangeChanged, this,
+                     [checkAutoPagination](int /*min*/, int /*max*/) {
+                         checkAutoPagination();
                      });
 
     this->contentWidget_ = new QWidget();
     this->contentWidget_->setObjectName("UserClipsDialogContent");
     this->contentWidget_->setMinimumWidth(0);
     this->contentWidget_->setSizePolicy(QSizePolicy::Ignored,
-                                        QSizePolicy::Preferred);
+                                         QSizePolicy::Preferred);
     this->contentLayout_ = new QVBoxLayout(this->contentWidget_);
     this->contentLayout_->setContentsMargins(
         0, scaledMetric(this->scale(), 4, 2), 0,
@@ -763,7 +770,15 @@ void UserClipsDialog::loadNextPage()
             self->clips_.append(page.clips);
             self->nextCursor_ = page.nextCursor;
             self->hasNextPage_ = page.hasNextPage;
+            const int scrollPos =
+                self->scrollArea_ && self->scrollArea_->verticalScrollBar()
+                    ? self->scrollArea_->verticalScrollBar()->value()
+                    : 0;
             self->rebuildContent();
+            if (self->scrollArea_ && self->scrollArea_->verticalScrollBar())
+            {
+                self->scrollArea_->verticalScrollBar()->setValue(scrollPos);
+            }
         },
         [self](const QString &error) {
             if (!self)
@@ -954,15 +969,25 @@ void UserClipsDialog::refreshStyle()
             : theme->splits.input.background.lighter(108).name();
     const auto cardBg =
         theme->isLightTheme()
-            ? theme->splits.header.background.name()
-            : theme->splits.header.background.lighter(110).name();
+            ? QStringLiteral("#f7f7f8")
+            : QStringLiteral("#18181b");
     const auto cardHoverBg =
         theme->isLightTheme()
-            ? theme->splits.header.background.darker(105).name()
-            : theme->splits.header.background.lighter(125).name();
+            ? QStringLiteral("#ebebef")
+            : QStringLiteral("#26262c");
+    const auto cardBorder =
+        theme->isLightTheme()
+            ? QStringLiteral("#e5e5e9")
+            : QStringLiteral("#303036");
     const auto categoryColor = theme->isLightTheme()
-                                   ? QStringLiteral("#18181b")
-                                   : QStringLiteral("#ffffff");
+                                   ? QStringLiteral("#772ce8")
+                                   : QStringLiteral("#bf94ff");
+    const auto titleColor = theme->isLightTheme()
+                                ? QStringLiteral("#0e0e10")
+                                : QStringLiteral("#efeff1");
+    const auto metaColor = theme->isLightTheme()
+                               ? QStringLiteral("#53535f")
+                               : QStringLiteral("#adadb8");
 
     const bool isBroadcaster =
         (this->activeRole_ == QStringLiteral("BROADCASTER"));
@@ -1056,7 +1081,7 @@ void UserClipsDialog::refreshStyle()
         }
         QFrame#ClipCard {
             background: %14;
-            border: 1px solid %3;
+            border: 1px solid %19;
             border-radius: %15px;
         }
         QFrame#ClipCard[hovered="true"] {
@@ -1064,7 +1089,7 @@ void UserClipsDialog::refreshStyle()
             border-color: %13;
         }
         QLabel#ClipCardTitle {
-            color: %2;
+            color: %20;
             font-weight: 600;
             font-size: 12px;
         }
@@ -1074,11 +1099,11 @@ void UserClipsDialog::refreshStyle()
             font-weight: 600;
         }
         QLabel#ClipCardMeta {
-            color: %4;
+            color: %21;
             font-size: 11px;
         }
         QLabel#ClipCardInfo {
-            color: %4;
+            color: %21;
             font-size: 11px;
         }
     )")
@@ -1089,7 +1114,7 @@ void UserClipsDialog::refreshStyle()
                 QString::number(scrollbarMinHeight),
                 QString::number(inputMinHeight), hoverBg, focusedBorder, cardBg,
                 QString::number(cardRadius), QString::number(CLIP_CARD_PADDING),
-                cardHoverBg, categoryColor));
+                cardHoverBg, categoryColor, cardBorder, titleColor, metaColor));
 }
 
 QString UserClipsDialog::authTokenOrMessage()

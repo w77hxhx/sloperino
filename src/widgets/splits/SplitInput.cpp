@@ -36,6 +36,7 @@
 #include "widgets/dialogs/EmotePopup.hpp"
 #include "widgets/dialogs/PollDialog.hpp"
 #include "widgets/dialogs/PredictionDialog.hpp"
+#include "widgets/dialogs/SeventvCosmeticsDialog.hpp"
 #include "widgets/dialogs/TwitchBadgePickerDialog.hpp"
 #include "widgets/dialogs/UserInfoPopup.hpp"
 #if MOLTORINO_ENABLE_CHANNEL_POINT_REWARDS
@@ -850,6 +851,15 @@ void SplitInput::initLayout()
         this->ui_.badgeButton->setToolTip("Select badge");
         this->ui_.badgeButton->hide();
 
+        this->ui_.seventvButton = new SvgButton(
+            {
+                .dark = ":/buttons/7tv-darkMode.svg",
+                .light = ":/buttons/7tv-lightMode.svg",
+            },
+            nullptr, QSize{3, 3});
+        this->ui_.seventvButton->setToolTip("7TV Cosmetics (Paints & Badges)");
+        this->ui_.seventvButton->hide();
+
         this->ui_.outgoingTranslateButton = new SvgButton(
             {
                 .dark = ":/buttons/translate-darkMode.svg",
@@ -878,6 +888,7 @@ void SplitInput::initLayout()
         buttonsRow->addWidget(this->ui_.predictionButton, 0, Qt::AlignBottom);
         buttonsRow->addWidget(this->ui_.pollButton, 0, Qt::AlignBottom);
         buttonsRow->addWidget(this->ui_.badgeButton, 0, Qt::AlignBottom);
+        buttonsRow->addWidget(this->ui_.seventvButton, 0, Qt::AlignBottom);
         buttonsRow->addWidget(this->ui_.outgoingTranslateButton, 0,
                               Qt::AlignBottom);
         buttonsRow->addWidget(this->ui_.emoteButton, 0, Qt::AlignBottom);
@@ -934,6 +945,14 @@ void SplitInput::initLayout()
         if (!channel)
             return;
         TwitchBadgePickerDialog::showDialog(channel, this->split_);
+    });
+
+    QObject::connect(this->ui_.seventvButton, &Button::leftClicked, [this] {
+        auto *channel = dynamic_cast<TwitchChannel *>(
+            this->split_->getSelectedChannel().get());
+        if (!channel)
+            return;
+        SeventvCosmeticsDialog::showDialog(channel, this->split_);
     });
 
     // clear input and remove reply thread
@@ -1225,6 +1244,10 @@ void SplitInput::updateEmoteButton()
     {
         this->ui_.badgeButton->setFixedSize(buttonSize, buttonSize);
     }
+    if (this->ui_.seventvButton)
+    {
+        this->ui_.seventvButton->setFixedSize(buttonSize, buttonSize);
+    }
     if (this->ui_.outgoingTranslateButton)
     {
         this->ui_.outgoingTranslateButton->setFixedSize(buttonSize, buttonSize);
@@ -1323,6 +1346,8 @@ void SplitInput::updateActionRowCompactness()
         tryFit(this->ui_.pollButton, this->pollButtonWanted_);
     const bool showBadgeButton =
         tryFit(this->ui_.badgeButton, this->badgeButtonWanted_);
+    const bool showSeventvButton =
+        tryFit(this->ui_.seventvButton, this->seventvButtonWanted_);
     const bool showSendWaitStatus =
         tryFit(this->ui_.sendWaitStatus, this->sendWaitStatusWanted_);
     const bool showTextLength = !this->ui_.textEditLength->text().isEmpty();
@@ -1335,6 +1360,7 @@ void SplitInput::updateActionRowCompactness()
         setExplicitVisible(this->ui_.predictionButton, showPredictionButton);
     changed |= setExplicitVisible(this->ui_.pollButton, showPollButton);
     changed |= setExplicitVisible(this->ui_.badgeButton, showBadgeButton);
+    changed |= setExplicitVisible(this->ui_.seventvButton, showSeventvButton);
     changed |= setExplicitVisible(this->ui_.textEditLength, showTextLength);
     changed |= setExplicitVisible(this->ui_.sendWaitStatus, showSendWaitStatus);
     changed |=
@@ -3888,6 +3914,8 @@ void SplitInput::bindChannelPoints(TwitchChannel *channel)
                                                        : "Create poll");
         this->badgeButtonWanted_ =
             getSettings()->showSelectBadgeButton && channel != nullptr;
+        this->seventvButtonWanted_ =
+            getSettings()->showSelectSeventvButton && channel != nullptr;
         this->updateActionRowCompactness();
     };
 
@@ -3897,6 +3925,7 @@ void SplitInput::bindChannelPoints(TwitchChannel *channel)
         this->predictionButtonWanted_ = false;
         this->pollButtonWanted_ = false;
         this->badgeButtonWanted_ = false;
+        this->seventvButtonWanted_ = false;
         this->updateActionRowCompactness();
         return;
     }
@@ -4310,6 +4339,10 @@ void SplitInput::updateChannel()
     if (this->ui_.badgeButton)
     {
         this->ui_.badgeButton->setEnabled(!readOnlyInput);
+    }
+    if (this->ui_.seventvButton)
+    {
+        this->ui_.seventvButton->setEnabled(!readOnlyInput);
     }
 
     refreshSelectedChannelState();

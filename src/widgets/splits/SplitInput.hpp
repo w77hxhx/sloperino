@@ -253,6 +253,7 @@ protected:
         SvgButton *predictionButton;
         SvgButton *pollButton;
         SvgButton *badgeButton;
+        SvgButton *seventvButton;
         SvgButton *outgoingTranslateButton;
         SvgButton *emoteButton;
         QWidget *historySearchWrap;
@@ -312,6 +313,7 @@ protected:
     bool predictionButtonWanted_ = false;
     bool pollButtonWanted_ = false;
     bool badgeButtonWanted_ = false;
+    bool seventvButtonWanted_ = false;
 #if MOLTORINO_ENABLE_CHANNEL_POINT_REWARDS
     bool channelPointRewardPromptRequiresText_ = false;
     std::function<void(const QString &)> channelPointRewardPromptSubmit_;
