@@ -19,7 +19,7 @@ This will require more than 30 GB of free space on your hard drive.
    ```
 
 1. Configure the environment variables for vcpkg.  
-    Check [this document](https://gist.github.com/mitchmindtree/92c8e37fa80c8dddee5b94fc88d1288b#setting-an-environment-variable-on-windows) for more information for how to set environment variables on Windows.
+   Check [this document](https://gist.github.com/mitchmindtree/92c8e37fa80c8dddee5b94fc88d1288b#setting-an-environment-variable-on-windows) for more information for how to set environment variables on Windows.
    - Ensure your dependencies are built as 64-bit  
      e.g. `setx VCPKG_DEFAULT_TRIPLET x64-windows`  
      See [documentation about Triplets](https://learn.microsoft.com/en-gb/vcpkg/users/triplets)  

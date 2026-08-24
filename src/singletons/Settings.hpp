@@ -435,7 +435,8 @@ public:
     BoolSetting showBadgesDankChat = {"/appearance/badges/dankchat", true};
     BoolSetting showBadgesChatsen = {"/appearance/badges/chatsen", true};
     BoolSetting showSelectBadgeButton = {"/client/showSelectBadgeButton", true};
-    BoolSetting showSelectSeventvButton = {"/client/showSelectSeventvButton", true};
+    BoolSetting showSelectSeventvButton = {"/client/showSelectSeventvButton",
+                                           true};
     StringSetting seventvToken = {"/auth/seventvToken", ""};
     StringSetting seventvUserId = {"/auth/seventvUserId", ""};
     BoolSetting animateSevenTVBadges = {"/appearance/badges/animateSeventv",

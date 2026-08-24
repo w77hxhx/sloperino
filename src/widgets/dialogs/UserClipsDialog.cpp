@@ -497,7 +497,7 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     searchRow->setContentsMargins(0, scaledMetric(this->scale(), 6, 3), 0,
                                   scaledMetric(this->scale(), 6, 3));
     searchRow->addWidget(this->searchInput_);
-    this->mainLayout_->addLayout(searchRow);    // Scroll area
+    this->mainLayout_->addLayout(searchRow);  // Scroll area
     this->scrollArea_ = new QScrollArea(container);
     this->scrollArea_->setObjectName("UserClipsScrollArea");
     this->scrollArea_->setFrameShape(QFrame::NoFrame);
@@ -536,7 +536,7 @@ UserClipsDialog::UserClipsDialog(const QString &userLogin,
     this->contentWidget_->setObjectName("UserClipsDialogContent");
     this->contentWidget_->setMinimumWidth(0);
     this->contentWidget_->setSizePolicy(QSizePolicy::Ignored,
-                                         QSizePolicy::Preferred);
+                                        QSizePolicy::Preferred);
     this->contentLayout_ = new QVBoxLayout(this->contentWidget_);
     this->contentLayout_->setContentsMargins(
         0, scaledMetric(this->scale(), 4, 2), 0,
@@ -967,27 +967,19 @@ void UserClipsDialog::refreshStyle()
         theme->isLightTheme()
             ? theme->splits.input.background.darker(104).name()
             : theme->splits.input.background.lighter(108).name();
-    const auto cardBg =
-        theme->isLightTheme()
-            ? QStringLiteral("#f7f7f8")
-            : QStringLiteral("#18181b");
-    const auto cardHoverBg =
-        theme->isLightTheme()
-            ? QStringLiteral("#ebebef")
-            : QStringLiteral("#26262c");
-    const auto cardBorder =
-        theme->isLightTheme()
-            ? QStringLiteral("#e5e5e9")
-            : QStringLiteral("#303036");
+    const auto cardBg = theme->isLightTheme() ? QStringLiteral("#f7f7f8")
+                                              : QStringLiteral("#18181b");
+    const auto cardHoverBg = theme->isLightTheme() ? QStringLiteral("#ebebef")
+                                                   : QStringLiteral("#26262c");
+    const auto cardBorder = theme->isLightTheme() ? QStringLiteral("#e5e5e9")
+                                                  : QStringLiteral("#303036");
     const auto categoryColor = theme->isLightTheme()
                                    ? QStringLiteral("#772ce8")
                                    : QStringLiteral("#bf94ff");
-    const auto titleColor = theme->isLightTheme()
-                                ? QStringLiteral("#0e0e10")
-                                : QStringLiteral("#efeff1");
-    const auto metaColor = theme->isLightTheme()
-                               ? QStringLiteral("#53535f")
-                               : QStringLiteral("#adadb8");
+    const auto titleColor = theme->isLightTheme() ? QStringLiteral("#0e0e10")
+                                                  : QStringLiteral("#efeff1");
+    const auto metaColor = theme->isLightTheme() ? QStringLiteral("#53535f")
+                                                 : QStringLiteral("#adadb8");
 
     const bool isBroadcaster =
         (this->activeRole_ == QStringLiteral("BROADCASTER"));
