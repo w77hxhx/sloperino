@@ -48,6 +48,13 @@ struct SeventvBadgeItem {
     ImageSet images;
 };
 
+struct SeventvConnection {
+    QString id;
+    QString platform;
+    QString username;
+    QString displayName;
+};
+
 class SeventvCosmeticsDialog : public DraggablePopup
 {
 public:
@@ -79,6 +86,7 @@ private:
     void selectPaint(const QString &paintId);
     void selectBadge(const QString &badgeId);
     void sendPresence();
+    void applyCosmeticsToChatterino();
 
     QString getSeventvToken() const;
     QString getSeventvUserId() const;
@@ -116,9 +124,11 @@ private:
     QString seventvUserId_;
     QString seventvUsername_;
     QString seventvDisplayName_;
+    QColor seventvColor_;
     QString activePaintId_;
     QString activeBadgeId_;
 
+    std::vector<SeventvConnection> connections_;
     std::map<QString, SeventvPaintItem> allPaintsMap_;
     std::map<QString, SeventvBadgeItem> allBadgesMap_;
     std::vector<SeventvPaintItem> paints_;

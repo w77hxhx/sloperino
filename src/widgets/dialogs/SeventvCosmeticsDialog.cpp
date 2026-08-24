@@ -972,6 +972,7 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
             "  } "
             "  user: actor { "
             "    id username display_name avatar_url "
+            "    connections { id platform username display_name } "
             "    style { color paint_id badge_id } "
             "    cosmetics { id kind selected } "
             "  } "
@@ -1061,9 +1062,29 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
                 getSettings()->seventvUsername.setValue(self->seventvUsername_);
             }
 
+            // Parse 7TV user connections
+            self->connections_.clear();
+            const auto connArr = userObj.value("connections").toArray();
+            for (const auto &cVal : connArr)
+            {
+                const auto cObj = cVal.toObject();
+                SeventvConnection conn;
+                conn.id = cObj.value("id").toString();
+                conn.platform = cObj.value("platform").toString();
+                conn.username = cObj.value("username").toString();
+                conn.displayName = cObj.value("display_name").toString();
+                self->connections_.push_back(std::move(conn));
+            }
+
             const auto styleObj = userObj.value("style").toObject();
             self->activePaintId_ = styleObj.value("paint_id").toString();
             self->activeBadgeId_ = styleObj.value("badge_id").toString();
+            const auto colVal = styleObj.value("color");
+            if (!colVal.isNull() && !colVal.isUndefined())
+            {
+                self->seventvColor_ = rgbaToQColor(
+                    uint32_t(colVal.toVariant().toLongLong()));
+            }
 
             // Populate user's owned cosmetics
             self->paints_.clear();
@@ -1134,41 +1155,8 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
                 }
             }
 
-            // Register and assign active paint and badge locally in Chatterino
-            const auto currentTwitchUser =
-                getApp()->getAccounts()->twitch.getCurrent();
-            const auto twitchUserName = currentTwitchUser
-                                            ? currentTwitchUser->getUserName()
-                                            : QString();
-            const auto twitchUserId = currentTwitchUser
-                                          ? currentTwitchUser->getUserId()
-                                          : QString();
-
-            if (!self->activePaintId_.isEmpty())
-            {
-                auto it = self->allPaintsMap_.find(self->activePaintId_);
-                if (it != self->allPaintsMap_.end() &&
-                    !it->second.rawJson.isEmpty())
-                {
-                    getApp()->getSeventvPaints()->addPaint(it->second.rawJson);
-                }
-                if (!twitchUserName.isEmpty())
-                {
-                    getApp()->getSeventvPaints()->assignPaintToUser(
-                        self->activePaintId_, twitchUserName);
-                }
-                if (!self->seventvUsername_.isEmpty())
-                {
-                    getApp()->getSeventvPaints()->assignPaintToUser(
-                        self->activePaintId_, self->seventvUsername_);
-                }
-            }
-
-            if (!self->activeBadgeId_.isEmpty() && !twitchUserId.isEmpty())
-            {
-                getApp()->getSeventvBadges()->assignBadgeToUser(
-                    self->activeBadgeId_, UserId{twitchUserId});
-            }
+            // Apply cosmetics to Chatterino for 7TV account & connections
+            self->applyCosmeticsToChatterino();
 
             // Update Tab Button Labels
             self->badgesTabButton_->setText(
@@ -1193,6 +1181,69 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
                 true);
         })
         .execute();
+}
+
+void SeventvCosmeticsDialog::applyCosmeticsToChatterino()
+{
+    // 1. Paint assignment to 7TV username & connected accounts
+    if (!this->activePaintId_.isEmpty())
+    {
+        auto it = this->allPaintsMap_.find(this->activePaintId_);
+        if (it != this->allPaintsMap_.end() && !it->second.rawJson.isEmpty())
+        {
+            getApp()->getSeventvPaints()->addPaint(it->second.rawJson);
+        }
+
+        if (!this->seventvUsername_.isEmpty())
+        {
+            getApp()->getSeventvPaints()->assignPaintToUser(
+                this->activePaintId_, this->seventvUsername_, false);
+        }
+
+        for (const auto &conn : this->connections_)
+        {
+            const bool isKick = (conn.platform.toUpper() == "KICK");
+            getApp()->getSeventvPaints()->assignPaintToUser(
+                this->activePaintId_, conn.username, isKick);
+        }
+    }
+    else
+    {
+        if (!this->seventvUsername_.isEmpty())
+        {
+            getApp()->getSeventvPaints()->clearPaintFromUser(
+                this->seventvUsername_, false);
+        }
+
+        for (const auto &conn : this->connections_)
+        {
+            const bool isKick = (conn.platform.toUpper() == "KICK");
+            getApp()->getSeventvPaints()->clearPaintFromUser(
+                conn.username, isKick);
+        }
+    }
+
+    // 2. Badge assignment to 7TV connected Twitch accounts
+    for (const auto &conn : this->connections_)
+    {
+        if (conn.platform.toUpper() == "TWITCH")
+        {
+            if (!this->activeBadgeId_.isEmpty())
+            {
+                getApp()->getSeventvBadges()->assignBadgeToUser(
+                    this->activeBadgeId_, UserId{conn.id});
+            }
+            else
+            {
+                getApp()->getSeventvBadges()->clearBadgeFromUser(
+                    this->activeBadgeId_, UserId{conn.id});
+            }
+        }
+    }
+
+    postToThread([] {
+        getApp()->getWindows()->invalidateChannelViewBuffers();
+    });
 }
 
 void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
@@ -1222,43 +1273,9 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
 
     // Optimistic local update so UI and chat reflect the change immediately
     this->activePaintId_ = (isNone ? QString() : paintId);
+    this->applyCosmeticsToChatterino();
     this->updatePreview();
     this->rebuildContent();
-
-    const auto currentTwitchUser = getApp()->getAccounts()->twitch.getCurrent();
-    const auto twitchUserName =
-        currentTwitchUser ? currentTwitchUser->getUserName() : QString();
-
-    if (!this->activePaintId_.isEmpty())
-    {
-        auto it = this->allPaintsMap_.find(this->activePaintId_);
-        if (it != this->allPaintsMap_.end() && !it->second.rawJson.isEmpty())
-        {
-            getApp()->getSeventvPaints()->addPaint(it->second.rawJson);
-        }
-        if (!twitchUserName.isEmpty())
-        {
-            getApp()->getSeventvPaints()->assignPaintToUser(this->activePaintId_,
-                                                            twitchUserName);
-        }
-        if (!this->seventvUsername_.isEmpty())
-        {
-            getApp()->getSeventvPaints()->assignPaintToUser(this->activePaintId_,
-                                                            this->seventvUsername_);
-        }
-    }
-    else
-    {
-        if (!twitchUserName.isEmpty())
-        {
-            getApp()->getSeventvPaints()->clearPaintFromUser(twitchUserName);
-        }
-        if (!this->seventvUsername_.isEmpty())
-        {
-            getApp()->getSeventvPaints()->clearPaintFromUser(
-                this->seventvUsername_);
-        }
-    }
 
     this->setStatus(QStringLiteral("Updating 7TV paint..."));
 
@@ -1315,6 +1332,7 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
             if (json.contains("errors"))
             {
                 self->activePaintId_ = previousPaintId;
+                self->applyCosmeticsToChatterino();
                 self->updatePreview();
                 self->rebuildContent();
                 self->setStatus(
@@ -1330,6 +1348,7 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
                 return;
             }
             self->activePaintId_ = previousPaintId;
+            self->applyCosmeticsToChatterino();
             self->updatePreview();
             self->rebuildContent();
             self->setStatus(
@@ -1367,29 +1386,9 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
 
     // Optimistic local update so UI and chat reflect the change immediately
     this->activeBadgeId_ = (isNone ? QString() : badgeId);
+    this->applyCosmeticsToChatterino();
     this->updatePreview();
     this->rebuildContent();
-
-    const auto currentTwitchUser = getApp()->getAccounts()->twitch.getCurrent();
-    const auto twitchUserId =
-        currentTwitchUser ? currentTwitchUser->getUserId() : QString();
-
-    if (!this->activeBadgeId_.isEmpty())
-    {
-        if (!twitchUserId.isEmpty())
-        {
-            getApp()->getSeventvBadges()->assignBadgeToUser(
-                this->activeBadgeId_, UserId{twitchUserId});
-        }
-    }
-    else
-    {
-        if (!twitchUserId.isEmpty() && !previousBadgeId.isEmpty())
-        {
-            getApp()->getSeventvBadges()->clearBadgeFromUser(
-                previousBadgeId, UserId{twitchUserId});
-        }
-    }
 
     this->setStatus(QStringLiteral("Updating 7TV badge..."));
 
@@ -1446,6 +1445,7 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
             if (json.contains("errors"))
             {
                 self->activeBadgeId_ = previousBadgeId;
+                self->applyCosmeticsToChatterino();
                 self->updatePreview();
                 self->rebuildContent();
                 self->setStatus(
@@ -1461,6 +1461,7 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
                 return;
             }
             self->activeBadgeId_ = previousBadgeId;
+            self->applyCosmeticsToChatterino();
             self->updatePreview();
             self->rebuildContent();
             self->setStatus(
@@ -1651,23 +1652,18 @@ void SeventvCosmeticsDialog::updatePreview()
         return;
     }
 
-    const auto currentTwitchUser = getApp()->getAccounts()->twitch.getCurrent();
     QString displayName = this->seventvDisplayName_;
     if (displayName.isEmpty())
     {
         displayName = this->seventvUsername_;
     }
-    if (displayName.isEmpty() && currentTwitchUser)
-    {
-        displayName = currentTwitchUser->getUserName();
-    }
     if (displayName.isEmpty())
     {
-        displayName = QStringLiteral("Username");
+        displayName = QStringLiteral("7TV User");
     }
 
-    QColor userColor =
-        currentTwitchUser ? currentTwitchUser->color() : QColor("#bf94ff");
+    QColor userColor = this->seventvColor_.isValid() ? this->seventvColor_
+                                                     : QColor("#bf94ff");
 
     // Resolve active badge
     ImageSet badgeImages;
