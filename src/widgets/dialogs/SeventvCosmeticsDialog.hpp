@@ -4,17 +4,18 @@
 
 #pragma once
 
-#include "messages/Message.hpp"
+#include "messages/ImageSet.hpp"
+#include "providers/seventv/paints/Paint.hpp"
 #include "widgets/DraggablePopup.hpp"
 
-#include <QDateTime>
+#include <pajlada/signals/signalholder.hpp>
 #include <QJsonObject>
 #include <QPointer>
 #include <QString>
 #include <QVector>
 
+#include <map>
 #include <memory>
-#include <optional>
 #include <vector>
 
 class QLabel;
@@ -27,11 +28,10 @@ class QVBoxLayout;
 
 namespace chatterino {
 
-class MessageView;
-class SvgButton;
 class Button;
+class SvgButton;
 class TwitchChannel;
-class Paint;
+class CosmeticPreviewWidget;
 
 struct SeventvPaintItem {
     QString id;
@@ -45,6 +45,7 @@ struct SeventvBadgeItem {
     QString name;
     QString description;
     QString imageUrl;
+    ImageSet images;
 };
 
 class SeventvCosmeticsDialog : public DraggablePopup
@@ -62,15 +63,15 @@ protected:
 
 private:
     enum class View {
-        Paints,
         Badges,
+        Paints,
     };
 
     void loadCosmetics(bool force = false);
     void switchView(View view);
     void rebuildContent();
-    void rebuildPaints();
     void rebuildBadges();
+    void rebuildPaints();
     void clearContent();
     void refreshStyle();
     void setStatus(const QString &text, bool error = false);
@@ -84,24 +85,28 @@ private:
 
     void applySizeConstraints();
     void updatePreview();
-    [[nodiscard]] MessagePtr buildPreviewMessage() const;
 
     TwitchChannel *channel_{};
 
     QVBoxLayout *mainLayout_{};
     QWidget *headerWidget_{};
     QLabel *headerTitleLabel_{};
-    QPushButton *paintsTabButton_{};
+    Button *pinButton_{};
+    SvgButton *closeButton_{};
+
+    CosmeticPreviewWidget *previewWidget_{};
+
+    QWidget *controlsRowWidget_{};
     QPushButton *badgesTabButton_{};
-    QWidget *searchRowWidget_{};
+    QPushButton *paintsTabButton_{};
     QLineEdit *searchInput_{};
+
     QScrollArea *scrollArea_{};
     QWidget *contentWidget_{};
     QVBoxLayout *contentLayout_{};
     QLabel *statusLabel_{};
-    MessageView *previewView_{};
 
-    View currentView_{View::Paints};
+    View currentView_{View::Badges};
     QString searchQuery_;
     QString statusText_;
     bool statusIsError_{false};
@@ -109,11 +114,17 @@ private:
     bool loaded_{false};
 
     QString seventvUserId_;
+    QString seventvUsername_;
+    QString seventvDisplayName_;
     QString activePaintId_;
     QString activeBadgeId_;
 
+    std::map<QString, SeventvPaintItem> allPaintsMap_;
+    std::map<QString, SeventvBadgeItem> allBadgesMap_;
     std::vector<SeventvPaintItem> paints_;
     std::vector<SeventvBadgeItem> badges_;
+
+    pajlada::Signals::SignalHolder signalHolder_;
 };
 
 }  // namespace chatterino
