@@ -437,8 +437,8 @@ public:
     BoolSetting showSelectBadgeButton = {"/client/showSelectBadgeButton", true};
     BoolSetting showSelectSeventvButton = {"/client/showSelectSeventvButton",
                                            true};
-    StringSetting seventvToken = {"/auth/seventvToken", ""};
-    StringSetting seventvUserId = {"/auth/seventvUserId", ""};
+    QStringSetting seventvToken = {"/auth/seventvToken", ""};
+    QStringSetting seventvUserId = {"/auth/seventvUserId", ""};
     BoolSetting animateSevenTVBadges = {"/appearance/badges/animateSeventv",
                                         true};
     BoolSetting showUserinfoPopupChatters = {

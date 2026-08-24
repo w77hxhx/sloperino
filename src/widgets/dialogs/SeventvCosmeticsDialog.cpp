@@ -181,8 +181,8 @@ std::shared_ptr<Paint> parsePaintObject(const QJsonObject &obj)
                                  rgbaToQColor(rgba));
         }
 
-        return std::make_shared<RadialGradientPaint>(
-            name, id, std::nullopt, stops, repeat, shape, std::move(shadows));
+        return std::make_shared<RadialGradientPaint>(name, id, stops, repeat,
+                                                     std::move(shadows));
     }
 
     return nullptr;
@@ -199,12 +199,11 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
     this->resize(DEFAULT_DIALOG_SIZE);
     this->setWindowTitle(QStringLiteral("7TV Cosmetics"));
 
-    auto *container = new QWidget(this);
+    auto *container = this->getLayoutContainer();
     container->setObjectName("SeventvCosmeticsRoot");
     this->mainLayout_ = new QVBoxLayout(container);
     this->mainLayout_->setContentsMargins(0, 0, 0, 0);
     this->mainLayout_->setSpacing(0);
-    this->setChildWidget(container);
 
     // Header
     this->headerWidget_ = new QWidget(container);
@@ -241,7 +240,14 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
 
     auto *pinButton = this->createPinButton();
     headerLayout->addWidget(pinButton);
-    auto *closeBtn = this->createCloseButton();
+    auto *closeBtn = new SvgButton(
+        {.dark = ":/buttons/cancel.svg", .light = ":/buttons/cancelDark.svg"},
+        this, QSize{3, 3});
+    closeBtn->setScaleIndependentSize(18, 18);
+    closeBtn->setToolTip(QStringLiteral("Close"));
+    closeBtn->setCursor(Qt::PointingHandCursor);
+    closeBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    QObject::connect(closeBtn, &Button::leftClicked, this, &QWidget::close);
     headerLayout->addWidget(closeBtn);
 
     this->mainLayout_->addWidget(this->headerWidget_);
@@ -433,8 +439,8 @@ void SeventvCosmeticsDialog::sendPresence()
         NetworkRequest(QUrl(urlStr), NetworkRequestType::Post).json(root);
     if (!token.isEmpty())
     {
-        req.header("Authorization",
-                   QStringLiteral("Bearer %1").arg(token).toUtf8());
+        req = std::move(req).header(
+            "Authorization", QStringLiteral("Bearer %1").arg(token).toUtf8());
     }
     req.execute();
 }
@@ -449,7 +455,7 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
     const auto token = this->getSeventvToken();
     auto userId = this->getSeventvUserId();
 
-    const auto currentTwitchUser = getApp()->getAccounts()->getTwitchAccount();
+    const auto currentTwitchUser = getApp()->getAccounts()->twitch.getCurrent();
     const auto twitchUserId =
         currentTwitchUser ? currentTwitchUser->getUserId() : QString();
 
@@ -476,8 +482,8 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
     auto req = NetworkRequest(QUrl(urlStr), NetworkRequestType::Get);
     if (!token.isEmpty())
     {
-        req.header("Authorization",
-                   QStringLiteral("Bearer %1").arg(token).toUtf8());
+        req = std::move(req).header(
+            "Authorization", QStringLiteral("Bearer %1").arg(token).toUtf8());
     }
 
     req.onSuccess([self](const auto &result) {
@@ -831,7 +837,7 @@ void SeventvCosmeticsDialog::rebuildBadges()
 MessagePtr SeventvCosmeticsDialog::buildPreviewMessage() const
 {
     MessageBuilder builder;
-    const auto currentTwitchUser = getApp()->getAccounts()->getTwitchAccount();
+    const auto currentTwitchUser = getApp()->getAccounts()->twitch.getCurrent();
     const auto userName = currentTwitchUser ? currentTwitchUser->getUserName()
                                             : QStringLiteral("username");
 
