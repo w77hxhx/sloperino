@@ -7,6 +7,7 @@
 #include "common/network/NetworkRequest.hpp"
 #include "common/network/NetworkResult.hpp"
 #include "providers/moltorino/MoltorinoAuth.hpp"
+#include "singletons/Settings.hpp"
 #include "util/Clipboard.hpp"
 
 #include <QAbstractItemView>
