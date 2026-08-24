@@ -77,21 +77,34 @@ QString decodeJwtUserId(const QString &jwt)
     }
 
     auto payload = parts[1].toUtf8();
-    // Normalize base64url to base64
+    auto json = QByteArray::fromBase64(
+        payload,
+        QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
+    auto doc = QJsonDocument::fromJson(json);
+    if (doc.isObject())
+    {
+        const auto sub = doc.object().value("sub").toString().trimmed();
+        if (!sub.isEmpty())
+        {
+            return sub;
+        }
+    }
+
+    // Normalize base64url to base64 fallback
     payload.replace('-', '+').replace('_', '/');
     while (payload.size() % 4 != 0)
     {
         payload.append('=');
     }
 
-    const auto json = QByteArray::fromBase64(payload);
-    const auto doc = QJsonDocument::fromJson(json);
-    if (!doc.isObject())
+    const auto fallbackDoc =
+        QJsonDocument::fromJson(QByteArray::fromBase64(payload));
+    if (!fallbackDoc.isObject())
     {
         return {};
     }
 
-    return doc.object().value("sub").toString().trimmed();
+    return fallbackDoc.object().value("sub").toString().trimmed();
 }
 
 QColor rgbaToQColor(const uint32_t color)
