@@ -442,7 +442,7 @@ void SeventvCosmeticsDialog::sendPresence()
         req = std::move(req).header(
             "Authorization", QStringLiteral("Bearer %1").arg(token).toUtf8());
     }
-    req.execute();
+    std::move(req).execute();
 }
 
 void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
@@ -486,72 +486,73 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
             "Authorization", QStringLiteral("Bearer %1").arg(token).toUtf8());
     }
 
-    req.onSuccess([self](const auto &result) {
-           if (!self)
-           {
-               return;
-           }
-           self->loading_ = false;
-           self->loaded_ = true;
+    std::move(req)
+        .onSuccess([self](const auto &result) {
+            if (!self)
+            {
+                return;
+            }
+            self->loading_ = false;
+            self->loaded_ = true;
 
-           const auto doc = result.parseJson();
-           if (!doc.isObject())
-           {
-               self->setStatus(QStringLiteral("Failed to parse 7TV user data."),
-                               true);
-               return;
-           }
+            const auto doc = result.parseJson();
+            if (!doc.isObject())
+            {
+                self->setStatus(
+                    QStringLiteral("Failed to parse 7TV user data."), true);
+                return;
+            }
 
-           const auto obj = doc.object();
-           self->seventvUserId_ = obj.value("id").toString();
-           if (!self->seventvUserId_.isEmpty())
-           {
-               getSettings()->seventvUserId.setValue(self->seventvUserId_);
-           }
+            const auto obj = doc.object();
+            self->seventvUserId_ = obj.value("id").toString();
+            if (!self->seventvUserId_.isEmpty())
+            {
+                getSettings()->seventvUserId.setValue(self->seventvUserId_);
+            }
 
-           const auto styleObj = obj.value("style").toObject();
-           self->activePaintId_ = styleObj.value("active_paint_id").toString();
-           self->activeBadgeId_ = styleObj.value("active_badge_id").toString();
+            const auto styleObj = obj.value("style").toObject();
+            self->activePaintId_ = styleObj.value("active_paint_id").toString();
+            self->activeBadgeId_ = styleObj.value("active_badge_id").toString();
 
-           self->paints_.clear();
-           const auto paintsArr = obj.value("paints").toArray();
-           for (const auto &p : paintsArr)
-           {
-               const auto pobj = p.toObject();
-               SeventvPaintItem item;
-               item.id = pobj.value("id").toString();
-               item.name = pobj.value("name").toString();
-               item.rawJson = pobj;
-               item.paint = parsePaintObject(pobj);
-               self->paints_.push_back(std::move(item));
-           }
+            self->paints_.clear();
+            const auto paintsArr = obj.value("paints").toArray();
+            for (const auto &p : paintsArr)
+            {
+                const auto pobj = p.toObject();
+                SeventvPaintItem item;
+                item.id = pobj.value("id").toString();
+                item.name = pobj.value("name").toString();
+                item.rawJson = pobj;
+                item.paint = parsePaintObject(pobj);
+                self->paints_.push_back(std::move(item));
+            }
 
-           self->badges_.clear();
-           const auto badgesArr = obj.value("badges").toArray();
-           for (const auto &b : badgesArr)
-           {
-               const auto bobj = b.toObject();
-               SeventvBadgeItem item;
-               item.id = bobj.value("id").toString();
-               item.name = bobj.value("name").toString();
-               item.description = bobj.value("description").toString();
-               if (item.description.isEmpty())
-               {
-                   item.description = bobj.value("tooltip").toString();
-               }
-               const auto urlsArr = bobj.value("urls").toArray();
-               if (!urlsArr.isEmpty())
-               {
-                   item.imageUrl = urlsArr.last().toArray().last().toString();
-               }
-               self->badges_.push_back(std::move(item));
-           }
+            self->badges_.clear();
+            const auto badgesArr = obj.value("badges").toArray();
+            for (const auto &b : badgesArr)
+            {
+                const auto bobj = b.toObject();
+                SeventvBadgeItem item;
+                item.id = bobj.value("id").toString();
+                item.name = bobj.value("name").toString();
+                item.description = bobj.value("description").toString();
+                if (item.description.isEmpty())
+                {
+                    item.description = bobj.value("tooltip").toString();
+                }
+                const auto urlsArr = bobj.value("urls").toArray();
+                if (!urlsArr.isEmpty())
+                {
+                    item.imageUrl = urlsArr.last().toArray().last().toString();
+                }
+                self->badges_.push_back(std::move(item));
+            }
 
-           self->setStatus({});
-           self->rebuildContent();
-           self->updatePreview();
-           self->sendPresence();
-       })
+            self->setStatus({});
+            self->rebuildContent();
+            self->updatePreview();
+            self->sendPresence();
+        })
         .onError([self](const auto &result) {
             if (!self)
             {
