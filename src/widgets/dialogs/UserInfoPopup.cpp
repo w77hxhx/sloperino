@@ -34,6 +34,7 @@
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchBadge.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
+#include "providers/twitch/TwitchHelpers.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "providers/twitch/TwitchNameHistory.hpp"
 #include "providers/youtube/YouTubeChannel.hpp"
@@ -3785,7 +3786,7 @@ void UserInfoPopup::fetchZonianMonthLog(size_t monthIndex)
     NetworkRequest(url)
         .timeout(20000)
         .header("User-Agent", "Sloperino-App")
-        .onSuccess([self, generation, chan, user, monthIndex,
+        .onSuccess([self, generation, chan, user,
                     cacheKey](const NetworkResult &result) {
             if (!self || generation != self->zonianRequestGeneration_)
             {
