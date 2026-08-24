@@ -268,4 +268,57 @@ void SeventvPaints::clearPaintFromUsers(
     }
 }
 
+void SeventvPaints::assignPaintToUser(const QString &paintID,
+                                      const QString &userName, bool kick)
+{
+    if (userName.isEmpty())
+    {
+        return;
+    }
+
+    std::unique_lock lock(this->mutex_);
+
+    const auto paintIt = this->knownPaints_.find(paintID);
+    if (paintIt == this->knownPaints_.end())
+    {
+        return;
+    }
+
+    if (kick)
+    {
+        this->kickPaintMap_[userName] = paintIt->second;
+    }
+    else
+    {
+        this->twitchPaintMap_[userName] = paintIt->second;
+    }
+
+    postToThread([] {
+        getApp()->getWindows()->invalidateChannelViewBuffers();
+    });
+}
+
+void SeventvPaints::clearPaintFromUser(const QString &userName, bool kick)
+{
+    if (userName.isEmpty())
+    {
+        return;
+    }
+
+    std::unique_lock lock(this->mutex_);
+
+    if (kick)
+    {
+        this->kickPaintMap_.erase(userName);
+    }
+    else
+    {
+        this->twitchPaintMap_.erase(userName);
+    }
+
+    postToThread([] {
+        getApp()->getWindows()->invalidateChannelViewBuffers();
+    });
+}
+
 }  // namespace chatterino

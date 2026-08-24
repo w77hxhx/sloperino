@@ -29,6 +29,10 @@ public:
     void clearPaintFromUsers(const QString &paintID,
                              std::span<const seventv::eventapi::User> users);
 
+    void assignPaintToUser(const QString &paintID, const QString &userName,
+                           bool kick = false);
+    void clearPaintFromUser(const QString &userName, bool kick = false);
+
     std::shared_ptr<Paint> getPaint(const QString &userName, bool kick) const;
 
 private:

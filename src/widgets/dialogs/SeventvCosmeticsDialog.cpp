@@ -1134,6 +1134,42 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
                 }
             }
 
+            // Register and assign active paint and badge locally in Chatterino
+            const auto currentTwitchUser =
+                getApp()->getAccounts()->twitch.getCurrent();
+            const auto twitchUserName = currentTwitchUser
+                                            ? currentTwitchUser->getUserName()
+                                            : QString();
+            const auto twitchUserId = currentTwitchUser
+                                          ? currentTwitchUser->getUserId()
+                                          : QString();
+
+            if (!self->activePaintId_.isEmpty())
+            {
+                auto it = self->allPaintsMap_.find(self->activePaintId_);
+                if (it != self->allPaintsMap_.end() &&
+                    !it->second.rawJson.isEmpty())
+                {
+                    getApp()->getSeventvPaints()->addPaint(it->second.rawJson);
+                }
+                if (!twitchUserName.isEmpty())
+                {
+                    getApp()->getSeventvPaints()->assignPaintToUser(
+                        self->activePaintId_, twitchUserName);
+                }
+                if (!self->seventvUsername_.isEmpty())
+                {
+                    getApp()->getSeventvPaints()->assignPaintToUser(
+                        self->activePaintId_, self->seventvUsername_);
+                }
+            }
+
+            if (!self->activeBadgeId_.isEmpty() && !twitchUserId.isEmpty())
+            {
+                getApp()->getSeventvBadges()->assignBadgeToUser(
+                    self->activeBadgeId_, UserId{twitchUserId});
+            }
+
             // Update Tab Button Labels
             self->badgesTabButton_->setText(
                 QStringLiteral("Badges (%1)").arg(self->badges_.size()));
@@ -1184,6 +1220,46 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
         return;
     }
 
+    // Optimistic local update so UI and chat reflect the change immediately
+    this->activePaintId_ = (isNone ? QString() : paintId);
+    this->updatePreview();
+    this->rebuildContent();
+
+    const auto currentTwitchUser = getApp()->getAccounts()->twitch.getCurrent();
+    const auto twitchUserName =
+        currentTwitchUser ? currentTwitchUser->getUserName() : QString();
+
+    if (!this->activePaintId_.isEmpty())
+    {
+        auto it = this->allPaintsMap_.find(this->activePaintId_);
+        if (it != this->allPaintsMap_.end() && !it->second.rawJson.isEmpty())
+        {
+            getApp()->getSeventvPaints()->addPaint(it->second.rawJson);
+        }
+        if (!twitchUserName.isEmpty())
+        {
+            getApp()->getSeventvPaints()->assignPaintToUser(this->activePaintId_,
+                                                            twitchUserName);
+        }
+        if (!this->seventvUsername_.isEmpty())
+        {
+            getApp()->getSeventvPaints()->assignPaintToUser(this->activePaintId_,
+                                                            this->seventvUsername_);
+        }
+    }
+    else
+    {
+        if (!twitchUserName.isEmpty())
+        {
+            getApp()->getSeventvPaints()->clearPaintFromUser(twitchUserName);
+        }
+        if (!this->seventvUsername_.isEmpty())
+        {
+            getApp()->getSeventvPaints()->clearPaintFromUser(
+                this->seventvUsername_);
+        }
+    }
+
     this->setStatus(QStringLiteral("Updating 7TV paint..."));
 
     QPointer<SeventvCosmeticsDialog> self = this;
@@ -1230,22 +1306,32 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
         .header("User-Agent", "Chatterino")
         .json(root)
         .timeout(15000)
-        .onSuccess([self, paintId, isNone](const auto & /*res*/) {
+        .onSuccess([self, previousPaintId](const auto &res) {
             if (!self)
             {
                 return;
             }
-            self->activePaintId_ = (isNone ? QString() : paintId);
+            const auto json = res.parseJson();
+            if (json.contains("errors"))
+            {
+                self->activePaintId_ = previousPaintId;
+                self->updatePreview();
+                self->rebuildContent();
+                self->setStatus(
+                    QStringLiteral("Failed to update paint on 7TV."), true);
+                return;
+            }
             self->setStatus({});
-            self->rebuildContent();
-            self->updatePreview();
             self->sendPresence();
         })
-        .onError([self](const auto &res) {
+        .onError([self, previousPaintId](const auto &res) {
             if (!self)
             {
                 return;
             }
+            self->activePaintId_ = previousPaintId;
+            self->updatePreview();
+            self->rebuildContent();
             self->setStatus(
                 QStringLiteral("Failed to update paint: %1")
                     .arg(res.formatError()),
@@ -1277,6 +1363,32 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
     if (!isNone && previousBadgeId == badgeId)
     {
         return;
+    }
+
+    // Optimistic local update so UI and chat reflect the change immediately
+    this->activeBadgeId_ = (isNone ? QString() : badgeId);
+    this->updatePreview();
+    this->rebuildContent();
+
+    const auto currentTwitchUser = getApp()->getAccounts()->twitch.getCurrent();
+    const auto twitchUserId =
+        currentTwitchUser ? currentTwitchUser->getUserId() : QString();
+
+    if (!this->activeBadgeId_.isEmpty())
+    {
+        if (!twitchUserId.isEmpty())
+        {
+            getApp()->getSeventvBadges()->assignBadgeToUser(
+                this->activeBadgeId_, UserId{twitchUserId});
+        }
+    }
+    else
+    {
+        if (!twitchUserId.isEmpty() && !previousBadgeId.isEmpty())
+        {
+            getApp()->getSeventvBadges()->clearBadgeFromUser(
+                previousBadgeId, UserId{twitchUserId});
+        }
     }
 
     this->setStatus(QStringLiteral("Updating 7TV badge..."));
@@ -1325,22 +1437,32 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
         .header("User-Agent", "Chatterino")
         .json(root)
         .timeout(15000)
-        .onSuccess([self, badgeId, isNone](const auto & /*res*/) {
+        .onSuccess([self, previousBadgeId](const auto &res) {
             if (!self)
             {
                 return;
             }
-            self->activeBadgeId_ = (isNone ? QString() : badgeId);
+            const auto json = res.parseJson();
+            if (json.contains("errors"))
+            {
+                self->activeBadgeId_ = previousBadgeId;
+                self->updatePreview();
+                self->rebuildContent();
+                self->setStatus(
+                    QStringLiteral("Failed to update badge on 7TV."), true);
+                return;
+            }
             self->setStatus({});
-            self->rebuildContent();
-            self->updatePreview();
             self->sendPresence();
         })
-        .onError([self](const auto &res) {
+        .onError([self, previousBadgeId](const auto &res) {
             if (!self)
             {
                 return;
             }
+            self->activeBadgeId_ = previousBadgeId;
+            self->updatePreview();
+            self->rebuildContent();
             self->setStatus(
                 QStringLiteral("Failed to update badge: %1")
                     .arg(res.formatError()),
