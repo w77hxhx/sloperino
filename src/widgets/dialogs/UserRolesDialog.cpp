@@ -327,7 +327,10 @@ private:
             auto *popup =
                 new UserInfoPopup(getSettings()->autoCloseUserPopup, split);
             popup->setData(this->item_.login, split->getChannel());
+            popup->ensurePinned();
             popup->show();
+            popup->raise();
+            popup->activateWindow();
         }
         else
         {

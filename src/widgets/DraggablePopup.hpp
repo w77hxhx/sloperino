@@ -26,6 +26,9 @@ public:
         return this->isPinned_;
     }
 
+    void togglePinned();
+    bool ensurePinned();
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
@@ -45,10 +48,6 @@ protected:
     static void unpinParentIfNeeded(QWidget *parent);
 
     std::shared_ptr<bool> lifetimeHack_;
-
-    void togglePinned();
-
-    bool ensurePinned();
 
 private:
     bool isMoving_ = false;
