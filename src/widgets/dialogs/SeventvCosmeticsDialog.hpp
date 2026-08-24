@@ -93,6 +93,7 @@ private:
 
     void applySizeConstraints();
     void updatePreview();
+    void updateSelectionState();
 
     TwitchChannel *channel_{};
 

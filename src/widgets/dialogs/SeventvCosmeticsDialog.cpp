@@ -402,8 +402,9 @@ public:
         , images_(images)
         , isSelected_(isSelected)
     {
+        this->setFlat(true);
         this->setCursor(Qt::PointingHandCursor);
-        this->setFocusPolicy(Qt::StrongFocus);
+        this->setFocusPolicy(Qt::NoFocus);
         this->setAttribute(Qt::WA_Hover, true);
         this->setFixedHeight(44);
         this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -431,6 +432,32 @@ public:
     }
 
 protected:
+    void mousePressEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            event->accept();
+            this->update();
+            return;
+        }
+        QPushButton::mousePressEvent(event);
+    }
+
+    void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            if (this->rect().contains(event->pos()))
+            {
+                emit clicked();
+            }
+            event->accept();
+            this->update();
+            return;
+        }
+        QPushButton::mouseReleaseEvent(event);
+    }
+
     void paintEvent(QPaintEvent *) override
     {
         QPainter painter(this);
@@ -538,8 +565,9 @@ public:
         , paint_(paint)
         , isSelected_(isSelected)
     {
+        this->setFlat(true);
         this->setCursor(Qt::PointingHandCursor);
-        this->setFocusPolicy(Qt::StrongFocus);
+        this->setFocusPolicy(Qt::NoFocus);
         this->setAttribute(Qt::WA_Hover, true);
         this->setFixedHeight(44);
         this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -561,6 +589,32 @@ public:
     }
 
 protected:
+    void mousePressEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            event->accept();
+            this->update();
+            return;
+        }
+        QPushButton::mousePressEvent(event);
+    }
+
+    void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            if (this->rect().contains(event->pos()))
+            {
+                emit clicked();
+            }
+            event->accept();
+            this->update();
+            return;
+        }
+        QPushButton::mouseReleaseEvent(event);
+    }
+
     void paintEvent(QPaintEvent *) override
     {
         QPainter painter(this);
@@ -1247,6 +1301,42 @@ void SeventvCosmeticsDialog::applyCosmeticsToChatterino()
     });
 }
 
+void SeventvCosmeticsDialog::updateSelectionState()
+{
+    if (this->contentWidget_ == nullptr)
+    {
+        return;
+    }
+
+    const auto badgeCards =
+        this->contentWidget_->findChildren<BadgeCardWidget *>();
+    for (auto *card : badgeCards)
+    {
+        if (card->id() == "none")
+        {
+            card->setSelected(this->activeBadgeId_.isEmpty());
+        }
+        else
+        {
+            card->setSelected(card->id() == this->activeBadgeId_);
+        }
+    }
+
+    const auto paintCards =
+        this->contentWidget_->findChildren<PaintCardWidget *>();
+    for (auto *card : paintCards)
+    {
+        if (card->id() == "none")
+        {
+            card->setSelected(this->activePaintId_.isEmpty());
+        }
+        else
+        {
+            card->setSelected(card->id() == this->activePaintId_);
+        }
+    }
+}
+
 void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
 {
     const auto token = this->getSeventvToken();
@@ -1276,7 +1366,7 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
     this->activePaintId_ = (isNone ? QString() : paintId);
     this->applyCosmeticsToChatterino();
     this->updatePreview();
-    this->rebuildContent();
+    this->updateSelectionState();
 
     this->setStatus(QStringLiteral("Updating 7TV paint..."));
 
@@ -1335,7 +1425,7 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
                 self->activePaintId_ = previousPaintId;
                 self->applyCosmeticsToChatterino();
                 self->updatePreview();
-                self->rebuildContent();
+                self->updateSelectionState();
                 self->setStatus(
                     QStringLiteral("Failed to update paint on 7TV."), true);
                 return;
@@ -1351,7 +1441,7 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
             self->activePaintId_ = previousPaintId;
             self->applyCosmeticsToChatterino();
             self->updatePreview();
-            self->rebuildContent();
+            self->updateSelectionState();
             self->setStatus(
                 QStringLiteral("Failed to update paint: %1")
                     .arg(res.formatError()),
@@ -1389,7 +1479,7 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
     this->activeBadgeId_ = (isNone ? QString() : badgeId);
     this->applyCosmeticsToChatterino();
     this->updatePreview();
-    this->rebuildContent();
+    this->updateSelectionState();
 
     this->setStatus(QStringLiteral("Updating 7TV badge..."));
 
@@ -1448,7 +1538,7 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
                 self->activeBadgeId_ = previousBadgeId;
                 self->applyCosmeticsToChatterino();
                 self->updatePreview();
-                self->rebuildContent();
+                self->updateSelectionState();
                 self->setStatus(
                     QStringLiteral("Failed to update badge on 7TV."), true);
                 return;
@@ -1464,7 +1554,7 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
             self->activeBadgeId_ = previousBadgeId;
             self->applyCosmeticsToChatterino();
             self->updatePreview();
-            self->rebuildContent();
+            self->updateSelectionState();
             self->setStatus(
                 QStringLiteral("Failed to update badge: %1")
                     .arg(res.formatError()),
