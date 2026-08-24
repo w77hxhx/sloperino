@@ -484,9 +484,9 @@ void MessageLayoutContainer::paintTriggerWordHighlights(
                              &element->getCreator()))
             {
                 const auto &emotes = layeredEmoteElement->getEmotes();
-                if (!emotes.empty() && emotes.front())
+                if (!emotes.empty() && emotes.front().ptr)
                 {
-                    text = emotes.front()->name.string;
+                    text = emotes.front().ptr->name.string;
                 }
             }
         }
