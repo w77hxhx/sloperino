@@ -495,15 +495,13 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
             self->loading_ = false;
             self->loaded_ = true;
 
-            const auto doc = result.parseJson();
-            if (!doc.isObject())
+            const auto obj = result.parseJson();
+            if (obj.isEmpty())
             {
                 self->setStatus(
                     QStringLiteral("Failed to parse 7TV user data."), true);
                 return;
             }
-
-            const auto obj = doc.object();
             self->seventvUserId_ = obj.value("id").toString();
             if (!self->seventvUserId_.isEmpty())
             {
