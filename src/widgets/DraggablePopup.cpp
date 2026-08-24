@@ -8,6 +8,7 @@
 
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QTimer>
 #include <QWindow>
 
 #include <chrono>
@@ -111,18 +112,31 @@ void DraggablePopup::togglePinned()
     if (this->isPinned_)
     {
         this->windowDeactivateAction = WindowDeactivateAction::Nothing;
-        this->pinButton_->setSource(this->pinEnabledSource_);
-        this->setWindowFlag(Qt::WindowStaysOnTopHint, true);
-        this->show();
+        if (this->pinButton_ != nullptr)
+        {
+            this->pinButton_->setSource(this->pinEnabledSource_);
+        }
+        this->setTopMost(true);
     }
     else
     {
-        this->windowDeactivateAction = this->closeAutomatically_
-                                           ? WindowDeactivateAction::Delete
-                                           : WindowDeactivateAction::Nothing;
-        this->pinButton_->setSource(this->pinDisabledSource_);
-        this->setWindowFlag(Qt::WindowStaysOnTopHint, false);
-        this->show();
+        if (this->pinButton_ != nullptr)
+        {
+            this->pinButton_->setSource(this->pinDisabledSource_);
+        }
+        this->setTopMost(false);
+        // Do not immediately close on unpinning; defer deactivation action
+        // so that the popup stays open and only closes when clicking elsewhere.
+        this->windowDeactivateAction = WindowDeactivateAction::Nothing;
+        QTimer::singleShot(150, this, [this] {
+            if (!this->isPinned_)
+            {
+                this->windowDeactivateAction =
+                    this->closeAutomatically_
+                        ? WindowDeactivateAction::Delete
+                        : WindowDeactivateAction::Nothing;
+            }
+        });
     }
 }
 Button *DraggablePopup::createPinButton()
