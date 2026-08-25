@@ -82,8 +82,7 @@ IDs parseIDs(std::string_view channel)
     if (stripPrefix(channel, "chatrooms.") ||
         stripPrefix(channel, "chatrooms_") ||
         stripPrefix(channel, "chatroom.") ||
-        stripPrefix(channel, "chatroom_") ||
-        stripPrefix(channel, "chat_"))
+        stripPrefix(channel, "chatroom_") || stripPrefix(channel, "chat_"))
     {
         stripSuffix(channel, ".v2");
         stripSuffix(channel, "_v2");
@@ -205,7 +204,8 @@ void KickLiveUpdatesClient::onMessageUi(const QByteArray &msg)
     {
         auto channel = rootObj["channel"].toStdString();
 
-        if (channel.starts_with("chatrooms.") || channel.starts_with("chatroom_"))
+        if (channel.starts_with("chatrooms.") ||
+            channel.starts_with("chatroom_"))
         {
             auto ids = parseIDs(channel);
             if (this->chatServer_ && ids.roomID > 0)

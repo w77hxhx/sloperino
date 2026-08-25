@@ -85,9 +85,9 @@ QString decodeJwtUserId(const QString &jwt)
     }
 
     auto payload = parts[1].toUtf8();
-    auto json = QByteArray::fromBase64(
-        payload,
-        QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
+    auto json =
+        QByteArray::fromBase64(payload, QByteArray::Base64UrlEncoding |
+                                            QByteArray::OmitTrailingEquals);
     auto doc = QJsonDocument::fromJson(json);
     if (doc.isObject())
     {
@@ -184,8 +184,8 @@ std::shared_ptr<Paint> parsePaintObject(const QJsonObject &obj)
     }
     else if (fn == "radial_gradient" || fn == "radial-gradient")
     {
-        return std::make_shared<RadialGradientPaint>(
-            name, id, stops, repeat, std::move(shadows));
+        return std::make_shared<RadialGradientPaint>(name, id, stops, repeat,
+                                                     std::move(shadows));
     }
     else if (fn == "url" || fn == "image")
     {
@@ -280,6 +280,7 @@ public:
     CosmeticPreviewWidget(QWidget *parent = nullptr)
         : QWidget(parent)
     {
+        this->setMouseTracking(true);
         this->setFixedHeight(64);
         this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
@@ -364,9 +365,8 @@ protected:
         if (this->paint_)
         {
             const QSizeF sizeF(textW + 10, textH);
-            const auto pix =
-                this->paint_->getPixmap(this->username_, nameFont,
-                                        this->userColor_, sizeF, 1.0F, 1.0F);
+            const auto pix = this->paint_->getPixmap(
+                this->username_, nameFont, this->userColor_, sizeF, 1.0F, 1.0F);
             painter.drawPixmap(currentX, centerY - textH / 2, pix);
         }
         else
@@ -402,6 +402,7 @@ public:
         , images_(images)
         , isSelected_(isSelected)
     {
+        this->setMouseTracking(true);
         this->setFlat(true);
         this->setCursor(Qt::PointingHandCursor);
         this->setFocusPolicy(Qt::NoFocus);
@@ -510,10 +511,10 @@ protected:
 
         // Badge Name
         painter.setFont(fonts->getFont(FontStyle::UiMediumBold, 0.95F));
-        painter.setPen(this->isSelected_ ? QColor(theme->isLightTheme()
-                                                      ? "#6f2dbd"
-                                                      : "#caa9ff")
-                                         : theme->window.text);
+        painter.setPen(
+            this->isSelected_
+                ? QColor(theme->isLightTheme() ? "#6f2dbd" : "#caa9ff")
+                : theme->window.text);
         const QRect textRect(textStartX, 0, rect.width() - textStartX - 10,
                              rect.height());
         painter.drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft,
@@ -543,6 +544,7 @@ public:
         , paint_(paint)
         , isSelected_(isSelected)
     {
+        this->setMouseTracking(true);
         this->setFlat(true);
         this->setCursor(Qt::PointingHandCursor);
         this->setAttribute(Qt::WA_Hover, true);
@@ -632,10 +634,10 @@ protected:
         }
         else
         {
-            painter.setPen(this->isSelected_ ? QColor(theme->isLightTheme()
-                                                          ? "#6f2dbd"
-                                                          : "#caa9ff")
-                                             : theme->window.text);
+            painter.setPen(
+                this->isSelected_
+                    ? QColor(theme->isLightTheme() ? "#6f2dbd" : "#caa9ff")
+                    : theme->window.text);
             const QRect textRect(textStartX, 0, rect.width() - textStartX - 10,
                                  rect.height());
             painter.drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft,
@@ -665,6 +667,7 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
 
     auto *container = this->getLayoutContainer();
     container->setObjectName("SeventvCosmeticsRoot");
+    container->setMouseTracking(true);
     this->mainLayout_ = new QVBoxLayout(container);
     this->mainLayout_->setContentsMargins(14, 12, 14, 14);
     this->mainLayout_->setSpacing(10);
@@ -672,6 +675,7 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
     // 1. Header (Title, Pin, Close)
     this->headerWidget_ = new QWidget(container);
     this->headerWidget_->setObjectName("SeventvCosmeticsHeader");
+    this->headerWidget_->setMouseTracking(true);
     auto *headerLayout = new QHBoxLayout(this->headerWidget_);
     headerLayout->setContentsMargins(0, 0, 0, 0);
     headerLayout->setSpacing(scaledMetric(this->scale(), 6, 3));
@@ -679,6 +683,7 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
     this->headerTitleLabel_ =
         new QLabel(QStringLiteral("7TV Cosmetics"), this->headerWidget_);
     this->headerTitleLabel_->setObjectName("SeventvCosmeticsTitle");
+    this->headerTitleLabel_->setMouseTracking(true);
     headerLayout->addWidget(this->headerTitleLabel_);
     headerLayout->addStretch(1);
 
@@ -706,10 +711,13 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
 
     // 3. Live Preview Widget
     this->previewWidget_ = new CosmeticPreviewWidget(container);
+    this->previewWidget_->setMouseTracking(true);
     this->mainLayout_->addWidget(this->previewWidget_);
 
     // 4. Tab Switcher & Search Row
     this->controlsRowWidget_ = new QWidget(container);
+    this->controlsRowWidget_->setObjectName("SeventvControlsRow");
+    this->controlsRowWidget_->setMouseTracking(true);
     auto *controlsLayout = new QHBoxLayout(this->controlsRowWidget_);
     controlsLayout->setContentsMargins(0, 0, 0, 0);
     controlsLayout->setSpacing(8);
@@ -720,6 +728,7 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
     this->badgesTabButton_->setCheckable(true);
     this->badgesTabButton_->setChecked(true);
     this->badgesTabButton_->setCursor(Qt::PointingHandCursor);
+    this->badgesTabButton_->setMouseTracking(true);
 
     this->paintsTabButton_ =
         new QPushButton(QStringLiteral("Paints"), this->controlsRowWidget_);
@@ -727,6 +736,7 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
     this->paintsTabButton_->setCheckable(true);
     this->paintsTabButton_->setChecked(false);
     this->paintsTabButton_->setCursor(Qt::PointingHandCursor);
+    this->paintsTabButton_->setMouseTracking(true);
 
     QObject::connect(this->badgesTabButton_, &QPushButton::clicked, this,
                      [this] {
@@ -745,6 +755,7 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
     this->searchInput_->setObjectName("SeventvCosmeticsSearch");
     this->searchInput_->setPlaceholderText(QStringLiteral("Search badges..."));
     this->searchInput_->setClearButtonEnabled(true);
+    this->searchInput_->setMouseTracking(true);
     QObject::connect(this->searchInput_, &QLineEdit::textChanged, this,
                      [this](const QString &text) {
                          this->searchQuery_ = text;
@@ -760,9 +771,15 @@ SeventvCosmeticsDialog::SeventvCosmeticsDialog(TwitchChannel *channel,
     this->scrollArea_->setWidgetResizable(true);
     this->scrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     this->scrollArea_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    this->scrollArea_->setMouseTracking(true);
+    if (this->scrollArea_->viewport() != nullptr)
+    {
+        this->scrollArea_->viewport()->setMouseTracking(true);
+    }
 
     this->contentWidget_ = new QWidget();
     this->contentWidget_->setObjectName("SeventvCosmeticsContent");
+    this->contentWidget_->setMouseTracking(true);
     this->contentLayout_ = new QVBoxLayout(this->contentWidget_);
     this->contentLayout_->setContentsMargins(0, 4, 0, 8);
     this->contentLayout_->setSpacing(COSMETICS_GRID_SPACING);
@@ -963,30 +980,29 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
     QJsonObject gqlQuery;
     gqlQuery.insert(
         QStringLiteral("query"),
-        QStringLiteral(
-            "query GetCosmeticsAndUser { "
-            "  cosmetics { "
-            "    paints { "
-            "      id name color repeat angle "
-            "      stops { at color } "
-            "      shadows { x_offset y_offset radius color } "
-            "      function shape image_url "
-            "    } "
-            "    badges { "
-            "      id name tooltip tag "
-            "      host { "
-            "        url "
-            "        files { name format width height } "
-            "      } "
-            "    } "
-            "  } "
-            "  user: actor { "
-            "    id username display_name avatar_url "
-            "    connections { id platform username display_name } "
-            "    style { color paint_id badge_id } "
-            "    cosmetics { id kind selected } "
-            "  } "
-            "}"));
+        QStringLiteral("query GetCosmeticsAndUser { "
+                       "  cosmetics { "
+                       "    paints { "
+                       "      id name color repeat angle "
+                       "      stops { at color } "
+                       "      shadows { x_offset y_offset radius color } "
+                       "      function shape image_url "
+                       "    } "
+                       "    badges { "
+                       "      id name tooltip tag "
+                       "      host { "
+                       "        url "
+                       "        files { name format width height } "
+                       "      } "
+                       "    } "
+                       "  } "
+                       "  user: actor { "
+                       "    id username display_name avatar_url "
+                       "    connections { id platform username display_name } "
+                       "    style { color paint_id badge_id } "
+                       "    cosmetics { id kind selected } "
+                       "  } "
+                       "}"));
 
     NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/gql")),
                    NetworkRequestType::Post)
@@ -1092,16 +1108,15 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
             const auto colVal = styleObj.value("color");
             if (!colVal.isNull() && !colVal.isUndefined())
             {
-                self->seventvColor_ = rgbaToQColor(
-                    uint32_t(colVal.toVariant().toLongLong()));
+                self->seventvColor_ =
+                    rgbaToQColor(uint32_t(colVal.toVariant().toLongLong()));
             }
 
             // Populate user's owned cosmetics
             self->paints_.clear();
             self->badges_.clear();
 
-            const auto userCosmeticsArr =
-                userObj.value("cosmetics").toArray();
+            const auto userCosmeticsArr = userObj.value("cosmetics").toArray();
             for (const auto &cVal : userCosmeticsArr)
             {
                 const auto cObj = cVal.toObject();
@@ -1185,10 +1200,9 @@ void SeventvCosmeticsDialog::loadCosmetics(bool /*force*/)
                 return;
             }
             self->loading_ = false;
-            self->setStatus(
-                QStringLiteral("Error loading 7TV cosmetics: %1")
-                    .arg(result.formatError()),
-                true);
+            self->setStatus(QStringLiteral("Error loading 7TV cosmetics: %1")
+                                .arg(result.formatError()),
+                            true);
         })
         .execute();
 }
@@ -1228,8 +1242,8 @@ void SeventvCosmeticsDialog::applyCosmeticsToChatterino()
         for (const auto &conn : this->connections_)
         {
             const bool isKick = (conn.platform.toUpper() == "KICK");
-            getApp()->getSeventvPaints()->clearPaintFromUser(
-                conn.username, isKick);
+            getApp()->getSeventvPaints()->clearPaintFromUser(conn.username,
+                                                             isKick);
         }
     }
 
@@ -1331,14 +1345,14 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
     if (isNone)
     {
         vars["paintId"] = previousPaintId;
-        mutationQuery =
-            QStringLiteral("mutation UnselectPaint($userId: ObjectID!, $paintId: "
-                           "ObjectID!) { "
-                           "  user(id: $userId) { "
-                           "    cosmetics(update: { id: $paintId, kind: PAINT, "
-                           "selected: false }) "
-                           "  } "
-                           "}");
+        mutationQuery = QStringLiteral(
+            "mutation UnselectPaint($userId: ObjectID!, $paintId: "
+            "ObjectID!) { "
+            "  user(id: $userId) { "
+            "    cosmetics(update: { id: $paintId, kind: PAINT, "
+            "selected: false }) { id kind selected } "
+            "  } "
+            "}");
     }
     else
     {
@@ -1348,7 +1362,7 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
                            "ObjectID!) { "
                            "  user(id: $userId) { "
                            "    cosmetics(update: { id: $paintId, kind: PAINT, "
-                           "selected: true }) "
+                           "selected: true }) { id kind selected } "
                            "  } "
                            "}");
     }
@@ -1394,10 +1408,9 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
             self->applyCosmeticsToChatterino();
             self->updatePreview();
             self->updateSelectionState();
-            self->setStatus(
-                QStringLiteral("Failed to update paint: %1")
-                    .arg(res.formatError()),
-                true);
+            self->setStatus(QStringLiteral("Failed to update paint: %1")
+                                .arg(res.formatError()),
+                            true);
         })
         .execute();
 }
@@ -1444,14 +1457,14 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
     if (isNone)
     {
         vars["badgeId"] = previousBadgeId;
-        mutationQuery =
-            QStringLiteral("mutation UnselectBadge($userId: ObjectID!, $badgeId: "
-                           "ObjectID!) { "
-                           "  user(id: $userId) { "
-                           "    cosmetics(update: { id: $badgeId, kind: BADGE, "
-                           "selected: false }) "
-                           "  } "
-                           "}");
+        mutationQuery = QStringLiteral(
+            "mutation UnselectBadge($userId: ObjectID!, $badgeId: "
+            "ObjectID!) { "
+            "  user(id: $userId) { "
+            "    cosmetics(update: { id: $badgeId, kind: BADGE, "
+            "selected: false }) { id kind selected } "
+            "  } "
+            "}");
     }
     else
     {
@@ -1461,7 +1474,7 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
                            "ObjectID!) { "
                            "  user(id: $userId) { "
                            "    cosmetics(update: { id: $badgeId, kind: BADGE, "
-                           "selected: true }) "
+                           "selected: true }) { id kind selected } "
                            "  } "
                            "}");
     }
@@ -1507,10 +1520,9 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
             self->applyCosmeticsToChatterino();
             self->updatePreview();
             self->updateSelectionState();
-            self->setStatus(
-                QStringLiteral("Failed to update badge: %1")
-                    .arg(res.formatError()),
-                true);
+            self->setStatus(QStringLiteral("Failed to update badge: %1")
+                                .arg(res.formatError()),
+                            true);
         })
         .execute();
 }
@@ -1606,9 +1618,9 @@ void SeventvCosmeticsDialog::rebuildBadges()
             continue;
         }
 
-        auto *card = new BadgeCardWidget(
-            b.id, b.name, b.description, b.images,
-            b.id == this->activeBadgeId_, this->contentWidget_);
+        auto *card = new BadgeCardWidget(b.id, b.name, b.description, b.images,
+                                         b.id == this->activeBadgeId_,
+                                         this->contentWidget_);
         const auto bid = b.id;
         QObject::connect(card, &QPushButton::clicked, this, [this, bid] {
             this->selectBadge(bid);
@@ -1667,9 +1679,9 @@ void SeventvCosmeticsDialog::rebuildPaints()
             continue;
         }
 
-        auto *card = new PaintCardWidget(
-            p.id, p.name, p.paint, p.id == this->activePaintId_,
-            this->contentWidget_);
+        auto *card = new PaintCardWidget(p.id, p.name, p.paint,
+                                         p.id == this->activePaintId_,
+                                         this->contentWidget_);
         const auto pid = p.id;
         QObject::connect(card, &QPushButton::clicked, this, [this, pid] {
             this->selectPaint(pid);
@@ -1715,8 +1727,8 @@ void SeventvCosmeticsDialog::updatePreview()
         displayName = QStringLiteral("7TV User");
     }
 
-    QColor userColor = this->seventvColor_.isValid() ? this->seventvColor_
-                                                     : QColor("#bf94ff");
+    QColor userColor =
+        this->seventvColor_.isValid() ? this->seventvColor_ : QColor("#bf94ff");
 
     // Resolve active badge
     ImageSet badgeImages;
@@ -1779,7 +1791,8 @@ void SeventvCosmeticsDialog::refreshStyle()
     const auto tabSelectedBg = theme->tabs.selected.backgrounds.regular.name();
     const auto tabSelectedText = theme->tabs.selected.text.name();
 
-    this->setStyleSheet(QStringLiteral(R"(
+    this->setStyleSheet(
+        QStringLiteral(R"(
         QWidget#SeventvCosmeticsRoot {
             background: %1;
             color: %2;
@@ -1835,8 +1848,7 @@ void SeventvCosmeticsDialog::refreshStyle()
             background: transparent;
         }
     )")
-                            .arg(bg, text, border, muted, inputBg,
-                                 focusedBorder));
+            .arg(bg, text, border, muted, inputBg, focusedBorder));
 }
 
 }  // namespace chatterino

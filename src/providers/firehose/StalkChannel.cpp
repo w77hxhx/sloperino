@@ -194,7 +194,8 @@ void StalkChannel::loadCache()
 
         const auto obj = val.toObject();
         StalkCachedItem item;
-        item.timeMs = obj.value(QStringLiteral("time")).toVariant().toLongLong();
+        item.timeMs =
+            obj.value(QStringLiteral("time")).toVariant().toLongLong();
         item.channel = obj.value(QStringLiteral("channel")).toString();
         item.username = obj.value(QStringLiteral("username")).toString();
         item.displayName = obj.value(QStringLiteral("displayName")).toString();

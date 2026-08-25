@@ -132,9 +132,8 @@ void DraggablePopup::togglePinned()
             if (!this->isPinned_)
             {
                 this->windowDeactivateAction =
-                    this->closeAutomatically_
-                        ? WindowDeactivateAction::Delete
-                        : WindowDeactivateAction::Nothing;
+                    this->closeAutomatically_ ? WindowDeactivateAction::Delete
+                                              : WindowDeactivateAction::Nothing;
             }
         });
     }

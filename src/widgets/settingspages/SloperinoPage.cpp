@@ -53,9 +53,9 @@ QString decodeJwtUserId(const QString &jwt)
     }
 
     auto payload = parts[1].toUtf8();
-    auto json = QByteArray::fromBase64(
-        payload,
-        QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
+    auto json =
+        QByteArray::fromBase64(payload, QByteArray::Base64UrlEncoding |
+                                            QByteArray::OmitTrailingEquals);
     auto doc = QJsonDocument::fromJson(json);
     if (doc.isObject())
     {
@@ -127,11 +127,13 @@ void validateSeventvToken(
                 const auto jwtId = decodeJwtUserId(trimmed);
                 if (!jwtId.isEmpty())
                 {
-                    NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/users/%1")
-                                            .arg(jwtId)),
-                                   NetworkRequestType::Get)
-                        .header("Authorization",
-                                QStringLiteral("Bearer %1").arg(trimmed).toUtf8())
+                    NetworkRequest(
+                        QUrl(QStringLiteral("https://7tv.io/v3/users/%1")
+                                 .arg(jwtId)),
+                        NetworkRequestType::Get)
+                        .header(
+                            "Authorization",
+                            QStringLiteral("Bearer %1").arg(trimmed).toUtf8())
                         .header("Accept", "application/json")
                         .header("User-Agent", "Chatterino")
                         .timeout(15000)
@@ -215,9 +217,9 @@ void validateSeventvToken(
             const auto jwtId = decodeJwtUserId(trimmed);
             if (!jwtId.isEmpty() && res.status() != 401 && res.status() != 403)
             {
-                NetworkRequest(
-                    QUrl(QStringLiteral("https://7tv.io/v3/users/%1").arg(jwtId)),
-                    NetworkRequestType::Get)
+                NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/users/%1")
+                                        .arg(jwtId)),
+                               NetworkRequestType::Get)
                     .header("Authorization",
                             QStringLiteral("Bearer %1").arg(trimmed).toUtf8())
                     .header("Accept", "application/json")
@@ -291,7 +293,6 @@ void validateSeventvToken(
 }
 
 }  // namespace
-
 
 namespace chatterino {
 
@@ -682,8 +683,8 @@ void SloperinoPage::openSeventvAuthDialog()
 
             validateSeventvToken(
                 token,
-                [this, dialogPtr, token](
-                    QString userId, QString username, QString /*displayName*/) {
+                [this, dialogPtr, token](QString userId, QString username,
+                                         QString /*displayName*/) {
                     getSettings()->seventvToken.setValue(token);
                     getSettings()->seventvUserId.setValue(userId);
                     getSettings()->seventvUsername.setValue(username);

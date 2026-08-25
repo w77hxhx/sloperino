@@ -71,6 +71,7 @@
 #include "widgets/Window.hpp"
 
 #include <IrcMessage>
+#include <QApplication>
 #include <QCheckBox>
 #include <QColor>
 #include <QDate>
@@ -79,7 +80,6 @@
 #include <QFontMetrics>
 #include <QFrame>
 #include <QGridLayout>
-#include <QApplication>
 #include <QGuiApplication>
 #include <QHash>
 #include <QHBoxLayout>

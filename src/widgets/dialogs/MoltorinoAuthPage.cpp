@@ -34,23 +34,6 @@ namespace {
 
 constexpr auto DEVICE_CODE_PLACEHOLDER = "--------";
 
-QString customAuthClipboardScript()
-{
-    return QStringLiteral(
-        "const token = localStorage.getItem('7tv-token');\n"
-        "if (token) {\n"
-        "    const input = document.createElement('input');\n"
-        "    input.value = token;\n"
-        "    document.body.appendChild(input);\n"
-        "    input.select();\n"
-        "    document.execCommand('copy');\n"
-        "    document.body.removeChild(input);\n"
-        "    console.log('Token copied, go to sloperino', token);\n"
-        "} else {\n"
-        "    console.log('Token not found');\n"
-        "}");
-}
-
 constexpr auto TWITCH_TV_CLIENT_ID = "ue6666qo983tsx6so1t0vnawi233wa";
 constexpr auto TWITCH_TV_USER_AGENT =
     "Mozilla/5.0 (Linux; Android 7.1; Smart Box C1) AppleWebKit/537.36 "
@@ -119,7 +102,8 @@ public:
         this->tabs_ = new QTabWidget(this);
         mainLayout->addWidget(this->tabs_);
 
-        this->buildLegacyTab();
+        this->buildDeviceTab();
+        this->buildManualTokenTab();
         this->buildAccountsTab();
 
         this->devicePollTimer_ = new QTimer(this);
@@ -278,44 +262,40 @@ private:
                        "Start Device Login when you are ready.");
     }
 
-    void buildLegacyTab()
+    void buildManualTokenTab()
     {
         auto *tab = new QWidget(this);
         auto *layout = new QVBoxLayout(tab);
         layout->setContentsMargins(8, 8, 8, 8);
         layout->setSpacing(8);
 
-        auto *description = new QLabel(
-            "Copy the helper script, run it in your 7TV browser console (F12), "
-            "then paste the token here.",
-            tab);
+        auto *description =
+            new QLabel("If you already have a Twitch OAuth token (or prefer "
+                       "manual login), "
+                       "copy your token to clipboard and paste it here.",
+                       tab);
         description->setWordWrap(true);
         layout->addWidget(description);
 
         auto *buttons = new QHBoxLayout;
         buttons->setSpacing(8);
-        auto *copyScriptButton = new QPushButton("Copy Script", tab);
-        auto *pasteTokenButton = new QPushButton("Paste Token", tab);
-        QObject::connect(copyScriptButton, &QPushButton::clicked, this, [this] {
-            this->copyTokenScriptAndOpen7tv();
-        });
+        auto *pasteTokenButton = new QPushButton("Paste Twitch Token", tab);
         QObject::connect(pasteTokenButton, &QPushButton::clicked, this, [this] {
-            this->pasteLegacyToken();
+            this->pasteManualToken();
         });
-        buttons->addWidget(copyScriptButton);
         buttons->addWidget(pasteTokenButton);
         buttons->addStretch(1);
         layout->addLayout(buttons);
 
-        this->legacyStatusLabel_ = new QLabel(tab);
-        this->legacyStatusLabel_->setWordWrap(true);
-        layout->addWidget(this->legacyStatusLabel_);
+        this->manualStatusLabel_ = new QLabel(tab);
+        this->manualStatusLabel_->setWordWrap(true);
+        layout->addWidget(this->manualStatusLabel_);
         layout->addStretch(1);
 
-        this->tabs_->addTab(tab, "Legacy Login");
+        this->tabs_->addTab(tab, "Twitch Token");
         setLabelStatus(
-            this->legacyStatusLabel_,
-            "Click Copy Script to open 7TV and copy the helper script.");
+            this->manualStatusLabel_,
+            "Click Paste Twitch Token to add an account using your token.");
     }
 
     void buildAccountsTab()
@@ -476,48 +456,19 @@ private:
             });
     }
 
-    void copyTokenScriptAndOpen7tv()
-    {
-        crossPlatformCopy(customAuthClipboardScript());
-
-        const auto opened =
-            QDesktopServices::openUrl(QUrl("https://7tv.app/store"));
-
-        QMessageBox box(this);
-        box.setWindowFlags(box.windowFlags() | Qt::WindowStaysOnTopHint);
-        box.setWindowTitle("Legacy Login Helper");
-        box.setIcon(QMessageBox::Information);
-        box.setText(
-            "The legacy helper command was copied to your clipboard.\n\n"
-            "1. 7TV was opened in your browser.\n"
-            "2. Press F12 and open the Console tab.\n"
-            "3. Paste the copied command and press Enter.\n"
-            "4. Come back here and click Paste Token.");
-
-        if (!opened)
-        {
-            box.setInformativeText(
-                "Sloperino could not open 7TV automatically. Open "
-                "https://7tv.app/store yourself, then follow the same steps.");
-        }
-        box.exec();
-    }
-
-    void pasteLegacyToken()
+    void pasteManualToken()
     {
         const auto clipboardText = getClipboardText().trimmed();
         if (clipboardText.isEmpty())
         {
-            setLabelStatus(
-                this->legacyStatusLabel_,
-                "Clipboard is empty. Copy the script, run it on 7tv.app, "
-                "then click Paste Token.",
-                true);
+            setLabelStatus(this->manualStatusLabel_,
+                           "Clipboard is empty. Copy your Twitch OAuth token, "
+                           "then click Paste Twitch Token.",
+                           true);
             return;
         }
 
-        getSettings()->seventvToken.setValue(clipboardText);
-        this->addOrUpdateToken(clipboardText, this->legacyStatusLabel_);
+        this->addOrUpdateToken(clipboardText, this->manualStatusLabel_);
     }
 
     void startDeviceLogin()
@@ -794,7 +745,7 @@ private:
     QLabel *accountsSummaryLabel_{};
     QLabel *deviceStatusLabel_{};
     QLabel *deviceCodeLabel_{};
-    QLabel *legacyStatusLabel_{};
+    QLabel *manualStatusLabel_{};
     QPushButton *startDeviceButton_{};
     QPushButton *copyCodeButton_{};
     QPushButton *cancelDeviceButton_{};
