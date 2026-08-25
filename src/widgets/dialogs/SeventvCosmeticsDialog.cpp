@@ -432,32 +432,6 @@ public:
     }
 
 protected:
-    void mousePressEvent(QMouseEvent *event) override
-    {
-        if (event->button() == Qt::LeftButton)
-        {
-            event->accept();
-            this->update();
-            return;
-        }
-        QPushButton::mousePressEvent(event);
-    }
-
-    void mouseReleaseEvent(QMouseEvent *event) override
-    {
-        if (event->button() == Qt::LeftButton)
-        {
-            if (this->rect().contains(event->pos()))
-            {
-                this->click();
-            }
-            event->accept();
-            this->update();
-            return;
-        }
-        QPushButton::mouseReleaseEvent(event);
-    }
-
     void paintEvent(QPaintEvent *) override
     {
         QPainter painter(this);
@@ -472,7 +446,11 @@ protected:
         QColor bg = theme->splits.input.background;
         QColor border = theme->splits.header.border;
 
-        if (this->underMouse())
+        if (this->isDown())
+        {
+            bg = theme->isLightTheme() ? bg.darker(110) : bg.lighter(120);
+        }
+        else if (this->underMouse())
         {
             bg = theme->isLightTheme() ? bg.darker(104) : bg.lighter(112);
             border = theme->splits.header.focusedBorder;
@@ -567,7 +545,6 @@ public:
     {
         this->setFlat(true);
         this->setCursor(Qt::PointingHandCursor);
-        this->setFocusPolicy(Qt::NoFocus);
         this->setAttribute(Qt::WA_Hover, true);
         this->setFixedHeight(44);
         this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -589,32 +566,6 @@ public:
     }
 
 protected:
-    void mousePressEvent(QMouseEvent *event) override
-    {
-        if (event->button() == Qt::LeftButton)
-        {
-            event->accept();
-            this->update();
-            return;
-        }
-        QPushButton::mousePressEvent(event);
-    }
-
-    void mouseReleaseEvent(QMouseEvent *event) override
-    {
-        if (event->button() == Qt::LeftButton)
-        {
-            if (this->rect().contains(event->pos()))
-            {
-                this->click();
-            }
-            event->accept();
-            this->update();
-            return;
-        }
-        QPushButton::mouseReleaseEvent(event);
-    }
-
     void paintEvent(QPaintEvent *) override
     {
         QPainter painter(this);
@@ -629,7 +580,11 @@ protected:
         QColor bg = theme->splits.input.background;
         QColor border = theme->splits.header.border;
 
-        if (this->underMouse())
+        if (this->isDown())
+        {
+            bg = theme->isLightTheme() ? bg.darker(110) : bg.lighter(120);
+        }
+        else if (this->underMouse())
         {
             bg = theme->isLightTheme() ? bg.darker(104) : bg.lighter(112);
             border = theme->splits.header.focusedBorder;
