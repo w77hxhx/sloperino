@@ -1588,6 +1588,7 @@ void SeventvCosmeticsDialog::clearContent()
             layout->deleteLater();
         }
         delete child;
+    }
     this->badgeCardWidgets_.clear();
     this->paintCardWidgets_.clear();
     this->statusLabel_ = nullptr;
