@@ -32,6 +32,8 @@ class Button;
 class SvgButton;
 class TwitchChannel;
 class CosmeticPreviewWidget;
+class BadgeCardWidget;
+class PaintCardWidget;
 
 struct SeventvPaintItem {
     QString id;
