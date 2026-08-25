@@ -21,11 +21,10 @@ namespace {
 /// Anything in the buffer that is not a plain chat message. Disabled means the
 /// message was already deleted for everyone (CLEARMSG / timeout): re-acting on
 /// it is a wasted, rate-limited call.
-constexpr MessageFlags EXCLUDED_FLAGS{MessageFlag::System, MessageFlag::Timeout,
-                                      MessageFlag::Whisper,
-                                      MessageFlag::ClearChat,
-                                      MessageFlag::ModerationAction,
-                                      MessageFlag::Disabled};
+constexpr MessageFlags EXCLUDED_FLAGS{
+    MessageFlag::System,           MessageFlag::Timeout,
+    MessageFlag::Whisper,          MessageFlag::ClearChat,
+    MessageFlag::ModerationAction, MessageFlag::Disabled};
 
 }  // namespace
 
@@ -43,7 +42,11 @@ QString nukeSelfLogin(const Channel &channel)
         }
 
         case MessagePlatform::Kick: {
-            return getApp()->getAccounts()->kick.current()->username().toLower();
+            return getApp()
+                ->getAccounts()
+                ->kick.current()
+                ->username()
+                .toLower();
         }
     }
     return {};
@@ -59,8 +62,7 @@ std::optional<QString> validateNukeRequest(const LimerinoMatcher &content,
     }
     if (lookbackSeconds <= 0)
     {
-        return QStringLiteral(
-            "Lookback must be a positive number of seconds.");
+        return QStringLiteral("Lookback must be a positive number of seconds.");
     }
     return std::nullopt;
 }
@@ -125,10 +127,10 @@ NukePlan buildPlan(const std::vector<MessagePtr> &snapshot,
 
         plan.messagesMatched += 1;
 
-        const bool considerSender =
-            action == NukeAction::Ban || action == NukeAction::Timeout ||
-            action == NukeAction::Warn ||
-            action == NukeAction::DeleteAndTimeout;
+        const bool considerSender = action == NukeAction::Ban ||
+                                    action == NukeAction::Timeout ||
+                                    action == NukeAction::Warn ||
+                                    action == NukeAction::DeleteAndTimeout;
         const bool considerMessage = action == NukeAction::Delete ||
                                      action == NukeAction::DeleteAndTimeout;
 
@@ -171,9 +173,10 @@ NukePlan buildPlan(const std::vector<MessagePtr> &snapshot,
 
     if (matchedWithoutId > 0)
     {
-        plan.warnings.append(QStringLiteral(
-            "%1 matching message(s) had no message ID and could not be "
-            "deleted; they were skipped")
+        plan.warnings.append(
+            QStringLiteral(
+                "%1 matching message(s) had no message ID and could not be "
+                "deleted; they were skipped")
                 .arg(matchedWithoutId));
     }
 

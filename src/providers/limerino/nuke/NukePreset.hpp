@@ -7,7 +7,6 @@
 
 #include "providers/limerino/matcher/LimerinoMatcher.hpp"
 #include "providers/limerino/nuke/NukePlan.hpp"
-
 #include "util/RapidjsonHelpers.hpp"
 #include "util/RapidJsonSerializeQString.hpp"
 
@@ -22,8 +21,8 @@ struct LimerinoNukePreset {
     LimerinoMatcher sender;
     int lookbackSeconds = 600;
     NukeAction action = NukeAction::Ban;
-    int timeoutSeconds = 600;   // only meaningful for Timeout/DeleteAndTimeout
-    QString reason;             // for Ban/Warn/Timeout; may be empty
+    int timeoutSeconds = 600;  // only meaningful for Timeout/DeleteAndTimeout
+    QString reason;            // for Ban/Warn/Timeout; may be empty
 
     bool operator==(const LimerinoNukePreset &other) const;
 };

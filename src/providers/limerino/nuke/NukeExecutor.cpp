@@ -253,35 +253,33 @@ void NukeExecutor::dispatchTwitch(TwitchChannel *chan, const Operation &op)
     {
         case OpKind::Ban:
         case OpKind::Timeout: {
-            const QString label = (op.kind == OpKind::Ban
-                                       ? QStringLiteral("ban")
-                                       : QStringLiteral("timeout")) %
-                                  QStringLiteral(" ") % op.targetLogin;
-            LimerinoApi::banUser(
-                broadcasterID, moderatorID, op.targetUserId,
-                op.kind == OpKind::Timeout
-                    ? std::optional<int>(this->timeoutSeconds_)
-                    : std::nullopt,
-                this->reason_, bucketKey, handleOk,
-                [handleErr, label](const QString &msg) {
-                    handleErr(label, msg);
-                });
+            const QString label =
+                (op.kind == OpKind::Ban ? QStringLiteral("ban")
+                                        : QStringLiteral("timeout")) %
+                QStringLiteral(" ") % op.targetLogin;
+            LimerinoApi::banUser(broadcasterID, moderatorID, op.targetUserId,
+                                 op.kind == OpKind::Timeout
+                                     ? std::optional<int>(this->timeoutSeconds_)
+                                     : std::nullopt,
+                                 this->reason_, bucketKey, handleOk,
+                                 [handleErr, label](const QString &msg) {
+                                     handleErr(label, msg);
+                                 });
         }
         break;
 
         case OpKind::Warn: {
             const QString label = QStringLiteral("warn ") % op.targetLogin;
-            LimerinoApi::warnUser(
-                broadcasterID, moderatorID, op.targetUserId, this->reason_,
-                bucketKey, handleOk, [handleErr, label](const QString &msg) {
-                    handleErr(label, msg);
-                });
+            LimerinoApi::warnUser(broadcasterID, moderatorID, op.targetUserId,
+                                  this->reason_, bucketKey, handleOk,
+                                  [handleErr, label](const QString &msg) {
+                                      handleErr(label, msg);
+                                  });
         }
         break;
 
         case OpKind::Delete: {
-            const QString label =
-                QStringLiteral("delete msg ") % op.messageId;
+            const QString label = QStringLiteral("delete msg ") % op.messageId;
             LimerinoApi::deleteChatMessage(
                 broadcasterID, moderatorID, op.messageId, bucketKey, handleOk,
                 [handleErr, label](const QString &msg) {
@@ -321,10 +319,10 @@ void NukeExecutor::dispatchKick(KickChannel *chan, const Operation &op)
     {
         case OpKind::Ban:
         case OpKind::Timeout: {
-            const QString label = (op.kind == OpKind::Ban
-                                       ? QStringLiteral("ban")
-                                       : QStringLiteral("timeout")) %
-                                  QStringLiteral(" ") % op.targetLogin;
+            const QString label =
+                (op.kind == OpKind::Ban ? QStringLiteral("ban")
+                                        : QStringLiteral("timeout")) %
+                QStringLiteral(" ") % op.targetLogin;
             std::optional<std::chrono::minutes> dur;
             if (op.kind == OpKind::Timeout)
             {
@@ -333,8 +331,7 @@ void NukeExecutor::dispatchKick(KickChannel *chan, const Operation &op)
                 dur = std::chrono::round<std::chrono::minutes>(
                     std::chrono::seconds(secs));
             }
-            api->banUser(broadcasterUserID, op.targetKickId, dur,
-                         this->reason_,
+            api->banUser(broadcasterUserID, op.targetKickId, dur, this->reason_,
                          [handleOk, handleErr, label](const auto &res) {
                              if (res)
                              {
@@ -356,8 +353,7 @@ void NukeExecutor::dispatchKick(KickChannel *chan, const Operation &op)
             break;
 
         case OpKind::Delete: {
-            const QString label =
-                QStringLiteral("delete msg ") % op.messageId;
+            const QString label = QStringLiteral("delete msg ") % op.messageId;
             api->deleteChatMessage(
                 op.messageId, [handleOk, handleErr, label](const auto &res) {
                     if (res)
@@ -446,13 +442,12 @@ QString undoLastNuke(const std::shared_ptr<Channel> &channel)
         dynamic_cast<KickChannel *>(channel.get()) != nullptr
             ? QStringLiteral("kick:")
             : QStringLiteral("twitch:");
-    const QString thisKey =
-        thisKeyPrefix + channel->getName().toLower();
+    const QString thisKey = thisKeyPrefix + channel->getName().toLower();
     if (!thisKey.isEmpty() && run.channelKey != thisKey)
     {
         return QStringLiteral(
-            "The most recent nuke was in a different channel (#%1); "
-            "nothing was reversed here.")
+                   "The most recent nuke was in a different channel (#%1); "
+                   "nothing was reversed here.")
             .arg(run.channelName);
     }
 
@@ -482,10 +477,9 @@ QString undoLastNuke(const std::shared_ptr<Channel> &channel)
                 }
                 else
                 {
-                    LimerinoApi::unbanUser(run.channelBroadcasterId,
-                                           run.operatorModeratorId, t.userId,
-                                           bucketKey, [] {},
-                                           [](const QString &) {});
+                    LimerinoApi::unbanUser(
+                        run.channelBroadcasterId, run.operatorModeratorId,
+                        t.userId, bucketKey, [] {}, [](const QString &) {});
                 }
             }
             const int n = run.succeeded.size();
@@ -493,9 +487,10 @@ QString undoLastNuke(const std::shared_ptr<Channel> &channel)
             return QStringLiteral(
                        "Undoing last nuke (%1 user(s) unbanned/untimed-out)%2")
                 .arg(n)
-                .arg(d > 0 ? QStringLiteral(", %1 deletions NOT reversible")
-                                 .arg(d)
-                           : QString());
+                .arg(
+                    d > 0
+                        ? QStringLiteral(", %1 deletions NOT reversible").arg(d)
+                        : QString());
         }
 
         case NukeAction::Warn: {

@@ -32,7 +32,8 @@ QColor parseColorHex(const QString &s, const QColor &fallback)
 
 }  // namespace
 
-QJsonObject serializeSeedFile(const QString &name, const LimerinoThemeSeed &seed)
+QJsonObject serializeSeedFile(const QString &name,
+                              const LimerinoThemeSeed &seed)
 {
     return QJsonObject{
         {QStringLiteral("limerinoThemeVersion"), LIMERINO_THEME_SEED_VERSION},
@@ -98,7 +99,8 @@ std::optional<LimerinoThemeFile> parseSeedFile(const QJsonObject &root,
     };
     out.seed.background =
         readSeedColor(QLatin1String("background"), defaults.background);
-    out.seed.surface = readSeedColor(QLatin1String("surface"), defaults.surface);
+    out.seed.surface =
+        readSeedColor(QLatin1String("surface"), defaults.surface);
     out.seed.accent = readSeedColor(QLatin1String("accent"), defaults.accent);
     out.seed.text = readSeedColor(QLatin1String("text"), defaults.text);
     return out;
@@ -148,8 +150,8 @@ bool installThemeJson(const QString &name, const QJsonObject &themeJson,
     }
 
     const QString filename = sanitizeThemeFilename(name);
-    const QString path = QDir(getApp()->getPaths().themesDirectory)
-                             .filePath(filename);
+    const QString path =
+        QDir(getApp()->getPaths().themesDirectory).filePath(filename);
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
     {
@@ -201,8 +203,8 @@ bool installFullThemeFile(const QString &sourcePath, const QString &name,
     }
 
     const QString filename = sanitizeThemeFilename(name);
-    const QString path = QDir(getApp()->getPaths().themesDirectory)
-                             .filePath(filename);
+    const QString path =
+        QDir(getApp()->getPaths().themesDirectory).filePath(filename);
     QFile out(path);
     if (!out.open(QIODevice::WriteOnly | QIODevice::Text))
     {

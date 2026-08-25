@@ -6,12 +6,11 @@
 
 #pragma once
 
-#include <QObject>
-#include <QString>
-
 #include "common/network/NetworkCommon.hpp"
 
 #include <QHash>
+#include <QObject>
+#include <QString>
 
 #include <functional>
 
@@ -46,7 +45,8 @@ private:
     void runOne(const QString &bucketKey,
                 const std::function<NetworkRequest()> &makeRequest,
                 const NetworkSuccessCallback &onSuccess,
-                const NetworkErrorCallback &onError, int attempt, int maxRetries);
+                const NetworkErrorCallback &onError, int attempt,
+                int maxRetries);
 
     QHash<QString, Bucket> buckets_;
 };

@@ -30,7 +30,8 @@ struct LimerinoThemeFile {
 };
 
 /// Serialize just the seed into the wrapper format.
-QJsonObject serializeSeedFile(const QString &name, const LimerinoThemeSeed &seed);
+QJsonObject serializeSeedFile(const QString &name,
+                              const LimerinoThemeSeed &seed);
 
 /// True iff the root object looks like a seed wrapper (limerinoThemeVersion key).
 bool isSeedFile(const QJsonObject &root);

@@ -8,9 +8,9 @@
 #include "providers/limerino/nuke/NukePlan.hpp"
 
 #include <QDateTime>
+#include <QList>
 #include <QObject>
 #include <QPointer>
-#include <QList>
 #include <QString>
 #include <QStringList>
 
@@ -54,16 +54,16 @@ public:
     /// Record of a completed nuke run, retained for undo. Stored by
     /// LimerinoNukeDialog on finish; one entry (last run) kept in memory.
     struct LastRun {
-        QString channelKey;          // "twitch:name" / "kick:name"
+        QString channelKey;  // "twitch:name" / "kick:name"
         QString channelName;
         QString channelBroadcasterId;  // Twitch room id or Kick channel uid
         bool isKick = false;
-        QString operatorModeratorId;   // acting moderator id at run time
+        QString operatorModeratorId;  // acting moderator id at run time
         NukeAction action;
-        int timeoutSeconds = 0;        // 0 means permanent (or n/a)
+        int timeoutSeconds = 0;  // 0 means permanent (or n/a)
         QString reason;
-        QList<NukeTarget> succeeded;   // only successes — undo touches these
-        QList<QString> deletedIds;     // kept for the report; not reversible
+        QList<NukeTarget> succeeded;  // only successes — undo touches these
+        QList<QString> deletedIds;    // kept for the report; not reversible
         QDateTime finishedAt;
     };
 

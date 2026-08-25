@@ -7,13 +7,10 @@
 #include "common/network/NetworkResult.hpp"
 #include "controllers/accounts/AccountController.hpp"
 #include "providers/limerino/LimerinoErrors.hpp"
+#include "providers/limerino/LimerinoRateLimiter.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchAccountManager.hpp"
 #include "singletons/Settings.hpp"
-
-#include "common/network/NetworkRequest.hpp"
-#include "common/network/NetworkResult.hpp"
-#include "providers/limerino/LimerinoRateLimiter.hpp"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -162,7 +159,8 @@ void sendChatMessage(
             if (onDrop)
             {
                 onDrop(LimerinoAuth::errors::describeHttpFailure(
-                    result.status().value_or(0), QStringLiteral("send message")));
+                    result.status().value_or(0),
+                    QStringLiteral("send message")));
             }
         })
         .execute();
@@ -207,7 +205,8 @@ void uploadPaste(const QString &text,
             if (onError)
             {
                 onError(LimerinoAuth::errors::describeHttpFailure(
-                    result.status().value_or(0), QStringLiteral("upload paste")));
+                    result.status().value_or(0),
+                    QStringLiteral("upload paste")));
             }
         })
         .execute();
@@ -229,12 +228,12 @@ NetworkRequest moderationRequest(NetworkRequestType type, const QString &path,
     QUrl url(HELIX_BASE + path);
     url.setQuery(query);
 
-    auto req = NetworkRequest(url, type)
-                   .timeout(5000)
-                   .header("Accept", "application/json")
-                   .header("Client-Id", primaryClientId)
-                   .header("Authorization",
-                           QStringLiteral("Bearer ") + primaryToken);
+    auto req =
+        NetworkRequest(url, type)
+            .timeout(5000)
+            .header("Accept", "application/json")
+            .header("Client-Id", primaryClientId)
+            .header("Authorization", QStringLiteral("Bearer ") + primaryToken);
     if (payload != nullptr)
     {
         req = std::move(req)
@@ -244,7 +243,8 @@ NetworkRequest moderationRequest(NetworkRequestType type, const QString &path,
     return req;
 }
 
-QString moderationErrorMessage(const QString &action, const NetworkResult &result)
+QString moderationErrorMessage(const QString &action,
+                               const NetworkResult &result)
 {
     const QString body = QString::fromUtf8(result.getData());
     const auto obj = QJsonDocument::fromJson(body.toUtf8()).object();
@@ -345,9 +345,9 @@ void warnUser(const QString &broadcasterID, const QString &moderatorID,
         });
 }
 
-void deleteChatMessage(const QString &broadcasterID,
-                       const QString &moderatorID, const QString &messageID,
-                       const QString &bucketKey, std::function<void()> onSuccess,
+void deleteChatMessage(const QString &broadcasterID, const QString &moderatorID,
+                       const QString &messageID, const QString &bucketKey,
+                       std::function<void()> onSuccess,
                        std::function<void(QString)> onError)
 {
     QUrlQuery query;
@@ -414,8 +414,8 @@ void unbanUser(const QString &broadcasterID, const QString &moderatorID,
         [onError](NetworkResult result) {
             if (onError)
             {
-                onError(moderationErrorMessage(QStringLiteral("unban/untimeout"),
-                                               result));
+                onError(moderationErrorMessage(
+                    QStringLiteral("unban/untimeout"), result));
             }
         });
 }

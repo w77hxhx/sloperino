@@ -17,11 +17,11 @@ LimerinoRateLimiter &LimerinoRateLimiter::instance()
     return inst;
 }
 
-void LimerinoRateLimiter::execute(const QString &bucketKey,
-                                  const std::function<NetworkRequest()> &makeRequest,
-                                  const NetworkSuccessCallback &onSuccess,
-                                  const NetworkErrorCallback &onError,
-                                  int maxRetries)
+void LimerinoRateLimiter::execute(
+    const QString &bucketKey,
+    const std::function<NetworkRequest()> &makeRequest,
+    const NetworkSuccessCallback &onSuccess,
+    const NetworkErrorCallback &onError, int maxRetries)
 {
     if (maxRetries < 0)
     {
@@ -31,12 +31,12 @@ void LimerinoRateLimiter::execute(const QString &bucketKey,
     if (bucket.inFlight > 0)
     {
         // One in-flight per bucket: re-queued after a short spacing delay.
-        QTimer::singleShot(MIN_SPACING_MS, this,
-                           [this, bucketKey, makeRequest, onSuccess, onError,
-                            maxRetries] {
-                               this->execute(bucketKey, makeRequest, onSuccess,
-                                             onError, maxRetries);
-                           });
+        QTimer::singleShot(
+            MIN_SPACING_MS, this,
+            [this, bucketKey, makeRequest, onSuccess, onError, maxRetries] {
+                this->execute(bucketKey, makeRequest, onSuccess, onError,
+                              maxRetries);
+            });
         return;
     }
     this->runOne(bucketKey, makeRequest, onSuccess, onError, 0, maxRetries);
@@ -45,16 +45,15 @@ void LimerinoRateLimiter::execute(const QString &bucketKey,
 void LimerinoRateLimiter::runOne(
     const QString &bucketKey,
     const std::function<NetworkRequest()> &makeRequest,
-    const NetworkSuccessCallback &onSuccess, const NetworkErrorCallback &onError,
-    int attempt, int maxRetries)
+    const NetworkSuccessCallback &onSuccess,
+    const NetworkErrorCallback &onError, int attempt, int maxRetries)
 {
     auto &bucket = this->buckets_[bucketKey];
     ++bucket.inFlight;
 
     NetworkRequest request = makeRequest();
     std::move(request)
-        .onSuccess([this, bucketKey,
-                    onSuccess](NetworkResult result) {
+        .onSuccess([this, bucketKey, onSuccess](NetworkResult result) {
             auto &b = this->buckets_[bucketKey];
             --b.inFlight;
             b.backoffMs = 1000;  // success resets the backoff ladder

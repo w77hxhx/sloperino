@@ -8,7 +8,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
@@ -31,8 +30,7 @@ QJsonArray presetsToJson(const QVector<LimerinoNukePreset> &presets)
             rapidjson::StringBuffer buf;
             rapidjson::Writer<rapidjson::StringBuffer> w(buf);
             rj.Accept(w);
-            return QByteArray(buf.GetString(),
-                              static_cast<int>(buf.GetSize()));
+            return QByteArray(buf.GetString(), static_cast<int>(buf.GetSize()));
         }();
         arr.append(QJsonDocument::fromJson(bytes).object());
     }

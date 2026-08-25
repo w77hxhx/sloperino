@@ -5,13 +5,12 @@
 
 #pragma once
 
+#include <pajlada/signals/signal.hpp>
 #include <QDateTime>
 #include <QObject>
 #include <QString>
 #include <QStringList>
 #include <QVector>
-
-#include <pajlada/signals/signal.hpp>
 
 #include <functional>
 
@@ -157,8 +156,9 @@ private:
 
 // Asynchronously validates `normalizedToken` against Twitch and produces a fully
 // resolved account (valid flag, identity, display name, moderated channels).
-void resolveToken(const QString &normalizedToken,
-                  const std::function<void(const LimerinoAuthAccount &)> &onDone);
+void resolveToken(
+    const QString &normalizedToken,
+    const std::function<void(const LimerinoAuthAccount &)> &onDone);
 
 // Device flow constants (Phase 2). Client id is the Twitch web / front-end
 // first-party client (see LimerinoAuth.cpp for provenance); the wider scope

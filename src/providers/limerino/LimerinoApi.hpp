@@ -7,10 +7,10 @@
 
 #pragma once
 
+#include "providers/limerino/LimerinoAuth.hpp"
+
 #include <QString>
 #include <QStringList>
-
-#include "providers/limerino/LimerinoAuth.hpp"
 
 #include <functional>
 #include <optional>
@@ -60,9 +60,9 @@ void warnUser(const QString &broadcasterID, const QString &moderatorID,
               const QString &bucketKey, std::function<void()> onSuccess,
               std::function<void(QString)> onError);
 
-void deleteChatMessage(const QString &broadcasterID,
-                       const QString &moderatorID, const QString &messageID,
-                       const QString &bucketKey, std::function<void()> onSuccess,
+void deleteChatMessage(const QString &broadcasterID, const QString &moderatorID,
+                       const QString &messageID, const QString &bucketKey,
+                       std::function<void()> onSuccess,
                        std::function<void(QString)> onError);
 
 // Undo for ban/timeout (both use Helix DELETE moderation/bans).

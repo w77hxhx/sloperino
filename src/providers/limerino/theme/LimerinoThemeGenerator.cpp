@@ -37,10 +37,9 @@ QString encodeColor(const QColor &c)
 /// (0..1; hu＆saturation preserved). Used to produce shade series.
 QColor shadeToward(const QColor &from, const QColor &toward, double factor)
 {
-    return QColor::fromHslF(from.hueF(), from.saturationF(),
-                            from.lightnessF() +
-                                (toward.lightnessF() - from.lightnessF()) *
-                                    factor);
+    return QColor::fromHslF(
+        from.hueF(), from.saturationF(),
+        from.lightnessF() + (toward.lightnessF() - from.lightnessF()) * factor);
 }
 
 /// `color` with the given alpha applied.
@@ -93,8 +92,7 @@ QJsonObject buildMessages(const LimerinoThemeSeed &s)
         {QStringLiteral("highlightAnimationStart"),
          encodeColor(withAlpha(s.text, 0x23))},
         // selection: text color at 0x40 alpha, identical in all 4 built-ins
-        {QStringLiteral("selection"),
-         encodeColor(withAlpha(s.text, 0x40))},
+        {QStringLiteral("selection"), encodeColor(withAlpha(s.text, 0x40))},
         {QStringLiteral("textColors"),
          QJsonObject{
              // caret accent cue
@@ -213,8 +211,7 @@ QJsonObject buildSplits(const LimerinoThemeSeed &s)
         // base surface, verbatim
         {QStringLiteral("background"), encodeColor(s.background)},
         // splits drop preview: accent at 0x30 alpha, matching both built-ins
-        {QStringLiteral("dropPreview"),
-         encodeColor(withAlpha(s.accent, 0x30))},
+        {QStringLiteral("dropPreview"), encodeColor(withAlpha(s.accent, 0x30))},
         // drop outline: solid accent
         {QStringLiteral("dropPreviewBorder"), encodeColor(s.accent)},
         // fill of the drop target rect: accent, nearly invisible
@@ -251,11 +248,9 @@ QJsonObject buildSplits(const LimerinoThemeSeed &s)
              {QStringLiteral("background"),
               encodeColor(shadeToward(s.surface, s.background, 0.3))},
              // "participant wrote something" pulse: built-ins use green
-             {QStringLiteral("backgroundPulse"),
-              QStringLiteral("#215421")},
+             {QStringLiteral("backgroundPulse"), QStringLiteral("#215421")},
              // constant red across built-ins
-             {QStringLiteral("searchFailText"),
-              QStringLiteral("#ff0000")},
+             {QStringLiteral("searchFailText"), QStringLiteral("#ff0000")},
              // find-highlight: text toward accent at half blend
              {QStringLiteral("searchHighlightBackground"),
               encodeColor(shadeToward(s.text, s.accent, 0.5))},
@@ -305,8 +300,7 @@ QString rgbKey(const QColor &c)
     return c.name(QColor::HexRgb).toLower();
 }
 
-QString remapColorString(const QString &raw,
-                         const QHash<QString, QColor> &map)
+QString remapColorString(const QString &raw, const QHash<QString, QColor> &map)
 {
     if (raw.compare(QStringLiteral("transparent"), Qt::CaseInsensitive) == 0)
     {
@@ -364,9 +358,9 @@ void stampSchemaAndIconTheme(QJsonObject &root, const LimerinoThemeSeed &seed)
 {
     root.insert(QStringLiteral("$schema"), QString::fromUtf8(PUBLIC_SCHEMA));
     QJsonObject meta = root.value(QStringLiteral("metadata")).toObject();
-    meta.insert(QStringLiteral("iconTheme"),
-                seed.isLight() ? QStringLiteral("dark")
-                               : QStringLiteral("light"));
+    meta.insert(QStringLiteral("iconTheme"), seed.isLight()
+                                                 ? QStringLiteral("dark")
+                                                 : QStringLiteral("light"));
     root.insert(QStringLiteral("metadata"), meta);
 }
 
@@ -390,7 +384,8 @@ QString builtinThemeName(BuiltinTheme builtin)
 
 std::optional<QJsonObject> loadBuiltinThemeJson(BuiltinTheme builtin)
 {
-    QFile file(QStringLiteral(":/themes/%1.json").arg(builtinThemeName(builtin)));
+    QFile file(
+        QStringLiteral(":/themes/%1.json").arg(builtinThemeName(builtin)));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         return std::nullopt;
@@ -436,9 +431,9 @@ LimerinoThemeSeed seedFromThemeJson(const QJsonObject &theme)
             fallback.background);
     }
 
-    seed.surface = parseThemeColor(
-        header.value(QStringLiteral("background")).toString(),
-        fallback.surface);
+    seed.surface =
+        parseThemeColor(header.value(QStringLiteral("background")).toString(),
+                        fallback.surface);
 
     const QString textRaw = msgText.value(QStringLiteral("regular")).toString();
     seed.text = parseThemeColor(
@@ -484,8 +479,7 @@ QJsonObject generateTheme(const LimerinoThemeSeed &seed)
 QStringList contrastWarnings(const LimerinoThemeSeed &seed)
 {
     QStringList warnings;
-    auto check = [&](const QString &what, const QColor &fg,
-                     const QColor &bg) {
+    auto check = [&](const QString &what, const QColor &fg, const QColor &bg) {
         const double ratio = contrastRatio(fg, bg);
         // WCAG large-text minimum; the pairs below are the ones users read.
         if (ratio < 3.0)
@@ -498,8 +492,7 @@ QStringList contrastWarnings(const LimerinoThemeSeed &seed)
     check(QStringLiteral("primary text on background"), seed.text,
           seed.background);
     check(QStringLiteral("text on surface"), seed.text, seed.surface);
-    check(QStringLiteral("accent on background"), seed.accent,
-          seed.background);
+    check(QStringLiteral("accent on background"), seed.accent, seed.background);
     check(QStringLiteral("accent on surface"), seed.accent, seed.surface);
     return warnings;
 }

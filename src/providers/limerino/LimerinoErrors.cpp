@@ -51,7 +51,8 @@ QString fromGraphQlErrors(const QJsonArray &errors)
     {
         return {};
     }
-    QString text = errors.first().toObject()[QStringLiteral("message")].toString();
+    QString text =
+        errors.first().toObject()[QStringLiteral("message")].toString();
     if (text.isEmpty())
     {
         text = QStringLiteral("graphQL error");
