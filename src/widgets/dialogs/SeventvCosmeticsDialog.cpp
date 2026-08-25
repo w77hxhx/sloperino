@@ -449,7 +449,7 @@ protected:
         {
             if (this->rect().contains(event->pos()))
             {
-                emit clicked();
+                this->click();
             }
             event->accept();
             this->update();
@@ -606,7 +606,7 @@ protected:
         {
             if (this->rect().contains(event->pos()))
             {
-                emit clicked();
+                this->click();
             }
             event->accept();
             this->update();
@@ -1303,36 +1303,33 @@ void SeventvCosmeticsDialog::applyCosmeticsToChatterino()
 
 void SeventvCosmeticsDialog::updateSelectionState()
 {
-    if (this->contentWidget_ == nullptr)
+    for (auto *card : this->badgeCardWidgets_)
     {
-        return;
-    }
-
-    const auto badgeCards =
-        this->contentWidget_->findChildren<BadgeCardWidget *>();
-    for (auto *card : badgeCards)
-    {
-        if (card->id() == "none")
+        if (card != nullptr)
         {
-            card->setSelected(this->activeBadgeId_.isEmpty());
-        }
-        else
-        {
-            card->setSelected(card->id() == this->activeBadgeId_);
+            if (card->id() == "none")
+            {
+                card->setSelected(this->activeBadgeId_.isEmpty());
+            }
+            else
+            {
+                card->setSelected(card->id() == this->activeBadgeId_);
+            }
         }
     }
 
-    const auto paintCards =
-        this->contentWidget_->findChildren<PaintCardWidget *>();
-    for (auto *card : paintCards)
+    for (auto *card : this->paintCardWidgets_)
     {
-        if (card->id() == "none")
+        if (card != nullptr)
         {
-            card->setSelected(this->activePaintId_.isEmpty());
-        }
-        else
-        {
-            card->setSelected(card->id() == this->activePaintId_);
+            if (card->id() == "none")
+            {
+                card->setSelected(this->activePaintId_.isEmpty());
+            }
+            else
+            {
+                card->setSelected(card->id() == this->activePaintId_);
+            }
         }
     }
 }
@@ -1591,7 +1588,8 @@ void SeventvCosmeticsDialog::clearContent()
             layout->deleteLater();
         }
         delete child;
-    }
+    this->badgeCardWidgets_.clear();
+    this->paintCardWidgets_.clear();
     this->statusLabel_ = nullptr;
 }
 
@@ -1621,6 +1619,8 @@ void SeventvCosmeticsDialog::rebuildContent()
 
 void SeventvCosmeticsDialog::rebuildBadges()
 {
+    this->badgeCardWidgets_.clear();
+
     auto *gridLayout = new QGridLayout();
     gridLayout->setSpacing(COSMETICS_GRID_SPACING);
     gridLayout->setContentsMargins(0, 0, 0, 0);
@@ -1633,6 +1633,7 @@ void SeventvCosmeticsDialog::rebuildBadges()
     QObject::connect(noneCard, &QPushButton::clicked, this, [this] {
         this->selectBadge("none");
     });
+    this->badgeCardWidgets_.push_back(noneCard);
     gridLayout->addWidget(noneCard, 0, 0);
 
     const auto needle = this->searchQuery_.trimmed();
@@ -1657,6 +1658,7 @@ void SeventvCosmeticsDialog::rebuildBadges()
             this->selectBadge(bid);
         });
 
+        this->badgeCardWidgets_.push_back(card);
         gridLayout->addWidget(card, row, col);
         col++;
         if (col >= 2)
@@ -1681,6 +1683,8 @@ void SeventvCosmeticsDialog::rebuildBadges()
 
 void SeventvCosmeticsDialog::rebuildPaints()
 {
+    this->paintCardWidgets_.clear();
+
     auto *gridLayout = new QGridLayout();
     gridLayout->setSpacing(COSMETICS_GRID_SPACING);
     gridLayout->setContentsMargins(0, 0, 0, 0);
@@ -1692,6 +1696,7 @@ void SeventvCosmeticsDialog::rebuildPaints()
     QObject::connect(noneCard, &QPushButton::clicked, this, [this] {
         this->selectPaint("none");
     });
+    this->paintCardWidgets_.push_back(noneCard);
     gridLayout->addWidget(noneCard, 0, 0);
 
     const auto needle = this->searchQuery_.trimmed();
@@ -1714,6 +1719,7 @@ void SeventvCosmeticsDialog::rebuildPaints()
             this->selectPaint(pid);
         });
 
+        this->paintCardWidgets_.push_back(card);
         gridLayout->addWidget(card, row, col);
         col++;
         if (col >= 2)

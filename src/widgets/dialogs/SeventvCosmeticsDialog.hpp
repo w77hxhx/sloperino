@@ -135,6 +135,9 @@ private:
     std::vector<SeventvPaintItem> paints_;
     std::vector<SeventvBadgeItem> badges_;
 
+    std::vector<BadgeCardWidget *> badgeCardWidgets_;
+    std::vector<PaintCardWidget *> paintCardWidgets_;
+
     pajlada::Signals::SignalHolder signalHolder_;
 };
 
