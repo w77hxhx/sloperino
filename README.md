@@ -1,100 +1,78 @@
 # Sloperino [![GitHub Actions Build](https://github.com/w77hxhx/sloperino/actions/workflows/build.yml/badge.svg?branch=sloperino)](https://github.com/w77hxhx/sloperino/actions?query=workflow%3ABuild+branch%3Asloperino) [![Release](https://img.shields.io/github/v/release/w77hxhx/sloperino?include_prereleases)](https://github.com/w77hxhx/sloperino/releases/latest)
 
-<div align="center">
-  <p><strong>The ultimate high-performance Twitch chat client built for power users, moderators, and enthusiasts.</strong></p>
-</div>
+Just a fork of features I like from other forks + my own features :)
+
+Features taken from:
+
+- https://github.com/leafyzito/leafyrino (base)
+- Moltorino
+- https://github.com/2547techno/technorino
+- https://github.com/seventv/chatterino7
+- https://github.com/lagx/Limerino
 
 ---
 
-## 🌟 Exclusive Features of Sloperino
+## My own features (Sloperino)
 
-Sloperino introduces powerful, unique features and integrations not found in standard Chatterino:
+- **Multi-feed Twitch Firehose** — global chat streamed through public log services (Spanix, Supa, Susgee, Nadeko, Logxx, Catquery) with sharded deduplication and a live messages-per-second meter
+- **Stalk channel** — follow any user's messages across all of Twitch in real time, with persistent caching across restarts
+- **Roles lookup suite** — browse every channel where a user is mod / VIP / artist / founder via [roles.tv](https://roles.tv), or list the staff of any channel; buttons in usercards and split headers
+- **Twitch clips manager** — clips by broadcaster or curator, infinite auto-pagination, full text search
+- **7TV cosmetics studio** — equip paints & badges with live preview directly on your username, plus presence reporting to 7TV
+- **Emote aliases** — replace words in chat with 7TV / BTTV / FFZ / CDN emote links
+- **Random client-nonce mode** — simulate Web / iOS / Android clients when sending messages
+- Smart mention highlights for emote-triggered mentions (no false positives from channel names or timestamps)
+- Pin any dialog (clips, roles, usercards, polls...) always-on-top
 
-### 👑 1. Full [roles.tv](https://roles.tv) Roles Lookup Suite
+## From Moltorino
 
-- **User Mode**: Instantly look up every Twitch channel where a user has **Moderator**, **VIP**, **Artist**, or **Founder** status.
-- **Channel Mode**: Browse and search all staff, mods, VIPs, artists, and subscribers for any Twitch channel.
-- **One-Click Actions**: Dedicated `roles` button in usercards and split headers with fast client-side filtering and infinite cursor pagination.
+- Multi-account device login (`auth.molto.lol`)
+- Pinned message banner with timers, `/pin` commands and pin notifications
+- Prediction & poll banners, dialogs and moderation actions
+- Channel points balance display and rewards picker
+- Bot badge mode (`/bot`) with its own account
+- Incoming/outgoing message translation
+- Supporter badges, modlog lookup, `/spam`, `/pyramid`
+- Repeated-message detector with inline counters
 
-### 🎬 2. Native Twitch Clips Suite
+## From Technorino
 
-- **Broadcaster & Curator Views**: Seamlessly switch between clips created on a streamer's channel and clips clipped by a specific curator.
-- **Smooth Auto-Pagination**: Infinite scrolling that automatically streams more clips as you scroll down without losing your position.
-- **Rich Media Cards**: Duration badges, view metrics, relative timestamps, colored category/game tags, and instant launch into your default player/browser.
-- **Full Text Search**: Instant real-time filtering across titles, games, and curators.
+- `#channel` text converted to clickable links
+- Fake webchat messages, bot rate limits for messages and JOINs
+- Client detection highlights
+- Watching-tab live sound, auto-detach watching tab
+- Experimental Markdown parsing
 
-### ⚡ 3. Multi-Feed Chat Firehose & Real-Time Stalking
+## From Chatterino7
 
-- **Aggregated Firehose**: Streams global Twitch chat directly through high-speed public logs (_Spanix, Supa, Susgee, Nadeko, Logxx, Catquery_).
-- **Zero-Allocation Deduplication**: Sharded cache algorithm ensuring ultra-low CPU and RAM usage during heavy traffic bursts.
-- **5-Minute Auto-Reconnection**: Periodic full reconnection ensures reliable streaming without silent socket dropouts.
-- **Global User Stalking**: Track any user's messages across all public Twitch channels live in a dedicated stalk tab.
-- **MPS Velocity Meter**: Real-time Messages-Per-Second throughput tracking in header titles.
+- 7TV subscriber features: name paints, personal emotes, animated avatars
+- Kick.com support (chat, emotes, badges, accounts)
 
-### 🎨 4. 7TV Cosmetics Studio & Live Presence Beaconing
+## From Limerino
 
-- **Paints & Badges Picker**: Dedicated 7TV button on the chat input toolbar opening an interactive cosmetics studio.
-- **Live Preview**: See your active 7TV Paint gradient, shadow, and badges rendered directly on your username in real time.
-- **GraphQL Mutation Syncing**: Equip and switch 7TV paints and badges directly from the client.
-- **Channel Presence Reporting**: Automatically beacons your active Twitch chat channel to 7TV presence servers (`7tv.io/v3/users/{userId}/presences`).
-- **7TV Legacy Token Extraction**: One-click script generator for fast authentication via the 7TV Web Console.
-
-### 🎯 5. Chat Precision & Moderator Protections
-
-- **Smart Mention Highlights**: Exact trigger word matching for emote mentions with highlight pills, while strictly preventing `#channel` names, timestamps, and badges from falsely highlighting.
-- **Mod Channel History Protection**: Prevents chat history spam when connecting to moderated channels, while keeping manual log search completely functional.
-- **Universal "Go to Message"**: Navigate directly to the corresponding chat message from historical logs, usercard logs, and search popups.
-- **Emote Offset Accuracy in Logs**: Pixel-perfect alignment for Twitch emotes in usercards and log searches by properly handling reply mentions.
-
-### 📌 6. Always-on-Top Pinned Windows
-
-- Click the pin button on **Clips, Roles, 7TV Cosmetics, Badges, Usercards, and Polls** to keep them pinned **Always on Top** of all other application windows.
-
-### 🎛️ 7. Sloperino Control Center (Settings -> Sloperino)
-
-- Dedicated settings tab to toggle usercard buttons, firehose streaming endpoints, 7TV authentication, and performance limits all in one centralized hub.
-
----
-
-## 📸 Screenshots
-
-#### 1. Roles Lookup ([roles.tv](https://roles.tv))
-
-![Roles Lookup](https://github.com/w77hxhx/sloperino/raw/sloperino/screenshots/roles_dialog.png)
-
-#### 2. Twitch Clips Manager
-
-![Twitch Clips](https://github.com/w77hxhx/sloperino/raw/sloperino/screenshots/clips_dialog.png)
-
-#### 3. Real-Time Firehose & Stalk Tab
-
-![Firehose and Stalk](https://github.com/w77hxhx/sloperino/raw/sloperino/screenshots/firehose_stalk.png)
-
-#### 4. Sloperino Settings Control Center
-
-![Sloperino Settings](https://github.com/w77hxhx/sloperino/raw/sloperino/screenshots/settings_sloperino.png)
+- **Highlight groups** — scope any highlight phrase, user or badge to specific channels via the new Group column and "Manage groups..." dialog
+- **Auto Actions** — rule engine that reacts to incoming messages (own tab in settings)
+- **`/events` channel** — live feed of your mod actions, raids, predictions and channel points over Hermes PubSub, with per-event-type filters
+- **Prediction manager** — create, vote and manage predictions from the client
+- **Nuke dialog** — visual `/nuke` with match preview before execution
+- **Crossban presets** — ban a user across all your moderated channels
+- **Theme creator** — generate and install custom themes from the client
+- Extra commands: `/uid`, `/namehistory`, `/modlist`, follower/following lists
+- Usercard extras: name history, crossban button, artist / lead-mod actions, 7TV editor lookups
 
 ---
 
-## 📦 Downloads & Releases
+## Downloads
 
-Pre-built binaries for all major operating systems are available under the **[Releases](https://github.com/w77hxhx/sloperino/releases/latest)** section:
+Pre-built binaries are available under the **[Releases](https://github.com/w77hxhx/sloperino/releases/latest)** section:
 
-- 🪟 **Windows**: Portable `.zip` and Installer `.exe` (x64)
-- 🐧 **Linux**: `.AppImage`, `.deb` package, and Flatpak bundle
-- 🍏 **macOS**: Universal binary `.dmg` (Apple Silicon & Intel)
+- Windows: portable `.zip` and installer `.exe` (x64)
+- Linux: `.AppImage`, `.deb` and Flatpak
+- macOS: universal `.dmg`
 
----
+Nightly builds are published on every push to the `sloperino` branch.
 
-## 🛠️ Building from Source
-
-### Prerequisites
-
-- CMake 3.20+
-- Qt 6.5+ (Core, Gui, Widgets, Network, Svg, Concurrent)
-- C++20 compatible compiler (MSVC 2022 / GCC 12+ / Clang 15+)
-
-### Clone & Build
+## Building from source
 
 ```shell
 git clone --recurse-submodules https://github.com/w77hxhx/sloperino.git
@@ -103,8 +81,8 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release -j
 ```
 
----
+See the upstream guides for platform-specific dependencies: [Windows](BUILDING_ON_WINDOWS.md), [Linux](BUILDING_ON_LINUX.md), [macOS](BUILDING_ON_MAC.md), [FreeBSD](BUILDING_ON_FREEBSD.md).
 
-## 📄 License
+## License
 
-Sloperino is licensed under the [MIT License](LICENSE).
+Licensed under the [MIT License](LICENSE).

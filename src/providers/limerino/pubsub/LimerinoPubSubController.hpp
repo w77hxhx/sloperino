@@ -17,6 +17,7 @@
 
 #include "util/ExponentialBackoff.hpp"
 
+#include <boost/signals2.hpp>
 #include <pajlada/signals/signal.hpp>
 #include <pajlada/signals/signalholder.hpp>
 #include <QJsonObject>
@@ -236,6 +237,10 @@ private:
     std::shared_ptr<bool> aliveGuard_ = std::make_shared<bool>(true);
 
     pajlada::Signals::SignalHolder holder_;
+
+    /// currentUserChanged is a boost::signals2 signal in this tree, so it is
+    /// tracked with its own scoped connection instead of the SignalHolder.
+    boost::signals2::scoped_connection twitchCurrentUserChangedConn_;
 };
 
 /// Singleton access (GUI thread). Created on first call.

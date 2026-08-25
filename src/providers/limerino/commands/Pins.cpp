@@ -291,16 +291,20 @@ QString viewPin(const CommandContext &ctx)
                     QStringLiteral("displayName")].toString();
 
             // Pin time + pinner from the upstream Helix state when it
-            // corresponds to the same message (its starts_at is the only
+            // corresponds to the same message (its pinned_at is the only
             // source for "when it was pinned" - the GQL op has no such field).
             QDateTime pinnedAt;
             QString pinnedByFromHelix;
-            if (const auto *helixPinned = tchan->getPinnedMessage())
             {
-                if (helixPinned->messageID == id)
+                auto pinGuard = tchan->accessPinnedMessage();
+                const auto &helixPin = *pinGuard;
+                if (helixPin && helixPin->messageId == id)
                 {
-                    pinnedAt = helixPinned->startsAt;
-                    pinnedByFromHelix = helixPinned->pinnedBy.displayName;
+                    if (helixPin->pinnedAt)
+                    {
+                        pinnedAt = *helixPin->pinnedAt;
+                    }
+                    pinnedByFromHelix = helixPin->pinnerName;
                 }
             }
 

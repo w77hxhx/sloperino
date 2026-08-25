@@ -180,9 +180,11 @@ LimerinoPubSubController::LimerinoPubSubController(
         auto *app = tryGetApp();
         if (app != nullptr)
         {
-            this->holder_.managedConnect(
-                app->getAccounts()->twitch.currentUserChanged,
-                [this] { this->reconcile(); });
+            // currentUserChanged is a boost::signals2 signal in this tree,
+            // so it cannot go through the pajlada SignalHolder.
+            this->twitchCurrentUserChangedConn_ =
+                app->getAccounts()->twitch.currentUserChanged.connect(
+                    [this] { this->reconcile(); });
         }
     });
 }
