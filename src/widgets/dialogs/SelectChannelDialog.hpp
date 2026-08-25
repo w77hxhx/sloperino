@@ -92,6 +92,9 @@ private:
         detail::AutoCheckedRadioButton *automod;
         QLabel *automodLabel;
 
+        detail::AutoCheckedRadioButton *events;
+        QLabel *eventsLabel;
+
         detail::AutoCheckedRadioButton *firehose;
         QLabel *firehoseLabel;
 

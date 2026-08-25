@@ -11,6 +11,7 @@
 #include <QColor>
 #include <QString>
 #include <QUrl>
+#include <QUuid>
 
 #include <memory>
 
@@ -25,11 +26,16 @@ public:
 
     HighlightBadge(const QString &badgeName, const QString &displayName,
                    bool showInMentions, bool hasAlert, bool hasSound,
-                   const QString &soundUrl, QColor color);
+                   const QString &soundUrl, QColor color,
+                   const QUuid &groupId = QUuid());
 
     HighlightBadge(const QString &badgeName, const QString &displayName,
                    bool showInMentions, bool hasAlert, bool hasSound,
-                   const QString &soundUrl, std::shared_ptr<QColor> color);
+                   const QString &soundUrl, std::shared_ptr<QColor> color,
+                   const QUuid &groupId = QUuid());
+
+    /// Limerino: per-channel highlight group membership.
+    const QUuid &groupId() const;
 
     const QString &badgeName() const;
     const QString &displayName() const;
@@ -59,6 +65,10 @@ private:
     bool isMulti_;
     bool hasVersions_;
     QStringList badges_;
+
+    /// Limerino: per-channel highlight group membership.
+    /// Null/default = Default group = global behaviour.
+    QUuid groupId_;
 };
 };  // namespace chatterino
 
@@ -79,6 +89,13 @@ struct Serialize<chatterino::HighlightBadge> {
         chatterino::rj::set(ret, "soundUrl", value.getSoundUrl().toString(), a);
         chatterino::rj::set(ret, "color",
                             value.getColor()->name(QColor::HexArgb), a);
+
+        if (!value.groupId().isNull())
+        {
+            chatterino::rj::set(
+                ret, "groupId",
+                value.groupId().toString(QUuid::WithoutBraces), a);
+        }
 
         return ret;
     }
@@ -103,6 +120,7 @@ struct Deserialize<chatterino::HighlightBadge> {
         bool _hasSound = false;
         QString _soundUrl;
         QString encodedColor;
+        QString groupIdStr;
 
         chatterino::rj::getSafe(value, "name", _name);
         chatterino::rj::getSafe(value, "displayName", _displayName);
@@ -111,6 +129,7 @@ struct Deserialize<chatterino::HighlightBadge> {
         chatterino::rj::getSafe(value, "sound", _hasSound);
         chatterino::rj::getSafe(value, "soundUrl", _soundUrl);
         chatterino::rj::getSafe(value, "color", encodedColor);
+        chatterino::rj::getSafe(value, "groupId", groupIdStr);
 
         auto _color = QColor(encodedColor);
         if (!_color.isValid())
@@ -118,9 +137,12 @@ struct Deserialize<chatterino::HighlightBadge> {
             _color = chatterino::HighlightBadge::FALLBACK_HIGHLIGHT_COLOR;
         }
 
+        // Limerino: absent or unparseable groupId means Default group.
+        auto _groupId = QUuid::fromString(groupIdStr);
+
         return chatterino::HighlightBadge(_name, _displayName, _showInMentions,
                                           _hasAlert, _hasSound, _soundUrl,
-                                          _color);
+                                          _color, _groupId);
     }
 };
 

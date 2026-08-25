@@ -69,6 +69,20 @@ set(test_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/BalancedResolverResults.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/UtilSerializeList.cpp
 
+    # Limerino fork tests
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoAutoActions.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoChatColor.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoCrossban.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoFeatures.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoHighlightGroup.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoHighlightGroups.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoMatcher.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoNukePlan.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoPubSub.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoTheme.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoThemeStore.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/LimerinoUserCardExtras.cpp
+
     ${CMAKE_CURRENT_LIST_DIR}/src/lib/Snapshot.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/lib/Snapshot.hpp
     # Add your new file above this line!

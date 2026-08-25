@@ -70,6 +70,15 @@ private:
     void registerCommand(const QString &commandName,
                          CommandFunctionVariants commandFunction);
 
+public:
+    // Limerino fork: extension point so fork-owned modules can register
+    // native commands without being listed in CommandController.cpp
+    // themselves.
+    void registerExternalCommand(
+        const QString &commandName,
+        std::function<QString(CommandContext)> commandFunction);
+
+private:
     std::unordered_map<QString, CommandFunctionVariants> commands_;
 
     QMap<QString, Command> userCommands_;

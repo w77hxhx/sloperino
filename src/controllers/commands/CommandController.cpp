@@ -52,6 +52,8 @@
 #include "providers/emoji/Emojis.hpp"
 #include "providers/IvrApi.hpp"
 #include "providers/kick/KickChannel.hpp"
+#include "providers/limerino/commands/LimerinoCommands.hpp"
+#include "providers/limerino/pubsub/LimerinoPubSubController.hpp"
 #include "providers/twitch/api/Helix.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
@@ -613,6 +615,19 @@ CommandController::CommandController(const Paths &paths)
 
         return "";
     });
+
+    // Limerino fork hook: ported extra-features commands (see FORK.md)
+    LimerinoCommands::initialize(*this);
+
+    // Limerino fork hook: Hermes (live-updates PubSub) controller bootstrap
+    limerino::initializePubSub();
+}
+
+void CommandController::registerExternalCommand(
+    const QString &commandName,
+    std::function<QString(CommandContext)> commandFunction)
+{
+    this->registerCommand(commandName, std::move(commandFunction));
 }
 
 void CommandController::save()

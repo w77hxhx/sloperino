@@ -17,6 +17,7 @@
 #include "providers/kick/KickBadges.hpp"
 #include "providers/kick/KickChannel.hpp"
 #include "providers/kick/KickEmotes.hpp"
+#include "providers/limerino/highlights/HighlightGroupChannelKey.hpp"
 #include "providers/seventv/SeventvBadges.hpp"
 #include "providers/seventv/SeventvEmotes.hpp"
 #include "providers/seventv/SeventvPersonalEmotes.hpp"
@@ -425,9 +426,13 @@ HighlightAlert processHighlights(KickMessageBuilder &builder,
         return {};
     }
 
+    // Limerino: thread the channel key so per-channel highlight groups apply.
+    const auto *channel = builder.channel();
+    const QString channelKey =
+        channel ? limerino::highlightChannelKey(*channel) : QString();
     auto [highlighted, highlightResult] = getApp()->getHighlights()->check(
         args, {}, builder->loginName, builder->messageText, builder->flags,
-        builder->platform);
+        builder->platform, channelKey);
 
     if (!highlighted)
     {

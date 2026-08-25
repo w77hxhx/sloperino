@@ -46,38 +46,27 @@ bool HighlightPhrase::operator==(const HighlightPhrase &other) const
 {
     return std::tie(this->pattern_, this->showInMentions_, this->hasSound_,
                     this->hasAlert_, this->isRegex_, this->isCaseSensitive_,
-                    this->soundUrl_, this->color_) ==
+                    this->soundUrl_, this->color_, this->groupId_) ==
            std::tie(other.pattern_, other.showInMentions_, other.hasSound_,
                     other.hasAlert_, other.isRegex_, other.isCaseSensitive_,
-                    other.soundUrl_, other.color_);
+                    other.soundUrl_, other.color_, other.groupId_);
 }
 
 HighlightPhrase::HighlightPhrase(const QString &pattern, bool showInMentions,
                                  bool hasAlert, bool hasSound, bool isRegex,
                                  bool isCaseSensitive, const QString &soundUrl,
-                                 QColor color)
-    : pattern_(pattern)
-    , showInMentions_(showInMentions)
-    , hasAlert_(hasAlert)
-    , hasSound_(hasSound)
-    , isRegex_(isRegex)
-    , isCaseSensitive_(isCaseSensitive)
-    , soundUrl_(soundUrl)
-    , regex_(isRegex_
-                 ? pattern
-                 : REGEX_START_BOUNDARY % QRegularExpression::escape(pattern) %
-                       REGEX_END_BOUNDARY,
-             QRegularExpression::UseUnicodePropertiesOption |
-                 (isCaseSensitive_ ? QRegularExpression::NoPatternOption
-                                   : QRegularExpression::CaseInsensitiveOption))
+                                 QColor color, const QUuid &groupId)
+    : HighlightPhrase(pattern, showInMentions, hasAlert, hasSound, isRegex,
+                      isCaseSensitive, soundUrl,
+                      std::make_shared<QColor>(color), groupId)
 {
-    this->color_ = std::make_shared<QColor>(color);
 }
 
 HighlightPhrase::HighlightPhrase(const QString &pattern, bool showInMentions,
                                  bool hasAlert, bool hasSound, bool isRegex,
                                  bool isCaseSensitive, const QString &soundUrl,
-                                 std::shared_ptr<QColor> color)
+                                 std::shared_ptr<QColor> color,
+                                 const QUuid &groupId)
     : pattern_(pattern)
     , showInMentions_(showInMentions)
     , hasAlert_(hasAlert)
@@ -93,6 +82,7 @@ HighlightPhrase::HighlightPhrase(const QString &pattern, bool showInMentions,
              QRegularExpression::UseUnicodePropertiesOption |
                  (isCaseSensitive_ ? QRegularExpression::NoPatternOption
                                    : QRegularExpression::CaseInsensitiveOption))
+    , groupId_(groupId)
 {
 }
 
@@ -109,6 +99,11 @@ bool HighlightPhrase::showInMentions() const
 bool HighlightPhrase::hasAlert() const
 {
     return this->hasAlert_;
+}
+
+const QUuid &HighlightPhrase::groupId() const
+{
+    return this->groupId_;
 }
 
 bool HighlightPhrase::hasSound() const

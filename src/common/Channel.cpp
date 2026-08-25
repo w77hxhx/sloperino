@@ -10,6 +10,7 @@
 #include "messages/MessageBuilder.hpp"
 #include "messages/MessageElement.hpp"
 #include "messages/MessageSimilarity.hpp"
+#include "providers/limerino/autoactions/LimerinoAutoActionRuntime.hpp"
 #include "singletons/Logging.hpp"
 #include "singletons/Settings.hpp"
 #include "util/ChannelHelpers.hpp"
@@ -206,6 +207,17 @@ void Channel::addMessage(MessagePtr message, MessageContext context,
     if (this->messages_.pushBack(message, deleted))
     {
         this->messageRemovedFromStart(deleted);
+    }
+
+    // Limerino hook: evaluate auto-action rules against the just-arrived
+    // message. Only original, non-system chat messages qualify.
+    if (context == MessageContext::Original &&
+        (this->getType() == Channel::Type::Twitch ||
+         this->getType() == Channel::Type::Kick) &&
+        !message->flags.has(MessageFlag::System) &&
+        !message->flags.has(MessageFlag::Whisper))
+    {
+        limerino::evaluateAutoActions(message, *this);
     }
 
     this->messageAppended.invoke(message, overridingFlags);

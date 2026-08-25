@@ -59,8 +59,14 @@ auto highlightPhraseCheck(const HighlightPhrase &highlight) -> HighlightCheck
         }};
 }
 
+/// Wrap a global check with a null groupId (meaning: always applies).
+auto globalCheck(HighlightCheck check) -> GroupedHighlightCheck
+{
+    return GroupedHighlightCheck{std::move(check), QUuid()};
+}
+
 void rebuildSubscriptionHighlights(Settings &settings,
-                                   std::vector<HighlightCheck> &checks)
+                                   std::vector<GroupedHighlightCheck> &checks)
 {
     if (settings.enableSubHighlight)
     {
@@ -73,7 +79,7 @@ void rebuildSubscriptionHighlights(Settings &settings,
             highlightSoundUrl = highlightSoundUrlValue;
         }
 
-        checks.emplace_back(HighlightCheck{
+        checks.emplace_back(globalCheck(HighlightCheck{
             [=](const auto &args, const auto &twitchBadges,
                 const auto &senderName, const auto &originalMessage,
                 const auto &flags,
@@ -96,12 +102,12 @@ void rebuildSubscriptionHighlights(Settings &settings,
                     highlightAlert, highlightSound, highlightSoundUrl,
                     highlightColor, false,
                 };
-            }});
+            }}));
     }
 }
 
 void rebuildFollowHighlights(Settings &settings,
-                             std::vector<HighlightCheck> &checks)
+                             std::vector<GroupedHighlightCheck> &checks)
 {
     if (settings.enableFollowHighlight)
     {
@@ -115,7 +121,7 @@ void rebuildFollowHighlights(Settings &settings,
             highlightSoundUrl = highlightSoundUrlValue;
         }
 
-        checks.emplace_back(HighlightCheck{
+        checks.emplace_back(globalCheck(HighlightCheck{
             [=](const auto &args, const auto &twitchBadges,
                 const auto &senderName, const auto &originalMessage,
                 const auto &flags,
@@ -138,12 +144,12 @@ void rebuildFollowHighlights(Settings &settings,
                     highlightAlert, highlightSound, highlightSoundUrl,
                     highlightColor, false,
                 };
-            }});
+            }}));
     }
 }
 
 void rebuildWhisperHighlights(Settings &settings,
-                              std::vector<HighlightCheck> &checks)
+                              std::vector<GroupedHighlightCheck> &checks)
 {
     if (settings.enableWhisperHighlight)
     {
@@ -157,7 +163,7 @@ void rebuildWhisperHighlights(Settings &settings,
             highlightSoundUrl = highlightSoundUrlValue;
         }
 
-        checks.emplace_back(HighlightCheck{
+        checks.emplace_back(globalCheck(HighlightCheck{
             [=](const auto &args, const auto &twitchBadges,
                 const auto &senderName, const auto &originalMessage,
                 const auto &flags,
@@ -180,12 +186,12 @@ void rebuildWhisperHighlights(Settings &settings,
                     ColorProvider::instance().color(ColorType::Whisper),
                     false,
                 };
-            }});
+            }}));
     }
 }
 
 void rebuildReplyThreadHighlight(Settings &settings,
-                                 std::vector<HighlightCheck> &checks)
+                                 std::vector<GroupedHighlightCheck> &checks)
 {
     if (settings.enableThreadHighlight)
     {
@@ -200,7 +206,7 @@ void rebuildReplyThreadHighlight(Settings &settings,
         }
         auto highlightInMentions =
             settings.showThreadHighlightInMentions.getValue();
-        checks.emplace_back(HighlightCheck{
+        checks.emplace_back(globalCheck(HighlightCheck{
             [=](const auto &, const auto &, const auto &, const auto &,
                 const auto &flags,
                 const auto self) -> std::optional<HighlightResult> {
@@ -217,12 +223,12 @@ void rebuildReplyThreadHighlight(Settings &settings,
                 }
 
                 return std::nullopt;
-            }});
+            }}));
     }
 }
 
 void rebuildMessageHighlights(Settings &settings,
-                              std::vector<HighlightCheck> &checks)
+                              std::vector<GroupedHighlightCheck> &checks)
 {
     auto currentUser = getApp()->getAccounts()->twitch.getCurrent();
     QString currentUsername = currentUser->getUserName();
@@ -237,7 +243,7 @@ void rebuildMessageHighlights(Settings &settings,
             settings.selfHighlightSoundUrl.getValue(),
             ColorProvider::instance().color(ColorType::SelfHighlight));
 
-        checks.emplace_back(highlightPhraseCheck(highlight));
+        checks.emplace_back(globalCheck(highlightPhraseCheck(highlight)));
     }
 
     auto kickUser = getApp()->getAccounts()->kick.current();
@@ -252,13 +258,16 @@ void rebuildMessageHighlights(Settings &settings,
             settings.selfHighlightSoundUrl.getValue(),
             ColorProvider::instance().color(ColorType::SelfHighlight));
 
-        checks.emplace_back(highlightPhraseCheck(highlight));
+        checks.emplace_back(globalCheck(highlightPhraseCheck(highlight)));
     }
 
     auto messageHighlights = settings.highlightedMessages.readOnly();
     for (const auto &highlight : *messageHighlights)
     {
-        checks.emplace_back(highlightPhraseCheck(highlight));
+        checks.emplace_back(
+            // groupable: record which group produced this check
+            GroupedHighlightCheck{highlightPhraseCheck(highlight),
+                                  highlight.groupId()});
     }
 
     if (settings.enableAutomodHighlight)
@@ -272,10 +281,10 @@ void rebuildMessageHighlights(Settings &settings,
         auto highlightColor =
             ColorProvider::instance().color(ColorType::AutomodHighlight);
 
-        checks.emplace_back(
-            HighlightCheck{[=](const auto &, const auto &, const auto &,
-                               const auto &, const auto &flags,
-                               const auto) -> std::optional<HighlightResult> {
+        checks.emplace_back(globalCheck(HighlightCheck{
+            [=](const auto &, const auto &, const auto &,
+                const auto &, const auto &flags,
+                const auto) -> std::optional<HighlightResult> {
                 if (!flags.has(MessageFlag::AutoModOffendingMessage))
                 {
                     return std::nullopt;
@@ -291,12 +300,12 @@ void rebuildMessageHighlights(Settings &settings,
                     highlightAlert, highlightSound, highlightSoundUrl,
                     highlightColor, false,
                 };
-            }});
+            }}));
     }
 }
 
 void rebuildUserHighlights(Settings &settings,
-                           std::vector<HighlightCheck> &checks)
+                           std::vector<GroupedHighlightCheck> &checks)
 {
     auto userHighlights = settings.highlightedUsers.readOnly();
 
@@ -304,7 +313,7 @@ void rebuildUserHighlights(Settings &settings,
     {
         bool showInMentions = settings.showSelfMessageHighlightInMentions;
 
-        checks.emplace_back(HighlightCheck{
+        checks.emplace_back(globalCheck(HighlightCheck{
             [showInMentions](
                 const auto &args, const auto &twitchBadges,
                 const auto &senderName, const auto &originalMessage,
@@ -326,12 +335,12 @@ void rebuildUserHighlights(Settings &settings,
 
                 return HighlightResult{false, false, (QUrl) nullptr,
                                        highlightColor, showInMentions};
-            }});
+            }}));
     }
 
     for (const auto &highlight : *userHighlights)
     {
-        checks.emplace_back(HighlightCheck{
+        auto check = HighlightCheck{
             [highlight](const auto &args, const auto &twitchBadges,
                         const auto &senderName, const auto &originalMessage,
                         const auto &flags,
@@ -358,18 +367,21 @@ void rebuildUserHighlights(Settings &settings,
                     highlightSoundUrl,          highlight.getColor(),
                     highlight.showInMentions(),
                 };
-            }});
+            }};
+        // groupable: record which group produced this check
+        checks.emplace_back(
+            GroupedHighlightCheck{std::move(check), highlight.groupId()});
     }
 }
 
 void rebuildBadgeHighlights(Settings &settings,
-                            std::vector<HighlightCheck> &checks)
+                            std::vector<GroupedHighlightCheck> &checks)
 {
     auto badgeHighlights = settings.highlightedBadges.readOnly();
 
     for (const auto &highlight : *badgeHighlights)
     {
-        checks.emplace_back(HighlightCheck{
+        auto check = HighlightCheck{
             [highlight](const auto &args, const auto &twitchBadges,
                         const auto &senderName, const auto &originalMessage,
                         const auto &flags,
@@ -399,7 +411,10 @@ void rebuildBadgeHighlights(Settings &settings,
                 }
 
                 return std::nullopt;
-            }});
+            }};
+        // groupable: record which group produced this check
+        checks.emplace_back(
+            GroupedHighlightCheck{std::move(check), highlight.groupId()});
     }
 }
 
@@ -478,6 +493,14 @@ HighlightController::HighlightController(Settings &settings,
             this->rebuildChecks(settings);
         });
 
+    this->signalHolder_.managedConnect(
+        getSettings()->highlightGroups.delayedItemsChanged,
+        [this, &settings] {
+            qCDebug(chatterinoHighlights)
+                << "Rebuild checks because highlight groups changed";
+            this->rebuildChecks(settings);
+        });
+
     this->bConnections.emplace_back(
         accounts->twitch.currentUserChanged.connect([this, &settings] {
             qCDebug(chatterinoHighlights)
@@ -520,17 +543,109 @@ void HighlightController::rebuildChecks(Settings &settings)
     rebuildReplyThreadHighlight(settings, *checks);
 
     rebuildBadgeHighlights(settings, *checks);
+
+    // Invalidate both resolution caches -- they will be repopulated lazily
+    // on the next check() call for each channel.
+    auto chanAccess = this->channelChecks_.access();
+    chanAccess->clear();
+    auto setAccess = this->byGroupSet_.access();
+    setAccess->clear();
 }
 
-std::pair<bool, HighlightResult> HighlightController::check(
+/// Produce a sorted, canonical key for a set of group IDs so that identical
+/// sets map to the same resolved-cache slot regardless of member order.
+static QString groupSetKey(const std::vector<QUuid> &groupIds)
+{
+    QStringList strs;
+    strs.reserve(groupIds.size());
+    for (const auto &id : groupIds)
+    {
+        strs.append(id.toString(QUuid::WithoutBraces));
+    }
+    strs.sort();
+    return strs.join(QStringLiteral(";"));
+}
+
+HighlightController::SharedCheckVector HighlightController::resolveChecks(
+    Settings &settings, const QString &channelKey) const
+{
+    // Fast path 1: channel key already resolved.
+    {
+        auto chanAccess = this->channelChecks_.accessConst();
+        auto it = chanAccess->find(channelKey);
+        if (it != chanAccess->end())
+        {
+            return it.value();
+        }
+    }
+
+    // Compute the set of group IDs whose scope matches this channel.
+    std::vector<QUuid> matchingGroups;
+    auto matching = settings.highlightGroups.readOnly();
+    for (const auto &group : *matching)
+    {
+        if (group.matches(channelKey))
+        {
+            matchingGroups.push_back(group.id());
+        }
+    }
+
+    const auto setKey = groupSetKey(matchingGroups);
+
+    // Fast path 2: a different channel already produced this group set.
+    {
+        auto setAccess = this->byGroupSet_.accessConst();
+        auto it = setAccess->find(setKey);
+        if (it != setAccess->end())
+        {
+            return it.value();
+        }
+    }
+
+    // Slow path: build the filtered vector, preserving the existing order
+    // exactly (Subscription -> Follow -> Whisper -> Message -> User ->
+    // Thread -> Badge).
+    auto resolved = std::make_shared<std::vector<HighlightCheck>>();
+    {
+        auto masterAccess = this->checks_.accessConst();
+        resolved->reserve(masterAccess->size());
+        for (const auto &grouped : *masterAccess)
+        {
+            if (grouped.groupId.isNull())
+            {
+                // Global check: always included.
+                resolved->push_back(grouped.check);
+                continue;
+            }
+            if (std::find(matchingGroups.begin(), matchingGroups.end(),
+                          grouped.groupId) != matchingGroups.end())
+            {
+                resolved->push_back(grouped.check);
+            }
+        }
+    }
+
+    // Store into both caches.
+    {
+        auto setAccess = this->byGroupSet_.access();
+        setAccess->insert(setKey, resolved);
+    }
+    {
+        auto chanAccess = this->channelChecks_.access();
+        chanAccess->insert(channelKey, resolved);
+    }
+
+    return resolved;
+}
+
+std::pair<bool, HighlightResult> HighlightController::runChecks(
     const MessageParseArgs &args, const std::vector<TwitchBadge> &twitchBadges,
     const QString &senderName, const QString &originalMessage,
-    const MessageFlags &messageFlags, MessagePlatform platform) const
+    const MessageFlags &messageFlags, MessagePlatform platform,
+    const SharedCheckVector &checks) const
 {
     bool highlighted = false;
     auto result = HighlightResult::emptyResult();
-
-    const auto checks = this->checks_.accessConst();
 
     bool self = false;
     switch (platform)
@@ -621,6 +736,40 @@ std::pair<bool, HighlightResult> HighlightController::check(
     }
 
     return {highlighted, result};
+}
+
+std::pair<bool, HighlightResult> HighlightController::check(
+    const MessageParseArgs &args, const std::vector<TwitchBadge> &twitchBadges,
+    const QString &senderName, const QString &originalMessage,
+    const MessageFlags &messageFlags, MessagePlatform platform) const
+{
+    // Legacy overload: empty channel key resolves to the union of global
+    // checks plus all "AllExcept {}" groups (i.e. everything). For users
+    // with no groups configured, this is exactly the pre-feature behaviour.
+    return this->check(args, twitchBadges, senderName, originalMessage,
+                       messageFlags, platform, QString());
+}
+
+std::pair<bool, HighlightResult> HighlightController::check(
+    const MessageParseArgs &args, const std::vector<TwitchBadge> &twitchBadges,
+    const QString &senderName, const QString &originalMessage,
+    const MessageFlags &messageFlags, MessagePlatform platform,
+    const QString &channelKey) const
+{
+    // Use a NUL-containing sentinel key for the empty (legacy) case so it
+    // can never collide with a real channel name from settings.json
+    // channel lists. Because `AllExcept {}` groups match any key and
+    // `Only` groups never match an unlisted key, the empty key resolves to
+    // "global checks + every AllExcept {} group" -- the legacy behaviour.
+    static const QString legacyKey = QStringLiteral("__limerino_legacy__\x01");
+
+    const QString resolvedKey = channelKey.isEmpty() ? legacyKey : channelKey;
+
+    auto resolved = this->resolveChecks(*getSettings(), resolvedKey);
+
+    return this->runChecks(args, twitchBadges, senderName, originalMessage,
+                           messageFlags, platform,  //
+                           resolved);
 }
 
 }  // namespace chatterino

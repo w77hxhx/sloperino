@@ -7,6 +7,7 @@
 #include "common/Literals.hpp"
 #include "common/QLogging.hpp"
 #include "controllers/accounts/AccountController.hpp"
+#include "limerino/PubSubEventsChannel.hpp"
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "providers/bttv/BttvEmotes.hpp"
@@ -905,6 +906,12 @@ std::shared_ptr<Channel> TwitchIrcServer::getCustomChannel(
     if (channelName == "/automod")
     {
         return this->automodChannel;
+    }
+
+    // Limerino fork hook: Hermes (PubSub) events channel
+    if (channelName == limerino::pubSubEventsChannelName())
+    {
+        return limerino::pubSubEventsChannel();
     }
 
     static auto getTimer = [this](ChannelPtr channel, int msBetweenMessages,

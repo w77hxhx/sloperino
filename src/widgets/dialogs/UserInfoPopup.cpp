@@ -25,6 +25,8 @@
 #include "providers/kick/KickAccount.hpp"
 #include "providers/kick/KickApi.hpp"
 #include "providers/kick/KickChatServer.hpp"
+#include "providers/limerino/commands/Identity.hpp"
+#include "providers/limerino/commands/Roles.hpp"
 #include "providers/moltorino/MoltorinoAuth.hpp"
 #include "providers/pronouns/Pronouns.hpp"
 #include "providers/seventv/paints/Paint.hpp"
@@ -55,6 +57,8 @@
 #include "widgets/buttons/PixmapButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/EditUserNotesDialog.hpp"
+#include "widgets/dialogs/limerino/LimerinoCrossbanDialog.hpp"
+#include "widgets/dialogs/limerino/LimerinoUserCardWidget.hpp"
 #include "widgets/dialogs/UserBadgesDialog.hpp"
 #include "widgets/dialogs/UserClipsDialog.hpp"
 #include "widgets/dialogs/UserRolesDialog.hpp"
@@ -1631,6 +1635,29 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                 this->ui_.localizedNameLabel->setVisible(false);
                 this->ui_.localizedNameCopyButton->setVisible(false);
 
+                // Limerino fork hook: GQL-extras label (language tag right of
+                // the user ID, team/sub joined onto the lower rows in G3/G4)
+                auto *extrasWidget =
+                    box.emplace<limerino::LimerinoUserCardWidget>().getElement();
+                // When late GQL extras land, re-apply the sub-age suffix
+                // (the IVR subage row may already have been rendered).
+                QObject::connect(extrasWidget,
+                                 &limerino::LimerinoUserCardWidget::extrasChanged,
+                                 this, [this] {
+                                     if (this->subageBaseText_.isEmpty() ||
+                                         this->ui_.subageLabel == nullptr)
+                                     {
+                                         return;
+                                     }
+                                     if (auto *extras = this->findChild<
+                                             limerino::LimerinoUserCardWidget *>())
+                                     {
+                                         this->ui_.subageLabel->setText(
+                                             this->subageBaseText_ +
+                                             extras->subscriptionSuffix());
+                                     }
+                                 });
+
                 // button to pin the window (only if we close automatically)
                 if (this->closeAutomatically_)
                 {
@@ -1908,6 +1935,74 @@ UserInfoPopup::UserInfoPopup(bool closeAutomatically, Split *split)
                 value, this->underlyingChannel_, false);
             this->underlyingChannel_->sendMessage(value);
         });
+
+        // Limerino fork hook: view this user's name history
+        auto nameHistory = user.emplace<LabelButton>("Name history", this);
+        QObject::connect(nameHistory.getElement(), &Button::leftClicked,
+                         [this] {
+                             // No parent: the result dialog must be an
+                             // independent top-level (see upstream comment).
+                             LimerinoCommands::showNameHistoryDialog(
+                                 this->userName_, nullptr);
+                         });
+
+        // Limerino: crossban across moderated-channel presets
+        auto crossban = user.emplace<LabelButton>("Crossban", this);
+        QObject::connect(crossban.getElement(), &Button::leftClicked, [this] {
+            if (this->isKick_ || this->userId_.isEmpty())
+            {
+                return;
+            }
+            const QString display =
+                this->ui_.nameLabel != nullptr ? this->ui_.nameLabel->getText()
+                                               : this->userName_;
+            // No parent: same auto-close UAF rationale as Name history.
+            auto *dialog = new limerino::LimerinoCrossbanDialog(
+                this->userId_, this->userName_, display, nullptr);
+            dialog->show();
+        });
+
+        // Limerino fork hooks: artist / unartist / lead mod (own channel
+        // only). Same PixmapButton construction as mod/unmod (30x30).
+        auto artistButton = user.emplace<PixmapButton>(this);
+        artistButton->setPixmap(getResources().buttons.artist);
+        artistButton->setScaleIndependentSize(30, 30);
+        artistButton->setToolTip(QStringLiteral("Artist"));
+        auto unartistButton = user.emplace<PixmapButton>(this);
+        unartistButton->setPixmap(getResources().buttons.unartist);
+        unartistButton->setScaleIndependentSize(30, 30);
+        unartistButton->setToolTip(QStringLiteral("Unartist"));
+        auto leadModButton = user.emplace<PixmapButton>(this);
+        leadModButton->setPixmap(getResources().buttons.leadmod);
+        leadModButton->setScaleIndependentSize(30, 30);
+        leadModButton->setToolTip(QStringLiteral("Lead mod"));
+        QObject::connect(artistButton.getElement(), &Button::leftClicked,
+                         [this] {
+                             LimerinoCommands::grantArtist(
+                                 this->userName_, this->underlyingChannel_);
+                         });
+        QObject::connect(unartistButton.getElement(), &Button::leftClicked,
+                         [this] {
+                             LimerinoCommands::revokeArtist(
+                                 this->userName_, this->underlyingChannel_);
+                         });
+        QObject::connect(leadModButton.getElement(), &Button::leftClicked,
+                         [this] {
+                             LimerinoCommands::grantLeadMod(
+                                 this->userName_, this->underlyingChannel_);
+                         });
+        {
+            const auto selfUser = getApp()->getAccounts()->twitch.getCurrent();
+            auto *twitchChan = dynamic_cast<TwitchChannel *>(
+                this->underlyingChannel_.get());
+            const bool ownChannel =
+                twitchChan != nullptr && selfUser && !selfUser->isAnon() &&
+                selfUser->getUserName().compare(twitchChan->getName(),
+                                                Qt::CaseInsensitive) == 0;
+            artistButton->setVisible(ownChannel);
+            unartistButton->setVisible(ownChannel);
+            leadModButton->setVisible(ownChannel);
+        }
 
         // userstate
         // We can safely ignore this signal connection since this is a private signal, and
@@ -4241,7 +4336,7 @@ void UserInfoPopup::fetchMoreUsercardMessages(int emptyPageSkipsLeft,
     {
         this->usercardMessagesError_ =
             authError.isEmpty()
-                ? QStringLiteral("No saved Sloperino moderator login found.")
+                ? QStringLiteral("No saved Moltorino moderator login found.")
                 : authError;
         this->usercardMessagesLazyLoadEnabled_ = false;
         this->usercardMessagesLoading_ = false;
@@ -4488,6 +4583,19 @@ void UserInfoPopup::updateUserData()
         this->ui_.userIDLabel->setText(TEXT_USER_ID % user.id);
         this->ui_.userIDLabel->setProperty("copy-text", user.id);
 
+        // Limerino: feed the GQL-extras widget with a fresh target.
+        QString targetChannelId;
+        if (const auto *twitchChannel =
+                dynamic_cast<TwitchChannel *>(this->underlyingChannel_.get()))
+        {
+            targetChannelId = twitchChannel->roomId();
+        }
+        if (auto *extras =
+                this->findChild<limerino::LimerinoUserCardWidget *>())
+        {
+            extras->setTarget(user.id, targetChannelId, user.login);
+        }
+
         if (getApp()->getStreamerMode()->isEnabled() &&
             getSettings()->streamerModeHideUsercardAvatars)
         {
@@ -4579,6 +4687,10 @@ void UserInfoPopup::updateUserData()
 
         if (type == Channel::Type::Twitch)
         {
+            // Limerino: fresh target - drop the previous card's sub-age base
+            // so a late extrasChanged() can't append onto stale text.
+            this->subageBaseText_.clear();
+
             // get followage and subage
             if (getSettings()->showUsercardFollowage ||
                 getSettings()->showUsercardSubage ||
@@ -4676,6 +4788,18 @@ void UserInfoPopup::updateUserData()
                                     subageInfo.totalSubMonths);
                             }
                             this->ui_.subageLabel->setText(subageText);
+
+                            // Limerino fork hook: GQL sub detail rides on
+                            // this row. Store the IVR base text separately so
+                            // late GQL extras can re-apply (extrasChanged)
+                            // without double-appending.
+                            this->subageBaseText_ = subageText;
+                            if (auto *extras = this->findChild<
+                                    limerino::LimerinoUserCardWidget *>())
+                            {
+                                this->ui_.subageLabel->setText(
+                                    subageText + extras->subscriptionSuffix());
+                            }
                             this->updateUsercardStatusIcons();
                             this->ui_.subageRow->setVisible(true);
                             this->ui_.subageIcon->setVisible(true);
@@ -4691,6 +4815,13 @@ void UserInfoPopup::updateUserData()
                                     subageInfo.totalSubMonths);
                             }
                             this->ui_.subageLabel->setText(subageText);
+                            this->subageBaseText_ = subageText;
+                            if (auto *extras = this->findChild<
+                                    limerino::LimerinoUserCardWidget *>())
+                            {
+                                this->ui_.subageLabel->setText(
+                                    subageText + extras->subscriptionSuffix());
+                            }
                             this->updateUsercardStatusIcons();
                             this->ui_.subageRow->setVisible(true);
                             this->ui_.subageIcon->setVisible(true);
@@ -5535,6 +5666,18 @@ QString UserInfoPopup::showProfilePictureContextMenu()
 
     menu->addAction("Copy a&vatar link", this, [avatarUrl] {
         crossPlatformCopy(avatarUrl);
+    });
+
+    // Limerino fork hooks: 7tv role information
+    // Editors of the usercard target (userId_), not the
+    // split channel's broadcaster (roomId).
+    menu->addAction("View user editors (7TV)", this, [this] {
+        LimerinoCommands::showSeventvUserEditors(this->userId_,
+                                                 this->userName_,
+                                                 this->underlyingChannel_);
+    });
+    menu->addAction("View editor-in-channels (7TV)", this, [this] {
+        LimerinoCommands::showSeventvUserEditorIn(this->userName_);
     });
 
     auto loginName = this->userName_.toLower();

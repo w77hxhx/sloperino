@@ -164,6 +164,14 @@ public:
 
     std::vector<std::pair<QString, QVariant>> availableThemes() const;
 
+    // Limerino: rescan the Themes directory for custom theme files.
+    // Idempotent; the theme creator calls this after installing a generated
+    // theme so it is selectable in the same session.
+    void rescanCustomThemes(const Paths &paths)
+    {
+        this->loadAvailableThemes(paths);
+    }
+
     pajlada::Signals::NoArgSignal updated;
 
     QStringSetting themeName{"/appearance/theme/name", "Dark"};

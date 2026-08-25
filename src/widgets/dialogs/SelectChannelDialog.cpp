@@ -6,6 +6,7 @@
 
 #include "Application.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
+#include "limerino/PubSubEventsChannel.hpp"
 #include "providers/kick/KickChatServer.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
@@ -303,6 +304,25 @@ SelectChannelDialog::SelectChannelDialog(QWidget *parent)
 
     ui.automod->installEventFilter(&this->tabFilter_);
 
+    // Events (Limerino)
+    ui.events = new AutoCheckedRadioButton("Events");
+    layout->addWidget(ui.events);
+
+    ui.eventsLabel = new QLabel(
+        "Shows live events from your Limerino extra-features sign-in "
+        "(moderation, predictions, channel points, raids)");
+    ui.eventsLabel->setVisible(false);
+    ui.eventsLabel->setWordWrap(true);
+    layout->addWidget(ui.eventsLabel);
+
+    QObject::connect(ui.events, &AutoCheckedRadioButton::toggled, this,
+                     [this](bool enabled) {
+                         auto &ui = this->ui_;
+                         ui.eventsLabel->setVisible(enabled);
+                     });
+
+    ui.events->installEventFilter(&this->tabFilter_);
+
     // Firehose
     ui.firehose = new AutoCheckedRadioButton("Firehose");
     layout->addWidget(ui.firehose);
@@ -578,6 +598,19 @@ void SelectChannelDialog::setSelectedChannel(
             this->ui_.automod->setFocus();
         }
         break;
+        case Channel::Type::Misc: {
+            // Limerino: the /events channel is a Misc special channel.
+            this->ui_.channelAnonymous->setChecked(false);
+            if (channel->getName() == limerino::pubSubEventsChannelName())
+            {
+                this->ui_.events->setFocus();
+            }
+            else
+            {
+                this->ui_.channel->setChecked(true);
+            }
+        }
+        break;
         case Channel::Type::TwitchFirehose: {
             this->ui_.channelAnonymous->setChecked(false);
             this->ui_.firehose->setFocus();
@@ -723,6 +756,11 @@ IndirectChannel SelectChannelDialog::getSelectedChannel() const
     if (this->ui_.automod->isChecked())
     {
         return getApp()->getTwitch()->getAutomodChannel();
+    }
+
+    if (this->ui_.events->isChecked())
+    {
+        return limerino::pubSubEventsChannel();
     }
 
     if (this->ui_.firehose->isChecked())

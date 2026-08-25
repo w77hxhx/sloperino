@@ -17,12 +17,16 @@
 #include "controllers/hotkeys/HotkeyController.hpp"
 #include "controllers/notifications/NotificationController.hpp"
 #include "providers/kick/KickChannel.hpp"
+#include "providers/limerino/commands/Follows.hpp"
+#include "providers/limerino/highlights/HighlightGroupMenu.hpp"
+#include "providers/limerino/LimerinoAuth.hpp"
 #include "providers/moltorino/MoltorinoAuth.hpp"
 #include "providers/twitch/api/Helix.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "providers/youtube/YouTubeChannel.hpp"
+#include "limerino/PubSubEventsChannel.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Theme.hpp"
@@ -35,6 +39,9 @@
 #include "widgets/buttons/FollowButton.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
+#include "widgets/dialogs/limerino/LimerinoEventFilterDialog.hpp"
+#include "widgets/dialogs/limerino/LimerinoNukeDialog.hpp"
+#include "widgets/dialogs/limerino/LimerinoPredictionDialog.hpp"
 #include "widgets/dialogs/SettingsDialog.hpp"
 #include "widgets/dialogs/UserRolesDialog.hpp"
 #include "widgets/helper/CommonTexts.hpp"
@@ -571,6 +578,21 @@ void SplitHeader::initializeLayout()
                          this->dropdownButton_->setMenu(this->createMainMenu());
                      });
 
+    // Limerino fork: channel-points icon (opens the prediction manager),
+    // placed between the moderation sword and the chatter list buttons.
+    this->pointsButton_ = new SvgButton(
+        {
+            .dark = ":/buttons/channelPoints-darkMode.svg",
+            .light = ":/buttons/channelPoints-lightMode.svg",
+        },
+        this, {5, 5});
+    this->pointsButton_->setToolTip(QStringLiteral("Limerino Actions"));
+    this->pointsButton_->hide();
+    QObject::connect(this->pointsButton_, &Button::leftClicked, this, [this]() {
+        auto *dialog = new limerino::LimerinoPredictionDialog(this->split_);
+        dialog->show();
+    });
+
     auto *layout = makeLayout<QHBoxLayout>({
         // follow
         this->followButton_,
@@ -597,6 +619,8 @@ void SplitHeader::initializeLayout()
         }),
         // moderator
         this->moderationButton_,
+        // channel points (Limerino predictions)
+        this->pointsButton_,
         // chatter list
         this->chattersButton_,
         this->sendTargetButton_,
@@ -736,6 +760,79 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
     menu->addAction(u"Set filters…"_s,
                     h->getDisplaySequence(HotkeyCategory::Split, "pickFilters"),
                     this->split_, &Split::setFiltersDialog);
+
+    // Limerino fork hook: follow-related actions. Followers/following lists
+    // are only readable for the current user's own channel (and need
+    // extra-features auth); visibility is refreshed in aboutToShow.
+    menu->addAction("Follow channel", this->split_, [this] {
+        LimerinoCommands::followChannelFromMenu(
+            this->split_->getSelectedChannel());
+    });
+    auto *viewFollowers = menu->addAction("View followers");
+    auto *viewFollowing = menu->addAction("View following");
+    QObject::connect(viewFollowers, &QAction::triggered, this, [this] {
+        LimerinoCommands::openFollowerListFor(this->split_);
+    });
+    QObject::connect(viewFollowing, &QAction::triggered, this, [this] {
+        LimerinoCommands::openFollowingListFor(this->split_);
+    });
+    QObject::connect(menu.get(), &QMenu::aboutToShow, this,
+                     [viewFollowers, viewFollowing, this] {
+                         const auto selected =
+                             this->split_->getSelectedChannel();
+                         const auto *twitch =
+                             dynamic_cast<TwitchChannel *>(selected.get());
+                         bool show = false;
+                         if (twitch != nullptr)
+                         {
+                             const auto self =
+                                 getApp()->getAccounts()->twitch.getCurrent();
+                             const bool own =
+                                 self && !self->isAnon() &&
+                                 self->getUserName().compare(
+                                     twitch->getName(),
+                                     Qt::CaseInsensitive) == 0;
+                             QString authErr;
+                             const bool hasAuth =
+                                 LimerinoAuth::resolveReadToken(&authErr)
+                                     .hasToken();
+                             show = own && hasAuth;
+                         }
+                         viewFollowers->setVisible(show);
+                         viewFollowing->setVisible(show);
+                     });
+    menu->addSeparator();
+
+    // Limerino fork hook: show which highlight groups apply in this channel.
+    if (selected && (selected->getType() == Channel::Type::Twitch ||
+                     selected->getType() == Channel::Type::Kick))
+    {
+        limerino::buildHighlightGroupsMenuEntry(menu.get(), *selected, this);
+    }
+
+    // Limerino fork hook: moderator nuke dialog, mod-only.
+    if (selected && selected->hasModRights() &&
+        selected->isTwitchOrKickChannel())
+    {
+        menu->addAction(QStringLiteral("Nuke messages..."), this,
+                        [this, selected] {
+                            auto *dialog =
+                                new limerino::LimerinoNukeDialog(this->split_,
+                                                                 selected);
+                            dialog->show();
+                        });
+        menu->addSeparator();
+    }
+
+    // Limerino fork hook: per-event-type filter on the Hermes events channel
+    if (selected && selected->getName() == limerino::pubSubEventsChannelName())
+    {
+        menu->addAction("Filter events...", this->split_, [this] {
+            auto *dialog = new limerino::LimerinoEventFilterDialog(this);
+            dialog->show();
+        });
+        menu->addSeparator();
+    }
 
     if (twitchChannel)
     {
@@ -1428,6 +1525,10 @@ void SplitHeader::scaleChangedEvent(float scale)
     this->dropdownButton_->setFixedWidth(w);
     this->followButton_->setFixedWidth(w);
     this->moderationButton_->setFixedWidth(w);
+    if (this->pointsButton_)
+    {
+        this->pointsButton_->setFixedWidth(w);
+    }
     this->chattersButton_->setFixedWidth(w);
     this->youtubeRefreshButton_->setFixedWidth(w);
 
@@ -1762,6 +1863,23 @@ void SplitHeader::updateIcons()
             this->moderationButton_->hide();
         }
 
+        // Limerino fork: the predictions window is for everyone (its mod
+        // features are gated inside the dialog).
+        if (channel->isTwitchChannel())
+        {
+            if (this->pointsButton_)
+            {
+                this->pointsButton_->show();
+            }
+        }
+        else
+        {
+            if (this->pointsButton_)
+            {
+                this->pointsButton_->hide();
+            }
+        }
+
         if (channel->hasModRights() && channel->isTwitchChannel())
         {
             this->chattersButton_->show();
@@ -1775,6 +1893,10 @@ void SplitHeader::updateIcons()
     {
         this->followButton_->hide();
         this->moderationButton_->hide();
+        if (this->pointsButton_)
+        {
+            this->pointsButton_->hide();
+        }
         this->chattersButton_->hide();
     }
 }

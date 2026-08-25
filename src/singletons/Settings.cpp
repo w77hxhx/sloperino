@@ -18,10 +18,14 @@
 #include "controllers/nicknames/Nickname.hpp"
 #include "debug/Benchmark.hpp"
 #include "pajlada/settings/signalargs.hpp"
+#include "providers/limerino/autoactions/LimerinoAutoActionController.hpp"
+#include "providers/limerino/highlights/HighlightGroup.hpp"
+#include "providers/limerino/highlights/HighlightGroupController.hpp"
 #include "util/Backup.hpp"
 #include "util/WindowsHelper.hpp"
 
 #include <pajlada/signals/scoped-connection.hpp>
+#include <QCoreApplication>
 #include <QStringList>
 #include <rapidjson/pointer.h>
 
@@ -483,6 +487,8 @@ Settings::Settings(const Modes &modes, const Args &args,
                            this->highlightedUsers);
     initializeSignalVector(this->signalHolder, this->highlightedBadgesSetting,
                            this->highlightedBadges);
+    initializeSignalVector(this->signalHolder, this->highlightGroupsSetting,
+                           this->highlightGroups);
     initializeSignalVector(this->signalHolder, this->blacklistedUsersSetting,
                            this->blacklistedUsers);
     initializeSignalVector(this->signalHolder, this->ignoredMessagesSetting,
@@ -504,6 +510,20 @@ Settings::Settings(const Modes &modes, const Args &args,
                            this->loggedChannels);
 
     instance_ = this;
+
+    // Limerino: ensure the Default highlight group exists.
+    // Settings is not a QObject, so the controller is parented to
+    // QApplication to give its lifetime a deterministic owner.
+    const auto groupController =
+        new HighlightGroupController(*this, QCoreApplication::instance());
+
+    // Limerino: per-channel cached resolver for auto-action rules (batch N5).
+    const auto autoActionsController =
+        new limerino::LimerinoAutoActionController(
+            *this, QCoreApplication::instance());
+
+    (void)groupController;
+    (void)autoActionsController;
 
 #ifdef USEWINSDK
     this->autorun = isRegisteredForStartup();

@@ -31,7 +31,9 @@
 #include "providers/kick/KickChatServer.hpp"
 #include "providers/links/LinkInfo.hpp"
 #include "providers/links/LinkResolver.hpp"
+#include "providers/limerino/pubsub/HermesUserTopics.hpp"
 #include "providers/translation/Translator.hpp"
+#include "limerino/PubSubEventsChannel.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
@@ -3858,6 +3860,22 @@ void ChannelView::addMessageContextMenuItems(QMenu *menu,
         crossPlatformCopy(copyString);
     });
 
+    // Limerino fork hook: /events messages retain compact raw JSON
+    if (this->channel_ &&
+        this->channel_->getName() == limerino::pubSubEventsChannelName())
+    {
+        const QString messageId = layout->getMessage()->id;
+        if (auto compact = limerino::rawEventPayloadCompact(messageId))
+        {
+            menu->addAction("Copy raw &event", [compact = *compact] {
+                const QByteArray pretty =
+                    QJsonDocument::fromJson(compact.toUtf8())
+                        .toJson(QJsonDocument::Indented);
+                crossPlatformCopy(QString::fromUtf8(pretty));
+            });
+        }
+    }
+
     auto contextMessage = layout->getMessagePtr();
     if (contextMessage->translatedFrom != nullptr)
     {
@@ -4568,6 +4586,12 @@ void ChannelView::handleLinkClick(QMouseEvent *event, const Link &link,
             {
                 channel->acknowledgeChatWarning();
             }
+        }
+        break;
+
+        case Link::ChatWarnAcknowledge: {
+            // Limerino fork hook: act on our chatrooms-user-v1 warning link
+            limerino::acknowledgeWarningManually(link.value);
         }
         break;
 

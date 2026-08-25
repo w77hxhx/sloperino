@@ -9,6 +9,8 @@
 #include "common/QLogging.hpp"
 #include "controllers/commands/CommandController.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
+#include "limerino/LimerinoAutoActionsPage.hpp"
+#include "limerino/LimerinoPage.hpp"
 #include "singletons/Settings.hpp"
 #include "util/LayoutCreator.hpp"
 #include "widgets/BaseWindow.hpp"
@@ -258,6 +260,7 @@ void SettingsDialog::addTabs()
     this->addTab([]{return new LeafyrinoPage;},        "Leafyrino",      ":/settings/leafyrino.png", SettingsTabId::Leafyrino);
     this->addTab([]{return new MoltorinoPage;},        "Moltorino",      ":/settings/moltorino.svg", SettingsTabId::Moltorino);
     this->addTab([]{return new TechnorinoPage;},       "Technorino",     technorinoIconPath, SettingsTabId::Technorino);
+    this->addTab([]{return new LimerinoPage;},         "Limerino",       ":/icon.png");
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new AccountsPage;},         "Accounts",       ":/settings/accounts.svg", SettingsTabId::Accounts);
     this->addTab([]{return new NicknamesPage;},        "Nicknames",      ":/settings/accounts.svg");
@@ -266,6 +269,8 @@ void SettingsDialog::addTabs()
     this->addTab([]{return new HighlightingPage;},     "Highlights",     ":/settings/notifications.svg");
     this->addTab([]{return new IgnoresPage;},          "Ignores",        ":/settings/ignore.svg");
     this->addTab([]{return new FiltersPage;},          "Filters",        ":/settings/filters.svg");
+    // Limerino: Auto Actions is its own tab; rules dispatch chat commands.
+    this->addTab([]{return new LimerinoAutoActionsPage;}, "Auto Actions", ":/settings/commands.svg");
     this->ui_.tabContainer->addSpacing(16);
     this->addTab([]{return new KeyboardSettingsPage;}, "Hotkeys",        ":/settings/keybinds.svg");
     this->addTab([]{return new ModerationPage;},       "Moderation",     ":/settings/moderation.svg", SettingsTabId::Moderation);

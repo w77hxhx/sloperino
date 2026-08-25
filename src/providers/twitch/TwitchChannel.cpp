@@ -32,6 +32,8 @@
 #include "providers/homies/HomiesBadges.hpp"
 #include "providers/moltorino/MoltorinoAuth.hpp"
 #include "providers/moltorino/MoltorinoSupporterBadges.hpp"
+#include "providers/limerino/pubsub/HermesChannelTopics.hpp"
+#include "providers/limerino/pubsub/HermesUserTopics.hpp"
 #include "providers/recentmessages/Api.hpp"
 #include "providers/seventv/eventapi/Dispatch.hpp"
 #include "providers/seventv/SeventvAPI.hpp"
@@ -3362,6 +3364,14 @@ void TwitchChannel::refreshPubSub()
 
     getApp()->getTwitchPubSub()->listenToChannelPointRewards(roomId);
     getApp()->getTwitchPubSub()->listenToPinnedChatUpdates(roomId);
+
+    // Limerino fork hook: Hermes (live-updates PubSub) channel topics
+    limerino::ensureHermesChannelTopics(*this);
+
+    // Limerino fork hook: Hermes (live-updates PubSub) *user* topics (P2).
+    // refreshPubSub also re-fires on userStateChanged, so an account switch
+    // re-drives these automatically.
+    limerino::ensureHermesUserTopics();
 
     if (getSettings()->enablePinnedMessages)
     {

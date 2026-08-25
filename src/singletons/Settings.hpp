@@ -23,6 +23,7 @@
 #include "controllers/nicknames/Nickname.hpp"
 #include "controllers/sound/ISoundController.hpp"
 #include "providers/emoji/EmojiStyle.hpp"
+#include "providers/limerino/highlights/HighlightGroup.hpp"
 #include "singletons/Toasts.hpp"
 #include "util/RapidJsonSerializeQString.hpp"  // IWYU pragma: keep
 #include "util/serialize/List.hpp"             // IWYU pragma: keep
@@ -228,6 +229,10 @@ public:
     ~Settings();
 
     static Settings &instance();
+    static bool hasInstance() noexcept
+    {
+        return instance_ != nullptr;
+    }
 
     /// Request the settings to be saved to file
     ///
@@ -1104,6 +1109,53 @@ public:
 
     BoolSetting xChatterino7NoHttp2{"/x-chatterino7/no-http2", false};
 
+    // Limerino: secondary extra-features auth store (JSON array of accounts).
+    // Separate from the primary account store (/accounts/uid<id>/).
+    QStringSetting limerinoAuthAccounts{"/limerino/auth/accounts", "[]"};
+
+    // Limerino: paste host used by ported commands (/listfollows, /modlist, ...).
+    QStringSetting limerinoPasteHost{"/limerino/paste/host",
+                                     "https://h.potat.app"};
+
+    // Limerino: last 5 prediction drafts created through the prediction
+    // window (JSON).
+    QStringSetting limerinoPredictionHistory{"/limerino/predictions/history",
+                                             "[]"};
+
+    // Limerino: event types hidden in the /events channel.
+    ChatterinoSetting<QStringList> limerinoPubSubHiddenEventTypes{
+        "/limerino/pubsub/hiddenEventTypes", {}};
+
+    // Limerino: suppress duplicate Hermes notifications in /events (B4.1).
+    // Off = show every wire notification (debug "why did my event vanish").
+    BoolSetting limerinoPubSubDedupeEnabled{
+        "/limerino/pubsub/dedupeEnabled", true};
+
+    // Limerino: auto-acknowledge chat warnings received over
+    // chatrooms-user-v1.
+    BoolSetting limerinoAutoAcknowledgeChatWarnings{
+        "/limerino/pubsub/autoAcknowledgeChatWarnings", false};
+
+    // Limerino: named nuke presets (matchers + lookback + action). JSON array.
+    QStringSetting limerinoNukePresets{"/limerino/nukePresets", "[]"};
+
+    // Limerino: auto-action rules (batch N5). JSON array of rule objects.
+    QStringSetting limerinoAutoActions{"/limerino/autoActions", "[]"};
+
+    // Limerino: Appearance chat-colour UI (E7). Recents = last custom colours
+    QStringSetting limerinoChatColorRecents{
+        "/limerino/appearance/chatColorRecents", "[]"};
+    QStringSetting limerinoChatColorLast{"/limerino/appearance/chatColorLast",
+                                         ""};
+
+    // Limerino: MRU of theme filenames created/saved in the theme builder.
+    QStringSetting limerinoThemeRecents{"/limerino/theme/recents", "[]"};
+
+    // Limerino: crossban channel presets (JSON array) + last-selected preset.
+    QStringSetting limerinoCrossbanPresets{"/limerino/crossban/presets", "[]"};
+    QStringSetting limerinoCrossbanLastPresetId{
+        "/limerino/crossban/lastPresetId", ""};
+
     /// Moltorino Settings
     BoolSetting enablePinnedMessages{"/moltorino/pinnedMessages/enabled", true};
     BoolSetting alwaysExpandPinnedMessages{
@@ -1303,6 +1355,8 @@ private:
         "/highlighting/users"};
     ChatterinoSetting<std::vector<HighlightBadge>> highlightedBadgesSetting = {
         "/highlighting/badges"};
+    ChatterinoSetting<std::vector<HighlightGroup>> highlightGroupsSetting = {
+        "/highlighting/groups"};
     ChatterinoSetting<std::vector<HighlightBlacklistUser>>
         blacklistedUsersSetting = {"/highlighting/blacklist"};
     ChatterinoSetting<std::vector<IgnorePhrase>> ignoredMessagesSetting = {
@@ -1337,6 +1391,7 @@ public:
     SignalVector<HighlightPhrase> highlightedMessages;
     SignalVector<HighlightPhrase> highlightedUsers;
     SignalVector<HighlightBadge> highlightedBadges;
+    SignalVector<HighlightGroup> highlightGroups;
     SignalVector<HighlightBlacklistUser> blacklistedUsers;
     SignalVector<IgnorePhrase> ignoredMessages;
     SignalVector<FilterRecordPtr> filterRecords;

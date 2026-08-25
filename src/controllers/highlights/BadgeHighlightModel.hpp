@@ -24,7 +24,9 @@ public:
         FlashTaskbar = 2,
         PlaySound = 3,
         SoundPath = 4,
-        Color = 5
+        Color = 5,
+        Group = 6,  // Limerino: per-channel highlight group
+        COUNT,      // keep this as last member of enum
     };
 
 protected:
@@ -33,6 +35,11 @@ protected:
 
     void getRowFromItem(const HighlightBadge &item,
                         std::vector<QStandardItem *> &row) override;
+
+private:
+    // Limerino: refresh Group-cell option lists when the group set changes.
+    void refreshGroupCells();
+    pajlada::Signals::SignalHolder groupRefreshHolder_;
 };
 
 }  // namespace chatterino

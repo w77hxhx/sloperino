@@ -741,6 +741,8 @@ set(SOURCE_FILES
         util/SampleData.hpp
         util/SelfCheck.cpp
         util/SelfCheck.hpp
+        util/SemanticColors.cpp
+        util/SemanticColors.hpp
         util/SharedPtrElementLess.hpp
         util/SignalListener.hpp
         util/StreamLink.cpp
@@ -1037,6 +1039,146 @@ set(SOURCE_FILES
         widgets/settingspages/SloperinoPage.hpp
         widgets/settingspages/TechnorinoPage.cpp
         widgets/settingspages/TechnorinoPage.hpp
+
+        # Limerino fork files
+        limerino/LimerinoFeatures.cpp
+        limerino/LimerinoFeatures.hpp
+        limerino/LimerinoPage.cpp
+        limerino/LimerinoPage.hpp
+        limerino/LimerinoAutoActionsPage.cpp
+        limerino/LimerinoAutoActionsPage.hpp
+        limerino/LimerinoWikiWidget.cpp
+        limerino/LimerinoWikiWidget.hpp
+        limerino/PubSubEventsChannel.cpp
+        limerino/PubSubEventsChannel.hpp
+        providers/limerino/LimerinoApi.cpp
+        providers/limerino/LimerinoApi.hpp
+        providers/limerino/LimerinoAuth.cpp
+        providers/limerino/LimerinoAuth.hpp
+        providers/limerino/LimerinoErrors.cpp
+        providers/limerino/LimerinoErrors.hpp
+        providers/limerino/LimerinoRateLimiter.cpp
+        providers/limerino/LimerinoRateLimiter.hpp
+        providers/limerino/gql/LimerinoGql.cpp
+        providers/limerino/gql/LimerinoGql.hpp
+        providers/limerino/gql/PersistedQueries.cpp
+        providers/limerino/gql/PersistedQueries.hpp
+        providers/limerino/gql/LimerinoUserCardExtras.cpp
+        providers/limerino/gql/LimerinoUserCardExtras.hpp
+        providers/limerino/commands/ChatUtils.cpp
+        providers/limerino/commands/ChatUtils.hpp
+        providers/limerino/commands/Follows.cpp
+        providers/limerino/commands/Follows.hpp
+        providers/limerino/commands/Identity.cpp
+        providers/limerino/commands/Identity.hpp
+        providers/limerino/commands/LimerinoCommands.cpp
+        providers/limerino/commands/LimerinoCommands.hpp
+        providers/limerino/commands/Moderation.cpp
+        providers/limerino/commands/Moderation.hpp
+        providers/limerino/commands/NukeCommands.cpp
+        providers/limerino/commands/NukeCommands.hpp
+        providers/limerino/commands/Pins.cpp
+        providers/limerino/commands/Pins.hpp
+        providers/limerino/commands/Roles.cpp
+        providers/limerino/commands/Roles.hpp
+        providers/limerino/crossban/CrossbanComments.cpp
+        providers/limerino/crossban/CrossbanComments.hpp
+        providers/limerino/crossban/CrossbanPresets.cpp
+        providers/limerino/crossban/CrossbanPresets.hpp
+        providers/limerino/crossban/CrossbanStrike.cpp
+        providers/limerino/crossban/CrossbanStrike.hpp
+        providers/limerino/highlights/HighlightGroup.cpp
+        providers/limerino/highlights/HighlightGroup.hpp
+        providers/limerino/highlights/HighlightGroupCellDelegate.cpp
+        providers/limerino/highlights/HighlightGroupCellDelegate.hpp
+        providers/limerino/highlights/HighlightGroupChannelKey.cpp
+        providers/limerino/highlights/HighlightGroupChannelKey.hpp
+        providers/limerino/highlights/HighlightGroupChannels.cpp
+        providers/limerino/highlights/HighlightGroupChannels.hpp
+        providers/limerino/highlights/HighlightGroupController.cpp
+        providers/limerino/highlights/HighlightGroupController.hpp
+        providers/limerino/highlights/HighlightGroupDialog.cpp
+        providers/limerino/highlights/HighlightGroupDialog.hpp
+        providers/limerino/highlights/HighlightGroupMenu.cpp
+        providers/limerino/highlights/HighlightGroupMenu.hpp
+        providers/limerino/matcher/LimerinoMatcher.cpp
+        providers/limerino/matcher/LimerinoMatcher.hpp
+        providers/limerino/matcher/LimerinoMatcherValidation.cpp
+        providers/limerino/matcher/LimerinoMatcherValidation.hpp
+        providers/limerino/nuke/NukeEngine.cpp
+        providers/limerino/nuke/NukeEngine.hpp
+        providers/limerino/nuke/NukeExecutor.cpp
+        providers/limerino/nuke/NukeExecutor.hpp
+        providers/limerino/nuke/NukePlan.cpp
+        providers/limerino/nuke/NukePlan.hpp
+        providers/limerino/nuke/NukePreset.cpp
+        providers/limerino/nuke/NukePreset.hpp
+        providers/limerino/nuke/NukePresetsStore.cpp
+        providers/limerino/nuke/NukePresetsStore.hpp
+        providers/limerino/pubsub/HermesChannelTopics.cpp
+        providers/limerino/pubsub/HermesChannelTopics.hpp
+        providers/limerino/pubsub/HermesClient.cpp
+        providers/limerino/pubsub/HermesClient.hpp
+        providers/limerino/pubsub/HermesManager.cpp
+        providers/limerino/pubsub/HermesManager.hpp
+        providers/limerino/pubsub/HermesMessages.cpp
+        providers/limerino/pubsub/HermesMessages.hpp
+        providers/limerino/pubsub/HermesUserTopics.cpp
+        providers/limerino/pubsub/HermesUserTopics.hpp
+        providers/limerino/pubsub/LimerinoChannelNameResolver.cpp
+        providers/limerino/pubsub/LimerinoChannelNameResolver.hpp
+        providers/limerino/pubsub/LimerinoPubSubController.cpp
+        providers/limerino/pubsub/LimerinoPubSubController.hpp
+        providers/limerino/pubsub/LimerinoPubSubEventDedupe.cpp
+        providers/limerino/pubsub/LimerinoPubSubEventDedupe.hpp
+        providers/limerino/pubsub/LimerinoPubSubTopics.cpp
+        providers/limerino/pubsub/LimerinoPubSubTopics.hpp
+        providers/limerino/theme/LimerinoThemeGenerator.cpp
+        providers/limerino/theme/LimerinoThemeGenerator.hpp
+        providers/limerino/theme/LimerinoThemeSeed.cpp
+        providers/limerino/theme/LimerinoThemeSeed.hpp
+        providers/limerino/theme/LimerinoThemeStore.cpp
+        providers/limerino/theme/LimerinoThemeStore.hpp
+        providers/limerino/appearance/LimerinoChatColor.cpp
+        providers/limerino/appearance/LimerinoChatColor.hpp
+        providers/limerino/autoactions/AutoActionPlaceholders.cpp
+        providers/limerino/autoactions/AutoActionPlaceholders.hpp
+        providers/limerino/autoactions/LimerinoAutoAction.cpp
+        providers/limerino/autoactions/LimerinoAutoAction.hpp
+        providers/limerino/autoactions/LimerinoAutoActionController.cpp
+        providers/limerino/autoactions/LimerinoAutoActionController.hpp
+        providers/limerino/autoactions/LimerinoAutoActionRuntime.cpp
+        providers/limerino/autoactions/LimerinoAutoActionRuntime.hpp
+        providers/limerino/autoactions/LimerinoAutoActionStore.cpp
+        providers/limerino/autoactions/LimerinoAutoActionStore.hpp
+        widgets/dialogs/LimerinoAuthDialog.cpp
+        widgets/dialogs/LimerinoAuthDialog.hpp
+        widgets/dialogs/limerino/LimerinoAppearanceWidget.cpp
+        widgets/dialogs/limerino/LimerinoAppearanceWidget.hpp
+        widgets/dialogs/limerino/LimerinoAutoActionEditor.cpp
+        widgets/dialogs/limerino/LimerinoAutoActionEditor.hpp
+        widgets/dialogs/limerino/LimerinoColorField.cpp
+        widgets/dialogs/limerino/LimerinoColorField.hpp
+        widgets/dialogs/limerino/LimerinoCrossbanDialog.cpp
+        widgets/dialogs/limerino/LimerinoCrossbanDialog.hpp
+        widgets/dialogs/limerino/LimerinoEventFilterDialog.cpp
+        widgets/dialogs/limerino/LimerinoEventFilterDialog.hpp
+        widgets/dialogs/limerino/LimerinoModLogsDialog.cpp
+        widgets/dialogs/limerino/LimerinoModLogsDialog.hpp
+        widgets/dialogs/limerino/LimerinoNukeDialog.cpp
+        widgets/dialogs/limerino/LimerinoNukeDialog.hpp
+        widgets/dialogs/limerino/LimerinoPinView.cpp
+        widgets/dialogs/limerino/LimerinoPinView.hpp
+        widgets/dialogs/limerino/LimerinoPredictionDialog.cpp
+        widgets/dialogs/limerino/LimerinoPredictionDialog.hpp
+        widgets/dialogs/limerino/LimerinoResultDialog.cpp
+        widgets/dialogs/limerino/LimerinoResultDialog.hpp
+        widgets/dialogs/limerino/LimerinoResultList.cpp
+        widgets/dialogs/limerino/LimerinoResultList.hpp
+        widgets/dialogs/limerino/LimerinoThemeDialog.cpp
+        widgets/dialogs/limerino/LimerinoThemeDialog.hpp
+        widgets/dialogs/limerino/LimerinoUserCardWidget.cpp
+        widgets/dialogs/limerino/LimerinoUserCardWidget.hpp
 
         widgets/splits/ClosedSplits.cpp
         widgets/splits/ClosedSplits.hpp

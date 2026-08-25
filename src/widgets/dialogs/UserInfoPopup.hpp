@@ -283,6 +283,10 @@ private:
     // Pinned status is tracked in DraggablePopup::isPinned_.
     const bool closeAutomatically_;
 
+    // Limerino: IVR sub-age text before the GQL-extras suffix is appended, so
+    // late-arriving extras can be re-applied without double-appending.
+    QString subageBaseText_;
+
     pajlada::Signals::SignalHolder signalHolder_;
 
     class TimeoutWidget;

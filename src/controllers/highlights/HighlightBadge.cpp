@@ -15,18 +15,19 @@ bool HighlightBadge::operator==(const HighlightBadge &other) const
 {
     return std::tie(this->badgeName_, this->displayName_, this->showInMentions_,
                     this->hasSound_, this->hasAlert_, this->soundUrl_,
-                    this->color_) ==
+                    this->color_, this->groupId_) ==
            std::tie(other.badgeName_, other.displayName_, other.showInMentions_,
                     other.hasSound_, other.hasAlert_, other.soundUrl_,
-                    other.color_);
+                    other.color_, other.groupId_);
 }
 
 HighlightBadge::HighlightBadge(const QString &badgeName,
                                const QString &displayName, bool showInMentions,
                                bool hasAlert, bool hasSound,
-                               const QString &soundUrl, QColor color)
+                               const QString &soundUrl, QColor color,
+                               const QUuid &groupId)
     : HighlightBadge(badgeName, displayName, showInMentions, hasAlert, hasSound,
-                     soundUrl, std::make_shared<QColor>(color))
+                     soundUrl, std::make_shared<QColor>(color), groupId)
 {
 }
 
@@ -34,7 +35,8 @@ HighlightBadge::HighlightBadge(const QString &badgeName,
                                const QString &displayName, bool showInMentions,
                                bool hasAlert, bool hasSound,
                                const QString &soundUrl,
-                               std::shared_ptr<QColor> color)
+                               std::shared_ptr<QColor> color,
+                               const QUuid &groupId)
     : badgeName_(badgeName)
     , displayName_(displayName)
     , showInMentions_(showInMentions)
@@ -42,6 +44,7 @@ HighlightBadge::HighlightBadge(const QString &badgeName,
     , hasSound_(hasSound)
     , soundUrl_(soundUrl)
     , color_(color)
+    , groupId_(groupId)
 {
     this->hasVersions_ = badgeName.contains("/");
     this->isMulti_ = badgeName.contains(",");
@@ -120,6 +123,11 @@ const QUrl &HighlightBadge::getSoundUrl() const
 const std::shared_ptr<QColor> HighlightBadge::getColor() const
 {
     return this->color_;
+}
+
+const QUuid &HighlightBadge::groupId() const
+{
+    return this->groupId_;
 }
 
 }  // namespace chatterino

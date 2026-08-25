@@ -123,6 +123,7 @@ void setLinkOn(MessageElement *el, const Link &link)
         case Link::UserInfo:
         case Link::UserWhisper:
         case Link::ReplyToMessage:
+        case Link::ChatWarnAcknowledge:
             break;
 
         case Link::None:

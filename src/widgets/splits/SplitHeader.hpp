@@ -87,6 +87,7 @@ private:
     SvgButton *followButton_{};
 
     SvgButton *moderationButton_{};
+    SvgButton *pointsButton_{};  // Limerino: channel points / predictions
     SvgButton *chattersButton_{};
     SvgButton *youtubeRefreshButton_{};
     LabelButton *sendTargetButton_{};
