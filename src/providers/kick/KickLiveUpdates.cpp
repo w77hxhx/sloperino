@@ -41,6 +41,36 @@ bool stripSuffix(std::string_view &str, std::string_view suffix)
     return false;
 }
 
+bool stripAppPrefix(std::string_view &str)
+{
+    if (str.starts_with("App\\Events\\"))
+    {
+        str = str.substr(12);
+        return true;
+    }
+    if (str.starts_with("App\\Events/"))
+    {
+        str = str.substr(11);
+        return true;
+    }
+    if (str.starts_with("App/Events/"))
+    {
+        str = str.substr(11);
+        return true;
+    }
+    if (str.starts_with("App.Events."))
+    {
+        str = str.substr(11);
+        return true;
+    }
+    if (str.starts_with("App\\"))
+    {
+        str = str.substr(4);
+        return true;
+    }
+    return false;
+}
+
 struct IDs {
     uint64_t roomID = 0;
     uint64_t channelID = 0;
@@ -49,9 +79,14 @@ struct IDs {
 IDs parseIDs(std::string_view channel)
 {
     bool isChannel = false;
-    if (stripPrefix(channel, "chatrooms.") || stripPrefix(channel, "chatroom_"))
+    if (stripPrefix(channel, "chatrooms.") ||
+        stripPrefix(channel, "chatrooms_") ||
+        stripPrefix(channel, "chatroom.") ||
+        stripPrefix(channel, "chatroom_") ||
+        stripPrefix(channel, "chat_"))
     {
         stripSuffix(channel, ".v2");
+        stripSuffix(channel, "_v2");
     }
     else if (stripPrefix(channel, "channel_") ||
              stripPrefix(channel, "channel.") ||
@@ -143,13 +178,23 @@ void KickLiveUpdatesClient::onMessageUi(const QByteArray &msg)
     auto rootObj = rootRef.toObject();
     auto event = rootObj["event"].toStringView();
 
-    auto dataStr = rootObj["data"].toStringView();
     BoostJsonValue data;
     boost::json::value dataJv;
-    if (!dataStr.empty() && dataStr != "{}")
+    if (rootObj["data"].isObject())
     {
-        dataJv = boost::json::parse(dataStr, ec);
-        data = BoostJsonValue(dataJv);
+        data = rootObj["data"];
+    }
+    else
+    {
+        auto dataStr = rootObj["data"].toStringView();
+        if (!dataStr.empty() && dataStr != "{}")
+        {
+            dataJv = boost::json::parse(dataStr, ec);
+            if (!ec)
+            {
+                data = BoostJsonValue(dataJv);
+            }
+        }
     }
 
     if (event == "pusher:pong")
@@ -160,7 +205,7 @@ void KickLiveUpdatesClient::onMessageUi(const QByteArray &msg)
     {
         auto channel = rootObj["channel"].toStdString();
 
-        if (channel.starts_with("chatrooms.") && channel.ends_with(".v2"))
+        if (channel.starts_with("chatrooms.") || channel.starts_with("chatroom_"))
         {
             auto ids = parseIDs(channel);
             if (this->chatServer_ && ids.roomID > 0)
@@ -185,7 +230,7 @@ void KickLiveUpdatesClient::onMessageUi(const QByteArray &msg)
     }
     else
     {
-        bool isApp = stripPrefix(event, "App\\Events\\");
+        bool isApp = stripAppPrefix(event);
 
         auto channel = rootObj["channel"].toStringView();
         auto ids = parseIDs(channel);
@@ -198,7 +243,7 @@ void KickLiveUpdatesClient::onMessageUi(const QByteArray &msg)
                 qCWarning(chatterinoKick).noquote()
                     << "Unknown event" << event << "isApp:" << isApp
                     << "channel:" << rootObj["channel"].toStringView()
-                    << "data:" << dataStr;
+                    << "data:" << rootObj["data"].toQString();
             }
         }
     }

@@ -187,6 +187,7 @@ bool KickChatServer::onAppEvent(uint64_t roomID, uint64_t channelID,
     using Fn = void (KickChatServer::*)(KickChannel *, BoostJsonObject);
     auto fn = stringSwitch<Fn>(
         event, "ChatMessageEvent", &KickChatServer::onChatMessage,
+        "ChatMessageSentEvent", &KickChatServer::onChatMessage,
         "MessageDeletedEvent", &KickChatServer::onMessageDeleted,
         "ChatroomClearEvent", &KickChatServer::onChatroomClear,
         "UserBannedEvent", &KickChatServer::onUserBanned, "UserUnbannedEvent",
@@ -209,9 +210,7 @@ bool KickChatServer::onAppEvent(uint64_t roomID, uint64_t channelID,
         "LuckyUsersWhoGotGiftSubscriptionsEvent",
         &KickChatServer::onKnownIgnoredMessage,
 
-        "StreamHostedEvent", &KickChatServer::onKnownIgnoredMessage,
-
-        "ChatMessageSentEvent", &KickChatServer::onKnownIgnoredMessage);
+        "StreamHostedEvent", &KickChatServer::onKnownIgnoredMessage);
 
     if (!fn)
     {
@@ -223,7 +222,7 @@ bool KickChatServer::onAppEvent(uint64_t roomID, uint64_t channelID,
     {
         channel = this->findByRoomID(roomID);
     }
-    else
+    if (!channel && channelID != 0)
     {
         channel = this->findByChannelID(channelID);
     }
