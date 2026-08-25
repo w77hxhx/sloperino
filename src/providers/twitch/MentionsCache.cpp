@@ -43,15 +43,12 @@ MentionsCache::MentionsCache(ChannelPtr channel)
         this->saveCache();
     });
 
-    this->channel_->messageAppended.connect(
-        [this](auto message, auto) {
-            this->appendMessage(message);
-        },
-        this->holder_);
+    this->holder_.managedConnect(this->channel_->messageAppended,
+                                 [this](const auto &message, auto) {
+                                     this->appendMessage(message);
+                                 });
 
     this->loadCache();
-}
-this->loadCache();
 }
 
 MentionsCache::~MentionsCache()
