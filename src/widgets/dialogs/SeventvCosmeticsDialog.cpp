@@ -1370,33 +1370,30 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
 
     QPointer<SeventvCosmeticsDialog> self = this;
 
-    // 7TV GQL (v3) expects an add/remove list of cosmetic ObjectIDs; the
-    // cosmetic kind is derived server-side from the ID.
     QJsonObject vars;
     vars["id"] = userId;
-
-    QJsonObject update;
     if (isNone)
     {
-        update["remove"] = QJsonArray{previousPaintId};
+        vars["paintId"] = QJsonValue::Null;
     }
     else
     {
-        update["add"] = QJsonArray{paintId};
+        vars["paintId"] = paintId;
     }
-    vars["update"] = update;
 
     QJsonObject root;
+    root["operationName"] = QStringLiteral("SetActivePaint");
     root["query"] =
-        QStringLiteral("mutation UpdateUserCosmetics($id: ObjectID!, "
-                       "$update: UpdateUserCosmeticsInput!) { "
-                       "  user(id: $id) { "
-                       "    cosmetics(update: $update) { id } "
+        QStringLiteral("mutation SetActivePaint($id: Id!, $paintId: Id) { "
+                       "  users { "
+                       "    user(id: $id) { "
+                       "      activePaint(paintId: $paintId) { id } "
+                       "    } "
                        "  } "
                        "}");
     root["variables"] = vars;
 
-    NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/gql")),
+    NetworkRequest(QUrl(QStringLiteral("https://api.7tv.app/v4/gql")),
                    NetworkRequestType::Post)
         .header("Authorization",
                 QStringLiteral("Bearer %1").arg(token).toUtf8())
@@ -1477,33 +1474,30 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
 
     QPointer<SeventvCosmeticsDialog> self = this;
 
-    // 7TV GQL (v3) expects an add/remove list of cosmetic ObjectIDs; the
-    // cosmetic kind is derived server-side from the ID.
     QJsonObject vars;
     vars["id"] = userId;
-
-    QJsonObject update;
     if (isNone)
     {
-        update["remove"] = QJsonArray{previousBadgeId};
+        vars["badgeId"] = QJsonValue::Null;
     }
     else
     {
-        update["add"] = QJsonArray{badgeId};
+        vars["badgeId"] = badgeId;
     }
-    vars["update"] = update;
 
     QJsonObject root;
+    root["operationName"] = QStringLiteral("SetActiveBadge");
     root["query"] =
-        QStringLiteral("mutation UpdateUserCosmetics($id: ObjectID!, "
-                       "$update: UpdateUserCosmeticsInput!) { "
-                       "  user(id: $id) { "
-                       "    cosmetics(update: $update) { id } "
+        QStringLiteral("mutation SetActiveBadge($id: Id!, $badgeId: Id) { "
+                       "  users { "
+                       "    user(id: $id) { "
+                       "      activeBadge(badgeId: $badgeId) { id } "
+                       "    } "
                        "  } "
                        "}");
     root["variables"] = vars;
 
-    NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/gql")),
+    NetworkRequest(QUrl(QStringLiteral("https://api.7tv.app/v4/gql")),
                    NetworkRequestType::Post)
         .header("Authorization",
                 QStringLiteral("Bearer %1").arg(token).toUtf8())
