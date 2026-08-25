@@ -194,9 +194,12 @@ void MentionsCache::loadCache()
         const auto when = QDateTime::fromMSecsSinceEpoch(item.timeMs).time();
 
         builder.emplace<TimestampElement>(when);
-        builder.emplace<TextElement>(
-            item.displayName, MessageElementFlag::Username,
-            MessageColor(item.usernameColor), FontStyle::ChatMediumBold);
+        const auto usernameColor = item.color.isEmpty()
+                                       ? MessageColor(MessageColor::System)
+                                       : MessageColor(QColor(item.color));
+        builder.emplace<TextElement>(item.displayName,
+                                     MessageElementFlag::Username,
+                                     usernameColor, FontStyle::ChatMediumBold);
         builder.emplace<TextElement>(":", MessageElementFlag::Username,
                                      MessageColor::Text);
         builder.emplace<TextElement>(item.text, MessageElementFlag::Text,
