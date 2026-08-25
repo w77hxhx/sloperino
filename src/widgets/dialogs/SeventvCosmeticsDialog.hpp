@@ -83,6 +83,7 @@ private:
     void rebuildPaints();
     void clearContent();
     void refreshStyle();
+    void applyStatusStyle();
     void setStatus(const QString &text, bool error = false);
 
     void selectPaint(const QString &paintId);

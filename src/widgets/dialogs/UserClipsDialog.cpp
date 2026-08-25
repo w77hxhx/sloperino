@@ -15,6 +15,7 @@
 #include "singletons/WindowManager.hpp"
 #include "util/Clipboard.hpp"
 #include "util/IncognitoBrowser.hpp"
+#include "util/SemanticColors.hpp"
 #include "widgets/buttons/Button.hpp"
 #include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
@@ -35,6 +36,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPalette>
 #include <QPointer>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -245,6 +247,8 @@ public:
                                        CLIP_CARD_PADDING, CLIP_CARD_PADDING);
         mainLayout->setSpacing(8);
 
+        auto *fonts = getApp()->getFonts();
+
         // Thumbnail on the left
         auto *thumb = new ClipThumbnailWidget(clip, scale, this);
         mainLayout->addWidget(thumb, 0, Qt::AlignVCenter);
@@ -257,6 +261,7 @@ public:
         // Title row
         auto *titleLabel = new QLabel(clip.title, this);
         titleLabel->setObjectName("ClipCardTitle");
+        titleLabel->setFont(fonts->getFont(FontStyle::UiMediumBold, scale));
         titleLabel->setWordWrap(true);
         titleLabel->setToolTip(clip.title);
         detailsLayout->addWidget(titleLabel);
@@ -270,6 +275,7 @@ public:
         {
             auto *gameLabel = new QLabel(clip.gameName, this);
             gameLabel->setObjectName("ClipCardGame");
+            gameLabel->setFont(fonts->getFont(FontStyle::UiMedium, scale));
             gameLabel->setToolTip(clip.gameName);
             infoLayout->addWidget(gameLabel);
         }
@@ -282,6 +288,7 @@ public:
             auto *channelLabel =
                 new QLabel(QStringLiteral("clip on #%1").arg(channel), this);
             channelLabel->setObjectName("ClipCardInfo");
+            channelLabel->setFont(fonts->getFont(FontStyle::UiMedium, scale));
             channelLabel->setToolTip(
                 QStringLiteral("Channel: %1 (%2)")
                     .arg(clip.broadcasterDisplayName, clip.broadcasterLogin));
@@ -293,6 +300,7 @@ public:
                 QStringLiteral("Clipped by %1").arg(clip.curatorDisplayName),
                 this);
             curatorLabel->setObjectName("ClipCardInfo");
+            curatorLabel->setFont(fonts->getFont(FontStyle::UiMedium, scale));
             curatorLabel->setToolTip(
                 QStringLiteral("Clipped by %1 (%2)")
                     .arg(clip.curatorDisplayName, clip.curatorLogin));
@@ -311,10 +319,12 @@ public:
             QStringLiteral("%1 views").arg(formatViewCount(clip.viewCount)),
             this);
         viewsLabel->setObjectName("ClipCardMeta");
+        viewsLabel->setFont(fonts->getFont(FontStyle::UiMedium, scale));
         metaLayout->addWidget(viewsLabel);
 
         auto *dateLabel = new QLabel(formatDate(clip.createdAt), this);
         dateLabel->setObjectName("ClipCardMeta");
+        dateLabel->setFont(fonts->getFont(FontStyle::UiMedium, scale));
         metaLayout->addWidget(dateLabel);
 
         metaLayout->addStretch(1);
@@ -856,6 +866,10 @@ void UserClipsDialog::setStatus(const QString &text, bool error)
     }
 
     this->statusLabel_->setText(text);
+    const auto color = error ? chatterino::semantic::error()
+                             : chatterino::semantic::mutedText();
+    this->statusLabel_->setStyleSheet(
+        QStringLiteral("color: %1;").arg(color.name(QColor::HexArgb)));
     this->statusLabel_->show();
 }
 
@@ -883,7 +897,7 @@ void UserClipsDialog::refreshStyle()
     const int scrollbarWidth = std::max(3, int(5 * effectiveScale));
     const int scrollbarRadius = std::max(1, int(2 * effectiveScale));
     const int scrollbarMinHeight = std::max(12, int(16 * effectiveScale));
-    const int cardRadius = std::max(2, int(4 * rawScale));
+    const int rowRadius = std::max(2, int(4 * rawScale));
 
     this->headerTitleLabel_->setFont(
         fonts->getFont(FontStyle::UiMediumBold, rawScale * 1.15F));
@@ -908,29 +922,26 @@ void UserClipsDialog::refreshStyle()
     }
 
     const auto *theme = this->theme;
-    auto textColor = theme->window.text;
-    auto mutedColor = textColor;
-    mutedColor.setAlpha(theme->isLightTheme() ? 190 : 215);
-    const auto bg = theme->window.background.name();
-    const auto text = textColor.name(QColor::HexArgb);
-    const auto border = theme->splits.header.border.name();
-    const auto muted = mutedColor.name(QColor::HexArgb);
-    const auto inputBg = theme->splits.input.background.name();
-    const auto focusedBorder = theme->splits.header.focusedBorder.name();
-    const auto hoverBg =
-        theme->isLightTheme()
-            ? theme->splits.input.background.darker(104).name()
-            : theme->splits.input.background.lighter(108).name();
-    const auto cardBg = theme->isLightTheme() ? QStringLiteral("#f7f7f8")
-                                              : QStringLiteral("#18181b");
-    const auto cardHoverBg = theme->isLightTheme() ? QStringLiteral("#ebebef")
-                                                   : QStringLiteral("#26262c");
-    const auto categoryColor = theme->isLightTheme()
-                                   ? QStringLiteral("#5c16c5")
-                                   : QStringLiteral("#ffffff");
-    const auto titleColor = text;
-    const auto metaColor = theme->isLightTheme() ? QStringLiteral("#53535f")
-                                                 : QStringLiteral("#adadb8");
+    const auto textColor = theme->messages.textColors.regular;
+    const auto mutedColor = theme->messages.textColors.system;
+
+    // Base roles follow the palette so line edits and buttons render like
+    // the rest of the app; only accents and hover states are styled through
+    // the dynamic stylesheet below.
+    QPalette pal = this->palette();
+    pal.setColor(QPalette::Window, theme->window.background);
+    pal.setColor(QPalette::WindowText, textColor);
+    pal.setColor(QPalette::Base, theme->splits.input.background);
+    pal.setColor(QPalette::Text, textColor);
+    pal.setColor(QPalette::PlaceholderText, mutedColor);
+    pal.setColor(QPalette::Button, theme->window.background);
+    pal.setColor(QPalette::ButtonText, textColor);
+    pal.setColor(QPalette::Highlight, theme->tabs.selected.backgrounds.regular);
+    pal.setColor(QPalette::HighlightedText, theme->tabs.selected.text);
+    pal.setColor(QPalette::Disabled, QPalette::Base, theme->window.background);
+    pal.setColor(QPalette::Disabled, QPalette::Text, mutedColor);
+    pal.setColor(QPalette::Disabled, QPalette::ButtonText, mutedColor);
+    this->setPalette(pal);
 
     const bool isBroadcaster =
         (this->activeRole_ == QStringLiteral("BROADCASTER"));
@@ -961,7 +972,26 @@ void UserClipsDialog::refreshStyle()
                 : std::nullopt);
     }
 
-    this->closeButton_->setColor(textColor);
+    this->closeButton_->setColor(theme->window.text);
+
+    const QString bg = theme->window.background.name();
+    const QString text = textColor.name(QColor::HexArgb);
+    const QString border = theme->splits.header.border.name();
+    const QString muted = mutedColor.name(QColor::HexArgb);
+    const QString inputBg = theme->splits.input.background.name();
+    const QString focusedBorder = theme->splits.header.focusedBorder.name();
+    const QString selectionBg = theme->messages.selection.name(QColor::HexArgb);
+    const QString selectionText =
+        theme->tabs.selected.text.name(QColor::HexArgb);
+    const QString rowHover =
+        theme->tabs.regular.backgrounds.hover.name(QColor::HexArgb);
+    const QString scrollbarThumb = theme->scrollbars.thumb.name();
+
+    // Game tags are content, so they stay colorful; everything around them
+    // follows the theme.
+    const QString gameTagColor = theme->isLightTheme()
+                                     ? QStringLiteral("#5c16c5")
+                                     : QStringLiteral("#bf94ff");
 
     QString ss;
     ss.append(QStringLiteral(
@@ -987,35 +1017,37 @@ void UserClipsDialog::refreshStyle()
             "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical, "
             "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { "
             "background: transparent; height: 0; }\n")
-            .arg(QString::number(scrollbarWidth), border,
+            .arg(QString::number(scrollbarWidth), scrollbarThumb,
                  QString::number(scrollbarMinHeight),
                  QString::number(scrollbarRadius)));
 
     ss.append(QStringLiteral(
                   "QLineEdit#UserClipsSearch { background: %1; color: %2; "
                   "border: 1px solid %3; border-radius: %4px; padding: 0 %5px; "
-                  "min-height: %6px; selection-background-color: %7; }\n"
-                  "QLineEdit#UserClipsSearch:focus { border-color: %8; }\n")
+                  "min-height: %6px; selection-background-color: %7; "
+                  "selection-color: %8; }\n"
+                  "QLineEdit#UserClipsSearch:focus { border-color: %9; }\n")
                   .arg(inputBg, text, border, QString::number(radius),
                        QString::number(inputPaddingX),
-                       QString::number(inputMinHeight), hoverBg,
-                       focusedBorder));
+                       QString::number(inputMinHeight), selectionBg,
+                       selectionText, focusedBorder));
 
+    // Quiet rows on the window background: no card fill, just a subtle hover.
     ss.append(
-        QStringLiteral("QFrame#ClipCard { background: %1; border: none; "
-                       "border-radius: %2px; }\n"
-                       "QFrame#ClipCard[hovered=\"true\"] { background: %3; "
-                       "border: none; }\n"
-                       "QLabel#ClipCardTitle { color: %4; font-weight: 600; "
-                       "font-size: 12px; }\n"
-                       "QLabel#ClipCardGame { color: %5; font-size: 11px; "
-                       "font-weight: 600; }\n"
-                       "QLabel#ClipCardMeta { color: %6; font-size: 11px; }\n"
-                       "QLabel#ClipCardInfo { color: %6; font-size: 11px; }\n")
-            .arg(cardBg, QString::number(cardRadius), cardHoverBg, titleColor,
-                 categoryColor, metaColor));
+        QStringLiteral("QFrame#ClipCard { background: transparent; "
+                       "border: none; border-radius: %1px; }\n"
+                       "QFrame#ClipCard[hovered=\"true\"] { background: %2; }\n"
+                       "QLabel#ClipCardTitle { color: %5; }\n"
+                       "QLabel#ClipCardGame { color: %3; font-weight: 600; }\n"
+                       "QLabel#ClipCardMeta { color: %4; }\n"
+                       "QLabel#ClipCardInfo { color: %4; }\n")
+            .arg(QString::number(rowRadius), rowHover, gameTagColor, muted,
+                 text));
 
     this->setStyleSheet(ss);
+
+    // Reapply status coloring (semantic error/muted) after a theme change.
+    this->setStatus(this->statusText_, this->statusIsError_);
 }
 
 QString UserClipsDialog::authTokenOrMessage()

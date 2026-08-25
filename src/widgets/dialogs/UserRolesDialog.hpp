@@ -14,6 +14,7 @@
 
 class QLabel;
 class QLineEdit;
+class QPushButton;
 class QResizeEvent;
 class QScrollArea;
 class QScrollBar;
@@ -24,7 +25,6 @@ class QHBoxLayout;
 namespace chatterino {
 
 class Button;
-class LabelButton;
 class SvgButton;
 
 class UserRolesDialog : public DraggablePopup
@@ -69,15 +69,15 @@ private:
     SvgButton *closeButton_{};
 
     // Mode tabs
-    LabelButton *channelModeTab_{};
-    LabelButton *userModeTab_{};
+    QPushButton *channelModeTab_{};
+    QPushButton *userModeTab_{};
 
     // Role filter tabs
-    LabelButton *moderatorsTab_{};
-    LabelButton *vipsTab_{};
-    LabelButton *artistsTab_{};
-    LabelButton *foundersTab_{};
-    LabelButton *subscribersTab_{};
+    QPushButton *moderatorsTab_{};
+    QPushButton *vipsTab_{};
+    QPushButton *artistsTab_{};
+    QPushButton *foundersTab_{};
+    QPushButton *subscribersTab_{};
 
     QScrollArea *scrollArea_{};
     QWidget *contentWidget_{};

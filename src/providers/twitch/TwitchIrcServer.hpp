@@ -4,6 +4,7 @@
 #include "common/Channel.hpp"
 #include "common/Common.hpp"
 #include "providers/irc/IrcConnection2.hpp"
+#include "providers/twitch/MentionsCache.hpp"
 #include "util/RatelimitBucket.hpp"
 
 #include <IrcMessage>
@@ -153,6 +154,7 @@ private:
 
     const ChannelPtr whispersChannel;
     const ChannelPtr mentionsChannel;
+    std::unique_ptr<MentionsCache> mentionsCache_;
     const ChannelPtr liveChannel;
     const ChannelPtr automodChannel;
     IndirectChannel watchingChannel;

@@ -11,8 +11,8 @@
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/IncognitoBrowser.hpp"
+#include "util/SemanticColors.hpp"
 #include "widgets/buttons/Button.hpp"
-#include "widgets/buttons/LabelButton.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/dialogs/UserInfoPopup.hpp"
 #include "widgets/Notebook.hpp"
@@ -23,6 +23,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QDesktopServices>
+#include <QEvent>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QJsonArray>
@@ -33,11 +34,13 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPalette>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QShowEvent>
+#include <QStyle>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -197,7 +200,9 @@ public:
     {
         this->setCursor(Qt::PointingHandCursor);
         this->setObjectName("RoleCard");
-        this->setFrameShape(QFrame::StyledPanel);
+        this->setFrameShape(QFrame::NoFrame);
+
+        auto *fonts = getApp()->getFonts();
 
         auto *mainLayout = new QHBoxLayout(this);
         mainLayout->setContentsMargins(CARD_PADDING, CARD_PADDING, CARD_PADDING,
@@ -221,6 +226,7 @@ public:
         auto *nameLabel = new QLabel(
             item.displayName.isEmpty() ? item.login : item.displayName, this);
         nameLabel->setObjectName("RoleCardName");
+        nameLabel->setFont(fonts->getFont(FontStyle::UiMediumBold, scale));
         if (!item.chatColor.isEmpty())
         {
             nameLabel->setStyleSheet(
@@ -234,6 +240,7 @@ public:
             auto *loginLabel =
                 new QLabel(QStringLiteral("@%1").arg(item.login), this);
             loginLabel->setObjectName("RoleCardMuted");
+            loginLabel->setFont(fonts->getFont(FontStyle::UiMedium, scale));
             nameLayout->addWidget(loginLabel);
         }
 
@@ -247,12 +254,15 @@ public:
 
         auto *roleLabel = new QLabel(getRoleBadgeText(role), this);
         roleLabel->setObjectName(QStringLiteral("RoleCardBadge_%1").arg(role));
+        roleLabel->setFont(fonts->getFont(FontStyle::UiMediumBold, scale));
         tagLayout->addWidget(roleLabel);
 
         if (item.isPartner)
         {
             auto *partnerLabel = new QLabel(QStringLiteral("Partner"), this);
             partnerLabel->setObjectName("RoleCardPartner");
+            partnerLabel->setFont(
+                fonts->getFont(FontStyle::UiMediumBold, scale));
             tagLayout->addWidget(partnerLabel);
         }
         else if (item.isAffiliate)
@@ -260,6 +270,8 @@ public:
             auto *affiliateLabel =
                 new QLabel(QStringLiteral("Affiliate"), this);
             affiliateLabel->setObjectName("RoleCardAffiliate");
+            affiliateLabel->setFont(
+                fonts->getFont(FontStyle::UiMediumBold, scale));
             tagLayout->addWidget(affiliateLabel);
         }
 
@@ -278,6 +290,7 @@ public:
                                .arg(formatFollowerCount(item.followers)),
                            this);
             followersLabel->setObjectName("RoleCardMuted");
+            followersLabel->setFont(fonts->getFont(FontStyle::UiMedium, scale));
             metaLayout->addWidget(followersLabel);
         }
 
@@ -287,6 +300,7 @@ public:
                 QStringLiteral("Granted: %1").arg(formatDate(item.grantedAt)),
                 this);
             dateLabel->setObjectName("RoleCardMuted");
+            dateLabel->setFont(fonts->getFont(FontStyle::UiMedium, scale));
             metaLayout->addWidget(dateLabel);
         }
 
@@ -308,6 +322,22 @@ protected:
         {
             this->showContextMenu(event->globalPosition().toPoint());
         }
+    }
+
+    void enterEvent(QEnterEvent *event) override
+    {
+        QFrame::enterEvent(event);
+        this->setProperty("hovered", true);
+        this->style()->unpolish(this);
+        this->style()->polish(this);
+    }
+
+    void leaveEvent(QEvent *event) override
+    {
+        QFrame::leaveEvent(event);
+        this->setProperty("hovered", false);
+        this->style()->unpolish(this);
+        this->style()->polish(this);
     }
 
 private:
@@ -439,24 +469,30 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
 
     // Mode tabs row: Channel Mode vs User Mode
     auto *modeRow = new QHBoxLayout();
-    modeRow->setSpacing(8);
+    modeRow->setSpacing(6);
     modeRow->setContentsMargins(0, 0, 0, 0);
 
-    this->channelModeTab_ =
-        new LabelButton(QStringLiteral("Channel"), this, QSize{8, 4});
-    this->channelModeTab_->setCursor(Qt::PointingHandCursor);
+    auto createTab = [this](const QString &label) {
+        auto *tab = new QPushButton(label, this);
+        tab->setObjectName(QStringLiteral("UserRolesTab"));
+        tab->setCheckable(true);
+        tab->setCursor(Qt::PointingHandCursor);
+        tab->setFocusPolicy(Qt::NoFocus);
+        return tab;
+    };
+
+    this->channelModeTab_ = createTab(QStringLiteral("Channel"));
     modeRow->addWidget(this->channelModeTab_);
 
-    this->userModeTab_ =
-        new LabelButton(QStringLiteral("User"), this, QSize{8, 4});
-    this->userModeTab_->setCursor(Qt::PointingHandCursor);
+    this->userModeTab_ = createTab(QStringLiteral("User"));
     modeRow->addWidget(this->userModeTab_);
 
-    QObject::connect(this->channelModeTab_, &Button::leftClicked, [this] {
-        this->setMode("channel");
-    });
-    QObject::connect(this->userModeTab_, &Button::leftClicked, [this] {
-        this->setMode("user");
+    QObject::connect(this->channelModeTab_, &QPushButton::clicked, this,
+                     [this] {
+                         this->setMode(QStringLiteral("channel"));
+                     });
+    QObject::connect(this->userModeTab_, &QPushButton::clicked, this, [this] {
+        this->setMode(QStringLiteral("user"));
     });
 
     modeRow->addStretch(1);
@@ -469,9 +505,8 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
 
     auto createRoleTab = [this, roleRow](const QString &roleKey,
                                          const QString &label) {
-        auto *tab = new LabelButton(label, this, QSize{6, 3});
-        tab->setCursor(Qt::PointingHandCursor);
-        QObject::connect(tab, &Button::leftClicked, [this, roleKey] {
+        auto *tab = createTab(label);
+        QObject::connect(tab, &QPushButton::clicked, this, [this, roleKey] {
             this->setRole(roleKey);
         });
         roleRow->addWidget(tab);
@@ -487,9 +522,8 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
     roleRow->addStretch(1);
     this->mainLayout_->addLayout(roleRow);
 
-    // Search bar
+    // Search bar (palette-driven default line edit look)
     this->searchInput_ = new QLineEdit(container);
-    this->searchInput_->setObjectName("UserRolesSearch");
     this->searchInput_->setPlaceholderText(
         QStringLiteral("Search roles by username or display name..."));
     this->searchInput_->setClearButtonEnabled(true);
@@ -592,12 +626,13 @@ UserRolesDialog *UserRolesDialog::showDialog(const QString &targetLogin,
 
 void UserRolesDialog::themeChangedEvent()
 {
+    DraggablePopup::themeChangedEvent();
     this->refreshStyle();
 }
 
 void UserRolesDialog::scaleChangedEvent(float scale)
 {
-    (void)scale;
+    DraggablePopup::scaleChangedEvent(scale);
     this->applySizeConstraints();
     this->refreshStyle();
 }
@@ -921,6 +956,10 @@ void UserRolesDialog::setStatus(const QString &text, bool error)
     this->statusText_ = text;
     this->statusIsError_ = error;
     this->statusLabel_->setText(text);
+    const auto color = error ? semantic::error() : semantic::mutedText();
+    this->statusLabel_->setStyleSheet(
+        QStringLiteral("color: %1; padding: 16px;")
+            .arg(color.name(QColor::HexArgb)));
     this->statusLabel_->show();
     this->contentLayout_->addWidget(this->statusLabel_);
     this->contentLayout_->addStretch(1);
@@ -943,20 +982,12 @@ void UserRolesDialog::applySizeConstraints()
 
 void UserRolesDialog::refreshStyle()
 {
-    const float rawScale = this->scale();
-    const int radius = std::max(4, static_cast<int>(std::round(4 * rawScale)));
-    const int inputPaddingX =
-        std::max(8, static_cast<int>(std::round(8 * rawScale)));
-    const int scrollbarWidth =
-        std::max(8, static_cast<int>(std::round(8 * rawScale)));
-    const int scrollbarRadius =
-        std::max(4, static_cast<int>(std::round(4 * rawScale)));
-    const int scrollbarMinHeight =
-        std::max(20, static_cast<int>(std::round(20 * rawScale)));
-    const int inputMinHeight =
-        std::max(30, static_cast<int>(std::round(30 * rawScale)));
-    const int cardRadius =
-        std::max(6, static_cast<int>(std::round(6 * rawScale)));
+    auto *fonts = getApp()->getFonts();
+    const auto rawScale = this->scale();
+
+    this->headerTitleLabel_->setFont(
+        fonts->getFont(FontStyle::UiMediumBold, rawScale * 1.15F));
+    this->searchInput_->setFont(fonts->getFont(FontStyle::UiMedium, rawScale));
 
     if (auto *sep = this->findChild<QWidget *>(
             QStringLiteral("UserRolesDialogSeparator")))
@@ -964,200 +995,154 @@ void UserRolesDialog::refreshStyle()
         sep->setFixedHeight(scaledSeparatorHeight(rawScale));
     }
 
-    auto *fonts = getApp()->getFonts();
-    const auto effectiveScale = rawScale;
     const auto *theme = this->theme;
-    auto textColor = theme->window.text;
-    auto mutedColor = textColor;
-    mutedColor.setAlpha(theme->isLightTheme() ? 190 : 215);
-    const auto bg = theme->window.background.name();
-    const auto text = textColor.name(QColor::HexArgb);
-    const auto border = theme->splits.header.border.name();
-    const auto muted = mutedColor.name(QColor::HexArgb);
-    const auto inputBg = theme->splits.input.background.name();
-    const auto focusedBorder = theme->splits.header.focusedBorder.name();
-    const auto hoverBg =
-        theme->isLightTheme()
-            ? theme->splits.input.background.darker(104).name()
-            : theme->splits.input.background.lighter(108).name();
-    const auto cardBg =
-        theme->isLightTheme()
-            ? theme->splits.header.background.name()
-            : theme->splits.header.background.lighter(110).name();
-    const auto cardHoverBg =
-        theme->isLightTheme()
-            ? theme->splits.header.background.darker(105).name()
-            : theme->splits.header.background.lighter(125).name();
+    const auto textColor = theme->messages.textColors.regular;
+    const auto mutedColor = theme->messages.textColors.system;
 
-    auto styleTab = [fonts, effectiveScale, theme](LabelButton *tab,
-                                                   bool active) {
-        if (tab == nullptr)
-        {
-            return;
-        }
+    // Neutral surfaces follow the palette so the search box and buttons
+    // render like ordinary app widgets; only accents and hover states go
+    // through the dynamic stylesheet below.
+    QPalette pal = this->palette();
+    pal.setColor(QPalette::Window, theme->window.background);
+    pal.setColor(QPalette::WindowText, textColor);
+    pal.setColor(QPalette::Base, theme->splits.input.background);
+    pal.setColor(QPalette::Text, textColor);
+    pal.setColor(QPalette::PlaceholderText, mutedColor);
+    pal.setColor(QPalette::Button, theme->window.background);
+    pal.setColor(QPalette::ButtonText, textColor);
+    pal.setColor(QPalette::Highlight, theme->tabs.selected.backgrounds.regular);
+    pal.setColor(QPalette::HighlightedText, theme->tabs.selected.text);
+    pal.setColor(QPalette::Disabled, QPalette::Base, theme->window.background);
+    pal.setColor(QPalette::Disabled, QPalette::Text, mutedColor);
+    pal.setColor(QPalette::Disabled, QPalette::ButtonText, mutedColor);
+    this->setPalette(pal);
+
+    // Tabs behave like flat toggle buttons; the checked tab follows the
+    // selected tab colors of the theme (see the :checked rule below).
+    const bool channelMode = (this->activeMode_ == QStringLiteral("channel"));
+    this->channelModeTab_->setChecked(channelMode);
+    this->userModeTab_->setChecked(!channelMode);
+    this->moderatorsTab_->setChecked(this->activeRole_ ==
+                                     QStringLiteral("moderators"));
+    this->vipsTab_->setChecked(this->activeRole_ == QStringLiteral("vips"));
+    this->artistsTab_->setChecked(this->activeRole_ ==
+                                  QStringLiteral("artists"));
+    this->foundersTab_->setChecked(this->activeRole_ ==
+                                   QStringLiteral("founders"));
+    this->subscribersTab_->setChecked(this->activeRole_ ==
+                                      QStringLiteral("subscribers"));
+
+    const auto styleTabFont = [this, fonts, rawScale](QPushButton *tab,
+                                                      bool active) {
         tab->setFont(fonts->getFont(
-            active ? FontStyle::UiMediumBold : FontStyle::UiMedium,
-            effectiveScale));
-        tab->setBorderColor(active ? theme->splits.header.focusedBorder
-                                   : theme->splits.header.border);
-        tab->setMouseEffectColor(
-            active ? std::optional<QColor>(theme->splits.header.focusedBorder)
-                   : std::nullopt);
+            active ? FontStyle::UiMediumBold : FontStyle::UiMedium, rawScale));
     };
+    styleTabFont(this->channelModeTab_, channelMode);
+    styleTabFont(this->userModeTab_, !channelMode);
+    styleTabFont(this->moderatorsTab_,
+                 this->activeRole_ == QStringLiteral("moderators"));
+    styleTabFont(this->vipsTab_, this->activeRole_ == QStringLiteral("vips"));
+    styleTabFont(this->artistsTab_,
+                 this->activeRole_ == QStringLiteral("artists"));
+    styleTabFont(this->foundersTab_,
+                 this->activeRole_ == QStringLiteral("founders"));
+    styleTabFont(this->subscribersTab_,
+                 this->activeRole_ == QStringLiteral("subscribers"));
 
-    const bool isChannelMode = (this->activeMode_ == QStringLiteral("channel"));
-    styleTab(this->channelModeTab_, isChannelMode);
-    styleTab(this->userModeTab_, !isChannelMode);
+    this->closeButton_->setColor(theme->window.text);
 
-    styleTab(this->moderatorsTab_,
-             this->activeRole_ == QStringLiteral("moderators"));
-    styleTab(this->vipsTab_, this->activeRole_ == QStringLiteral("vips"));
-    styleTab(this->artistsTab_, this->activeRole_ == QStringLiteral("artists"));
-    styleTab(this->foundersTab_,
-             this->activeRole_ == QStringLiteral("founders"));
-    styleTab(this->subscribersTab_,
-             this->activeRole_ == QStringLiteral("subscribers"));
+    const QString bg = theme->window.background.name();
+    const QString text = textColor.name(QColor::HexArgb);
+    const QString border = theme->splits.header.border.name();
+    const QString rowHover =
+        theme->tabs.regular.backgrounds.hover.name(QColor::HexArgb);
+    const QString selectedBg =
+        theme->tabs.selected.backgrounds.regular.name(QColor::HexArgb);
+    const QString selectedText =
+        theme->tabs.selected.text.name(QColor::HexArgb);
+    const QString scrollbarThumb = theme->scrollbars.thumb.name();
 
-    this->closeButton_->setColor(textColor);
+    const int rowRadius = std::max(2, int(4 * rawScale));
+    const int tabPadX = std::max(4, int(8 * rawScale));
+    const int tabPadY = std::max(2, int(4 * rawScale));
+    const int scrollbarWidth = std::max(3, int(5 * rawScale));
+    const int scrollbarRadius = std::max(1, int(2 * rawScale));
+    const int scrollbarMinHeight = std::max(12, int(16 * rawScale));
 
-    const auto modColor = theme->isLightTheme() ? QStringLiteral("#16a34a")
-                                                : QStringLiteral("#22c55e");
-    const auto vipColor = theme->isLightTheme() ? QStringLiteral("#c026d3")
-                                                : QStringLiteral("#e005b9");
-    const auto artistColor = theme->isLightTheme() ? QStringLiteral("#d97706")
-                                                   : QStringLiteral("#f59e0b");
-    const auto founderColor = theme->isLightTheme() ? QStringLiteral("#ca8a04")
-                                                    : QStringLiteral("#eab308");
-    const auto subColor = theme->isLightTheme() ? QStringLiteral("#4f46e5")
-                                                : QStringLiteral("#818cf8");
-    const auto partnerColor = theme->isLightTheme() ? QStringLiteral("#7c3aed")
-                                                    : QStringLiteral("#bf94ff");
-    const auto affiliateColor = theme->isLightTheme()
-                                    ? QStringLiteral("#0d9488")
-                                    : QStringLiteral("#00e6cb");
+    // Role badges are content, so they keep recognizable Twitch hues;
+    // everything around them follows the theme.
+    const auto accent = [theme](const char *light, const char *dark) {
+        return theme->isLightTheme() ? QString(light) : QString(dark);
+    };
+    const auto modColor = accent("#16a34a", "#22c55e");
+    const auto vipColor = accent("#c026d3", "#e005b9");
+    const auto artistColor = accent("#d97706", "#f59e0b");
+    const auto founderColor = accent("#ca8a04", "#eab308");
+    const auto subColor = accent("#4f46e5", "#818cf8");
+    const auto partnerColor = accent("#7c3aed", "#bf94ff");
+    const auto affiliateColor = accent("#0d9488", "#00e6cb");
 
-    this->setStyleSheet(
-        QStringLiteral(R"(
-        QWidget#UserRolesDialogRoot {
-            background: %1;
-            color: %2;
-        }
-        QWidget#UserRolesHeader {
-            background: transparent;
-        }
-        QFrame#UserRolesDialogSeparator,
-        QWidget#UserRolesDialogSeparator {
-            background: %3;
-        }
-        QScrollArea#UserRolesScrollArea {
-            background: transparent;
-            border: 0;
-        }
-        QWidget#UserRolesDialogContent {
-            background: transparent;
-            color: %2;
-        }
-        QLabel#UserRolesTitle {
-            color: %2;
-            font-weight: 700;
-        }
-        QLabel#UserRolesStatus {
-            color: %4;
-            padding: 16px;
-        }
-        QScrollBar:vertical {
-            width: %8px;
-            background: transparent;
-            margin: 0;
-        }
-        QScrollBar::handle:vertical {
-            background: %3;
-            min-height: %10px;
-            border-radius: %9px;
-        }
-        QScrollBar::add-line:vertical,
-        QScrollBar::sub-line:vertical,
-        QScrollBar::add-page:vertical,
-        QScrollBar::sub-page:vertical {
-            background: transparent;
-            height: 0;
-        }
-        QLineEdit#UserRolesSearch {
-            background: %5;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: %6px;
-            padding: 0 %7px;
-            min-height: %11px;
-            selection-background-color: %12;
-        }
-        QLineEdit#UserRolesSearch:focus {
-            border-color: %13;
-        }
-        QFrame#RoleCard {
-            background: %14;
-            border: 1px solid %3;
-            border-radius: %15px;
-        }
-        QFrame#RoleCard:hover {
-            background: %16;
-            border-color: %13;
-        }
-        QLabel#RoleCardName {
-            color: %2;
-            font-weight: 700;
-            font-size: 13px;
-        }
-        QLabel#RoleCardMuted {
-            color: %4;
-            font-size: 11px;
-        }
-        QLabel#RoleCardBadge,
-        QLabel#RoleCardBadge_moderators {
-            color: %17;
-            font-weight: 700;
-            font-size: 11px;
-        }
-        QLabel#RoleCardBadge_vips {
-            color: %18;
-            font-weight: 700;
-            font-size: 11px;
-        }
-        QLabel#RoleCardBadge_artists {
-            color: %19;
-            font-weight: 700;
-            font-size: 11px;
-        }
-        QLabel#RoleCardBadge_founders {
-            color: %20;
-            font-weight: 700;
-            font-size: 11px;
-        }
-        QLabel#RoleCardBadge_subscribers {
-            color: %21;
-            font-weight: 700;
-            font-size: 11px;
-        }
-        QLabel#RoleCardPartner {
-            color: %22;
-            font-weight: 700;
-            font-size: 11px;
-        }
-        QLabel#RoleCardAffiliate {
-            color: %23;
-            font-weight: 700;
-            font-size: 11px;
-        }
-    )")
-            .arg(bg, text, border, muted, inputBg, QString::number(radius),
-                 QString::number(inputPaddingX),
-                 QString::number(scrollbarWidth),
-                 QString::number(scrollbarRadius),
+    QString ss;
+    ss.append(QStringLiteral(
+                  "QWidget#UserRolesDialogRoot { background: %1; color: %2; }\n"
+                  "QWidget#UserRolesHeader { background: transparent; }\n"
+                  "QFrame#UserRolesDialogSeparator, "
+                  "QWidget#UserRolesDialogSeparator { background: %3; }\n"
+                  "QScrollArea#UserRolesScrollArea { background: transparent; "
+                  "border: 0; }\n"
+                  "QWidget#UserRolesDialogContent { background: transparent; "
+                  "color: %2; }\n")
+                  .arg(bg, text, border));
+
+    ss.append(
+        QStringLiteral(
+            "QScrollBar:vertical { width: %1px; background: transparent;"
+            " margin: 0; }\n"
+            "QScrollBar::handle:vertical { background: %2; min-height:"
+            " %3px; border-radius: %4px; }\n"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,"
+            " QScrollBar::add-page:vertical,"
+            " QScrollBar::sub-page:vertical { background: transparent; "
+            "height: 0; }\n")
+            .arg(QString::number(scrollbarWidth), scrollbarThumb,
                  QString::number(scrollbarMinHeight),
-                 QString::number(inputMinHeight), hoverBg, focusedBorder,
-                 cardBg, QString::number(cardRadius), cardHoverBg, modColor,
-                 vipColor, artistColor, founderColor, subColor, partnerColor,
-                 affiliateColor));
+                 QString::number(scrollbarRadius)));
+
+    ss.append(
+        QStringLiteral(
+            "QPushButton#UserRolesTab { background: %1; color: %2; border: "
+            "none; border-radius: %3px; padding: %4px %5px; }\n"
+            "QPushButton#UserRolesTab:hover { background: %6; }\n"
+            "QPushButton#UserRolesTab:checked { background: %7; color: %8; }\n")
+            .arg(bg, text, QString::number(rowRadius), QString::number(tabPadY),
+                 QString::number(tabPadX), rowHover, selectedBg, selectedText));
+
+    // Quiet rows on the window background: no card chrome, just a hover tint.
+    ss.append(
+        QStringLiteral("QFrame#RoleCard { background: transparent; "
+                       "border: none; border-radius: %1px; }\n"
+                       "QFrame#RoleCard[hovered=\"true\"] { background: %2; }\n"
+                       "QLabel#RoleCardMuted { color: %3; }\n"
+                       "QLabel#RoleCardBadge_moderators { color: %4; }\n"
+                       "QLabel#RoleCardBadge_vips { color: %5; }\n"
+                       "QLabel#RoleCardBadge_artists { color: %6; }\n"
+                       "QLabel#RoleCardBadge_founders { color: %7; }\n"
+                       "QLabel#RoleCardBadge_subscribers { color: %8; }\n")
+            .arg(QString::number(rowRadius), rowHover, mutedColor.name(),
+                 modColor, vipColor, artistColor, founderColor, subColor));
+
+    ss.append(QStringLiteral("QLabel#RoleCardPartner { color: %1; }\n"
+                             "QLabel#RoleCardAffiliate { color: %2; }\n")
+                  .arg(partnerColor, affiliateColor));
+
+    this->setStyleSheet(ss);
+
+    // Reapply status coloring (semantic error/muted) after a theme change.
+    const auto statusColor =
+        this->statusIsError_ ? semantic::error() : semantic::mutedText();
+    this->statusLabel_->setStyleSheet(
+        QStringLiteral("color: %1; padding: 16px;")
+            .arg(statusColor.name(QColor::HexArgb)));
 }
 
 }  // namespace chatterino

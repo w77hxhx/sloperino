@@ -27,6 +27,7 @@
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
 #include "util/PostToThread.hpp"
+#include "util/SemanticColors.hpp"
 #include "widgets/buttons/Button.hpp"
 #include "widgets/buttons/SvgButton.hpp"
 #include "widgets/helper/Line.hpp"
@@ -44,6 +45,7 @@
 #include <QLineEdit>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPalette>
 #include <QPointer>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -61,6 +63,27 @@ namespace {
 constexpr QSize DEFAULT_DIALOG_SIZE(540, 620);
 constexpr int COSMETICS_GRID_SPACING = 6;
 constexpr QSize BADGE_ICON_SIZE(22, 22);
+
+/// 7TV brand purple; kept only as the small selection accent (outline and
+/// radio fill). Everything else follows the active theme.
+const QColor SEVENTV_ACCENT_COLOR(0x91, 0x46, 0xff);
+
+/// Extracts the first GraphQL error message from a 7TV GQL response so
+/// failures show the actual reason instead of a generic "failed".
+QString gqlErrorMessage(const QJsonObject &json)
+{
+    const auto errors = json.value(QStringLiteral("errors")).toArray();
+    if (!errors.isEmpty())
+    {
+        const auto message =
+            errors.first().toObject().value(QStringLiteral("message"));
+        if (message.isString())
+        {
+            return message.toString();
+        }
+    }
+    return QStringLiteral("unknown GraphQL error");
+}
 
 int scaledMetric(float scale, int base, int minimum)
 {
@@ -313,19 +336,15 @@ protected:
         auto *fonts = getApp()->getFonts();
         const auto rect = this->rect().adjusted(0, 0, -1, -1);
 
-        // Card background & border
-        auto bg = theme->splits.header.background;
-        auto border = theme->splits.header.border;
-        painter.setPen(QPen(border, 1));
-        painter.setBrush(bg);
+        // Card background & border follow the window surface
+        painter.setPen(QPen(theme->splits.header.border, 1));
+        painter.setBrush(theme->window.background);
         painter.drawRoundedRect(rect, 6, 6);
 
         // Header label: "LIVE PREVIEW"
         auto smallFont = fonts->getFont(FontStyle::UiMedium, 0.85F);
         painter.setFont(smallFont);
-        auto mutedColor = theme->window.text;
-        mutedColor.setAlpha(160);
-        painter.setPen(mutedColor);
+        painter.setPen(theme->messages.textColors.system);
         painter.drawText(QRect(12, 8, rect.width() - 24, 16),
                          Qt::AlignLeft | Qt::AlignVCenter,
                          QStringLiteral("LIVE PREVIEW"));
@@ -443,23 +462,28 @@ protected:
         auto *fonts = getApp()->getFonts();
         const auto rect = this->rect().adjusted(0, 0, -1, -1);
 
-        // Card background and border
-        QColor bg = theme->splits.input.background;
+        // Flat quiet row: window background with a thin border and a subtle
+        // hover highlight from the tab colors.
+        QColor bg = theme->window.background;
         QColor border = theme->splits.header.border;
 
         if (this->isDown())
         {
-            bg = theme->isLightTheme() ? bg.darker(110) : bg.lighter(120);
+            bg = theme->isLightTheme()
+                     ? theme->tabs.regular.backgrounds.hover.darker(110)
+                     : theme->tabs.regular.backgrounds.hover.lighter(115);
+            border = theme->splits.header.focusedBorder;
         }
         else if (this->underMouse())
         {
-            bg = theme->isLightTheme() ? bg.darker(104) : bg.lighter(112);
-            border = theme->splits.header.focusedBorder;
+            bg = theme->tabs.regular.backgrounds.hover;
         }
         if (this->isSelected_)
         {
-            border = QColor("#9146ff");  // 7TV accent purple
-            bg = theme->isLightTheme() ? QColor("#f3edff") : QColor("#221533");
+            // Selected rows use the selected-tab surface plus the 7TV accent
+            // outline.
+            bg = theme->tabs.selected.backgrounds.regular;
+            border = SEVENTV_ACCENT_COLOR;
         }
 
         painter.setPen(QPen(border, this->isSelected_ ? 2 : 1));
@@ -470,10 +494,11 @@ protected:
         const int radioX = 14;
         const int radioCenterY = rect.height() / 2;
         const int radioRadius = 7;
-        painter.setPen(QPen(
-            this->isSelected_ ? QColor("#9146ff") : theme->splits.header.border,
-            1.5));
-        painter.setBrush(this->isSelected_ ? QColor("#9146ff") : Qt::NoBrush);
+        painter.setPen(QPen(this->isSelected_ ? SEVENTV_ACCENT_COLOR
+                                              : theme->splits.header.border,
+                            1.5));
+        painter.setBrush(this->isSelected_ ? SEVENTV_ACCENT_COLOR
+                                           : Qt::NoBrush);
         painter.drawEllipse(QPoint(radioX, radioCenterY), radioRadius,
                             radioRadius);
         if (this->isSelected_)
@@ -502,7 +527,7 @@ protected:
         {
             // Draw None icon "Ø"
             painter.setFont(fonts->getFont(FontStyle::UiMediumBold, 1.0F));
-            painter.setPen(theme->window.text);
+            painter.setPen(theme->messages.textColors.system);
             painter.drawText(QRect(textStartX, 0, 16, rect.height()),
                              Qt::AlignVCenter | Qt::AlignLeft,
                              QStringLiteral("Ø"));
@@ -511,10 +536,8 @@ protected:
 
         // Badge Name
         painter.setFont(fonts->getFont(FontStyle::UiMediumBold, 0.95F));
-        painter.setPen(
-            this->isSelected_
-                ? QColor(theme->isLightTheme() ? "#6f2dbd" : "#caa9ff")
-                : theme->window.text);
+        painter.setPen(this->isSelected_ ? theme->tabs.selected.text
+                                         : theme->messages.textColors.regular);
         const QRect textRect(textStartX, 0, rect.width() - textStartX - 10,
                              rect.height());
         painter.drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft,
@@ -578,23 +601,28 @@ protected:
         auto *fonts = getApp()->getFonts();
         const auto rect = this->rect().adjusted(0, 0, -1, -1);
 
-        // Card background and border
-        QColor bg = theme->splits.input.background;
+        // Flat quiet row: window background with a thin border and a subtle
+        // hover highlight from the tab colors.
+        QColor bg = theme->window.background;
         QColor border = theme->splits.header.border;
 
         if (this->isDown())
         {
-            bg = theme->isLightTheme() ? bg.darker(110) : bg.lighter(120);
+            bg = theme->isLightTheme()
+                     ? theme->tabs.regular.backgrounds.hover.darker(110)
+                     : theme->tabs.regular.backgrounds.hover.lighter(115);
+            border = theme->splits.header.focusedBorder;
         }
         else if (this->underMouse())
         {
-            bg = theme->isLightTheme() ? bg.darker(104) : bg.lighter(112);
-            border = theme->splits.header.focusedBorder;
+            bg = theme->tabs.regular.backgrounds.hover;
         }
         if (this->isSelected_)
         {
-            border = QColor("#9146ff");  // 7TV accent purple
-            bg = theme->isLightTheme() ? QColor("#f3edff") : QColor("#221533");
+            // Selected rows use the selected-tab surface plus the 7TV accent
+            // outline.
+            bg = theme->tabs.selected.backgrounds.regular;
+            border = SEVENTV_ACCENT_COLOR;
         }
 
         painter.setPen(QPen(border, this->isSelected_ ? 2 : 1));
@@ -605,10 +633,11 @@ protected:
         const int radioX = 14;
         const int radioCenterY = rect.height() / 2;
         const int radioRadius = 7;
-        painter.setPen(QPen(
-            this->isSelected_ ? QColor("#9146ff") : theme->splits.header.border,
-            1.5));
-        painter.setBrush(this->isSelected_ ? QColor("#9146ff") : Qt::NoBrush);
+        painter.setPen(QPen(this->isSelected_ ? SEVENTV_ACCENT_COLOR
+                                              : theme->splits.header.border,
+                            1.5));
+        painter.setBrush(this->isSelected_ ? SEVENTV_ACCENT_COLOR
+                                           : Qt::NoBrush);
         painter.drawEllipse(QPoint(radioX, radioCenterY), radioRadius,
                             radioRadius);
         if (this->isSelected_)
@@ -629,15 +658,15 @@ protected:
             const int textH = fm.height();
             const QSizeF sizeF(textW + 10, textH);
             const auto pix = this->paint_->getPixmap(
-                this->name_, font, Qt::white, sizeF, 1.0F, 1.0F);
+                this->name_, font, theme->messages.textColors.regular, sizeF,
+                1.0F, 1.0F);
             painter.drawPixmap(textStartX, radioCenterY - textH / 2, pix);
         }
         else
         {
-            painter.setPen(
-                this->isSelected_
-                    ? QColor(theme->isLightTheme() ? "#6f2dbd" : "#caa9ff")
-                    : theme->window.text);
+            painter.setPen(this->isSelected_
+                               ? theme->tabs.selected.text
+                               : theme->messages.textColors.regular);
             const QRect textRect(textStartX, 0, rect.width() - textStartX - 10,
                                  rect.height());
             painter.drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft,
@@ -877,6 +906,8 @@ void SeventvCosmeticsDialog::scaleChangedEvent(float /*scale*/)
 
 void SeventvCosmeticsDialog::themeChangedEvent()
 {
+    // Re-install the themed QPalette before reapplying widget styles.
+    DraggablePopup::themeChangedEvent();
     this->refreshStyle();
     this->updatePreview();
     this->rebuildContent();
@@ -915,6 +946,7 @@ void SeventvCosmeticsDialog::setStatus(const QString &text, bool error)
     {
         this->statusLabel_->setText(text);
         this->statusLabel_->setVisible(!text.isEmpty());
+        this->applyStatusStyle();
     }
 }
 
@@ -1338,37 +1370,30 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
 
     QPointer<SeventvCosmeticsDialog> self = this;
 
+    // 7TV GQL (v3) expects an add/remove list of cosmetic ObjectIDs; the
+    // cosmetic kind is derived server-side from the ID.
     QJsonObject vars;
-    vars["userId"] = userId;
+    vars["id"] = userId;
 
-    QString mutationQuery;
+    QJsonObject update;
     if (isNone)
     {
-        vars["paintId"] = previousPaintId;
-        mutationQuery = QStringLiteral(
-            "mutation UnselectPaint($userId: ObjectID!, $paintId: "
-            "ObjectID!) { "
-            "  user(id: $userId) { "
-            "    cosmetics(update: { id: $paintId, kind: PAINT, "
-            "selected: false }) { id kind selected } "
-            "  } "
-            "}");
+        update["remove"] = QJsonArray{previousPaintId};
     }
     else
     {
-        vars["paintId"] = paintId;
-        mutationQuery =
-            QStringLiteral("mutation SelectPaint($userId: ObjectID!, $paintId: "
-                           "ObjectID!) { "
-                           "  user(id: $userId) { "
-                           "    cosmetics(update: { id: $paintId, kind: PAINT, "
-                           "selected: true }) { id kind selected } "
-                           "  } "
-                           "}");
+        update["add"] = QJsonArray{paintId};
     }
+    vars["update"] = update;
 
     QJsonObject root;
-    root["query"] = mutationQuery;
+    root["query"] =
+        QStringLiteral("mutation UpdateUserCosmetics($id: ObjectID!, "
+                       "$update: UpdateUserCosmeticsInput!) { "
+                       "  user(id: $id) { "
+                       "    cosmetics(update: $update) { id } "
+                       "  } "
+                       "}");
     root["variables"] = vars;
 
     NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/gql")),
@@ -1393,7 +1418,9 @@ void SeventvCosmeticsDialog::selectPaint(const QString &paintId)
                 self->updatePreview();
                 self->updateSelectionState();
                 self->setStatus(
-                    QStringLiteral("Failed to update paint on 7TV."), true);
+                    QStringLiteral("Failed to update paint on 7TV: %1")
+                        .arg(gqlErrorMessage(json)),
+                    true);
                 return;
             }
             self->setStatus({});
@@ -1450,37 +1477,30 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
 
     QPointer<SeventvCosmeticsDialog> self = this;
 
+    // 7TV GQL (v3) expects an add/remove list of cosmetic ObjectIDs; the
+    // cosmetic kind is derived server-side from the ID.
     QJsonObject vars;
-    vars["userId"] = userId;
+    vars["id"] = userId;
 
-    QString mutationQuery;
+    QJsonObject update;
     if (isNone)
     {
-        vars["badgeId"] = previousBadgeId;
-        mutationQuery = QStringLiteral(
-            "mutation UnselectBadge($userId: ObjectID!, $badgeId: "
-            "ObjectID!) { "
-            "  user(id: $userId) { "
-            "    cosmetics(update: { id: $badgeId, kind: BADGE, "
-            "selected: false }) { id kind selected } "
-            "  } "
-            "}");
+        update["remove"] = QJsonArray{previousBadgeId};
     }
     else
     {
-        vars["badgeId"] = badgeId;
-        mutationQuery =
-            QStringLiteral("mutation SelectBadge($userId: ObjectID!, $badgeId: "
-                           "ObjectID!) { "
-                           "  user(id: $userId) { "
-                           "    cosmetics(update: { id: $badgeId, kind: BADGE, "
-                           "selected: true }) { id kind selected } "
-                           "  } "
-                           "}");
+        update["add"] = QJsonArray{badgeId};
     }
+    vars["update"] = update;
 
     QJsonObject root;
-    root["query"] = mutationQuery;
+    root["query"] =
+        QStringLiteral("mutation UpdateUserCosmetics($id: ObjectID!, "
+                       "$update: UpdateUserCosmeticsInput!) { "
+                       "  user(id: $id) { "
+                       "    cosmetics(update: $update) { id } "
+                       "  } "
+                       "}");
     root["variables"] = vars;
 
     NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/gql")),
@@ -1505,7 +1525,9 @@ void SeventvCosmeticsDialog::selectBadge(const QString &badgeId)
                 self->updatePreview();
                 self->updateSelectionState();
                 self->setStatus(
-                    QStringLiteral("Failed to update badge on 7TV."), true);
+                    QStringLiteral("Failed to update badge on 7TV: %1")
+                        .arg(gqlErrorMessage(json)),
+                    true);
                 return;
             }
             self->setStatus({});
@@ -1572,6 +1594,7 @@ void SeventvCosmeticsDialog::rebuildContent()
     this->statusLabel_->setVisible(!this->statusText_.isEmpty());
     this->statusLabel_->setText(this->statusText_);
     this->contentLayout_->addWidget(this->statusLabel_);
+    this->applyStatusStyle();
 
     if (this->currentView_ == View::Badges)
     {
@@ -1645,6 +1668,10 @@ void SeventvCosmeticsDialog::rebuildBadges()
             new QLabel(QStringLiteral("No matching 7TV badges found."),
                        this->contentWidget_);
         emptyLabel->setAlignment(Qt::AlignCenter);
+        QPalette emptyPal = emptyLabel->palette();
+        emptyPal.setColor(QPalette::WindowText,
+                          getApp()->getThemes()->messages.textColors.system);
+        emptyLabel->setPalette(emptyPal);
         this->contentLayout_->addWidget(emptyLabel);
     }
 }
@@ -1706,6 +1733,10 @@ void SeventvCosmeticsDialog::rebuildPaints()
             new QLabel(QStringLiteral("No matching 7TV paints found."),
                        this->contentWidget_);
         emptyLabel->setAlignment(Qt::AlignCenter);
+        QPalette emptyPal = emptyLabel->palette();
+        emptyPal.setColor(QPalette::WindowText,
+                          getApp()->getThemes()->messages.textColors.system);
+        emptyLabel->setPalette(emptyPal);
         this->contentLayout_->addWidget(emptyLabel);
     }
 }
@@ -1774,71 +1805,45 @@ void SeventvCosmeticsDialog::refreshStyle()
             fonts->getFont(FontStyle::UiMedium, effectiveScale));
     }
 
+    const auto tabFont =
+        fonts->getFont(FontStyle::UiMediumBold, effectiveScale);
+    this->badgesTabButton_->setFont(tabFont);
+    this->paintsTabButton_->setFont(tabFont);
+
     const int hMargin = contentHorizontalMargin(rawScale);
     const int vMargin = std::max(8, int(10 * rawScale));
     this->mainLayout_->setContentsMargins(hMargin, vMargin, hMargin, vMargin);
 
     const auto *theme = this->theme;
-    auto textColor = theme->window.text;
-    auto mutedColor = textColor;
-    mutedColor.setAlpha(theme->isLightTheme() ? 190 : 215);
-    const auto bg = theme->window.background.name();
-    const auto text = textColor.name(QColor::HexArgb);
-    const auto border = theme->splits.header.border.name();
-    const auto muted = mutedColor.name(QColor::HexArgb);
-    const auto inputBg = theme->splits.input.background.name();
-    const auto focusedBorder = theme->splits.header.focusedBorder.name();
-    const auto tabSelectedBg = theme->tabs.selected.backgrounds.regular.name();
-    const auto tabSelectedText = theme->tabs.selected.text.name();
 
-    this->setStyleSheet(
-        QStringLiteral(R"(
-        QWidget#SeventvCosmeticsRoot {
-            background: %1;
-            color: %2;
-        }
-        QLabel#SeventvCosmeticsTitle {
-            color: %2;
-            font-weight: 700;
-        }
+    // Static labels follow the theme through QPalette instead of stylesheets.
+    QPalette titlePal = this->headerTitleLabel_->palette();
+    titlePal.setColor(QPalette::WindowText, theme->messages.textColors.regular);
+    this->headerTitleLabel_->setPalette(titlePal);
+
+    this->applyStatusStyle();
+
+    // The window surface itself comes from the QPalette that BaseWindow
+    // installs (theme->window.background), so only interactive controls need
+    // stylesheets here - all colors are built from the active theme.
+    const auto text = theme->messages.textColors.regular.name(QColor::HexArgb);
+    const auto border = theme->splits.header.border.name(QColor::HexArgb);
+    const auto focusedBorder =
+        theme->splits.header.focusedBorder.name(QColor::HexArgb);
+    const auto fieldBg = theme->splits.input.background.name(QColor::HexArgb);
+    const auto tabHoverBg =
+        theme->tabs.regular.backgrounds.hover.name(QColor::HexArgb);
+    const auto tabSelectedBg =
+        theme->tabs.selected.backgrounds.regular.name(QColor::HexArgb);
+    const auto tabSelectedText =
+        theme->tabs.selected.text.name(QColor::HexArgb);
+    const auto selection = theme->messages.selection.name(QColor::HexArgb);
+
+    this->setStyleSheet(QStringLiteral(R"(
         QFrame#SeventvCosmeticsSeparator {
-            background: %3;
-            color: %3;
+            background: %1;
             max-height: 1px;
             margin: 2px 0px;
-        }
-        QLabel#SeventvCosmeticsStatus {
-            color: %4;
-            padding: 8px;
-            font-size: 11px;
-        }
-        QPushButton#SeventvTabButton {
-            background: %5;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: 5px;
-            padding: 5px 14px;
-            font-weight: 700;
-            font-size: 11px;
-        }
-        QPushButton#SeventvTabButton:hover {
-            border-color: %6;
-        }
-        QPushButton#SeventvTabButton:checked {
-            background: #9146ff;
-            color: #ffffff;
-            border: 1px solid #9146ff;
-        }
-        QLineEdit#SeventvCosmeticsSearch {
-            background: %5;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: 5px;
-            padding: 4px 8px;
-            font-size: 11px;
-        }
-        QLineEdit#SeventvCosmeticsSearch:focus {
-            border-color: #9146ff;
         }
         QScrollArea#SeventvCosmeticsScrollArea {
             background: transparent;
@@ -1847,8 +1852,53 @@ void SeventvCosmeticsDialog::refreshStyle()
         QWidget#SeventvCosmeticsContent {
             background: transparent;
         }
+        QPushButton#SeventvTabButton {
+            background: transparent;
+            color: %2;
+            border: 1px solid %1;
+            border-radius: 4px;
+            padding: 4px 14px;
+        }
+        QPushButton#SeventvTabButton:hover:!checked {
+            background: %3;
+        }
+        QPushButton#SeventvTabButton:checked {
+            background: %4;
+            color: %5;
+            border-color: %4;
+        }
+        QLineEdit#SeventvCosmeticsSearch {
+            background: %6;
+            color: %2;
+            border: 1px solid %1;
+            border-radius: 4px;
+            padding: 4px 8px;
+            selection-background-color: %7;
+        }
+        QLineEdit#SeventvCosmeticsSearch:focus {
+            border-color: %8;
+        }
     )")
-            .arg(bg, text, border, muted, inputBg, focusedBorder));
+                            .arg(border, text, tabHoverBg, tabSelectedBg,
+                                 tabSelectedText, fieldBg, selection,
+                                 focusedBorder));
+}
+
+void SeventvCosmeticsDialog::applyStatusStyle()
+{
+    if (this->statusLabel_ == nullptr)
+    {
+        return;
+    }
+
+    const QColor color = this->statusIsError_
+                             ? chatterino::semantic::error()
+                             : chatterino::semantic::mutedText();
+    this->statusLabel_->setStyleSheet(QStringLiteral("QLabel { color: %1; }")
+                                          .arg(color.name(QColor::HexArgb)));
+    this->statusLabel_->setContentsMargins(0, 8, 0, 8);
+    this->statusLabel_->setFont(
+        getApp()->getFonts()->getFont(FontStyle::UiMedium, this->scale()));
 }
 
 }  // namespace chatterino

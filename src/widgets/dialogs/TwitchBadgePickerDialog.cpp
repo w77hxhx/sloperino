@@ -23,6 +23,7 @@
 #include "singletons/Fonts.hpp"
 #include "singletons/Theme.hpp"
 #include "singletons/WindowManager.hpp"
+#include "util/SemanticColors.hpp"
 #include "util/Twitch.hpp"
 #include "widgets/buttons/Button.hpp"
 #include "widgets/buttons/SvgButton.hpp"
@@ -42,6 +43,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPainter>
+#include <QPalette>
 #include <QPointer>
 #include <QPushButton>
 #include <QRegularExpression>
@@ -72,7 +74,6 @@ constexpr int BADGE_TILE_PADDING = 4;
 constexpr QSize BADGE_ICON_SIZE(36, 36);
 constexpr float BADGE_IMAGE_SCALE =
     float(BADGE_ICON_SIZE.width()) / float(BADGE_ICON_SIZE.width() / 2);
-constexpr char BADGE_SELECTED_COLOR[] = "#9146ff";
 
 int scaledSeparatorHeight(float scale)
 {
@@ -178,21 +179,26 @@ ImageSet badgeImages(const GqlBadge &badge)
     };
 }
 
+QColor badgeSelectionColor()
+{
+    return getApp()->getThemes()->tabs.selected.backgrounds.regular;
+}
+
 void paintBadgeTileBackground(QPainter &painter, const QRect &rect,
                               bool underMouse, bool isDown)
 {
     const auto *theme = getApp()->getThemes();
-    auto bg = theme->splits.header.background;
+    auto bg = theme->window.background;
     auto border = theme->splits.header.border;
 
     if (underMouse)
     {
-        bg = theme->isLightTheme() ? bg.darker(105) : bg.lighter(115);
-        border = theme->splits.header.focusedBorder;
+        bg = theme->tabs.regular.backgrounds.hover;
     }
     if (isDown)
     {
-        bg = theme->isLightTheme() ? bg.darker(112) : bg.lighter(125);
+        bg = theme->tabs.selected.backgrounds.regular;
+        border = theme->splits.header.focusedBorder;
     }
 
     painter.setPen(QPen(border, 1));
@@ -202,8 +208,7 @@ void paintBadgeTileBackground(QPainter &painter, const QRect &rect,
 
 void paintBadgeTileFocusRing(QPainter &painter, const QRect &rect)
 {
-    auto focus = getApp()->getThemes()->window.text;
-    focus.setAlpha(200);
+    auto focus = getApp()->getThemes()->splits.header.focusedBorder;
     painter.setPen(QPen(focus, 1));
     painter.setBrush(Qt::NoBrush);
     painter.drawRoundedRect(rect.adjusted(1, 1, -1, -1), 3, 3);
@@ -242,18 +247,17 @@ protected:
         const int knobMargin = 2;
         const int knobDiameter = track.height() - knobMargin * 2;
 
-        auto trackBg = theme->splits.input.background;
+        auto trackBg = theme->window.background;
         auto trackBorder = theme->splits.header.border;
 
         if (this->isChecked())
         {
-            trackBg = QColor("#9146ff");
-            trackBorder = QColor("#9146ff");
+            trackBg = badgeSelectionColor();
+            trackBorder = trackBg;
         }
         else if (this->underMouse() && this->isEnabled())
         {
-            trackBg = theme->isLightTheme() ? trackBg.darker(104)
-                                            : trackBg.lighter(108);
+            trackBg = theme->tabs.regular.backgrounds.hover;
             trackBorder = theme->splits.header.focusedBorder;
         }
 
@@ -347,7 +351,7 @@ protected:
         if (this->selected_)
         {
             const auto selectionRect = this->rect().adjusted(1, 1, -2, -2);
-            painter.setPen(QPen(QColor(BADGE_SELECTED_COLOR), 2));
+            painter.setPen(QPen(badgeSelectionColor(), 2));
             painter.setBrush(Qt::NoBrush);
             painter.drawRoundedRect(selectionRect, 3, 3);
             const auto innerRect = selectionRect.adjusted(2, 2, -2, -2);
@@ -432,7 +436,7 @@ protected:
         if (this->selected_)
         {
             const auto selectionRect = this->rect().adjusted(1, 1, -2, -2);
-            painter.setPen(QPen(QColor(BADGE_SELECTED_COLOR), 2));
+            painter.setPen(QPen(badgeSelectionColor(), 2));
             painter.setBrush(Qt::NoBrush);
             painter.drawRoundedRect(selectionRect, 3, 3);
             const auto innerRect = selectionRect.adjusted(2, 2, -2, -2);
@@ -528,7 +532,7 @@ protected:
         if (this->selected_)
         {
             const auto selectionRect = this->rect().adjusted(1, 1, -2, -2);
-            painter.setPen(QPen(QColor(BADGE_SELECTED_COLOR), 2));
+            painter.setPen(QPen(badgeSelectionColor(), 2));
             painter.setBrush(Qt::NoBrush);
             painter.drawRoundedRect(selectionRect, 3, 3);
             const auto innerRect = selectionRect.adjusted(2, 2, -2, -2);
@@ -1510,6 +1514,8 @@ void TwitchBadgePickerDialog::rebuildEventBadges()
         auto *priceLabel = new QLabel(cell);
         priceLabel->setObjectName("TwitchBadgePickerEventBadgePrice");
         priceLabel->setAlignment(Qt::AlignHCenter);
+        priceLabel->setFont(getApp()->getFonts()->getFont(
+            FontStyle::UiMedium, this->scale() * 0.85F));
         priceLabel->setText(badge.free.has_value()
                                 ? (badge.free.value() ? "Free" : "Paid")
                                 : QString());
@@ -1924,11 +1930,10 @@ void TwitchBadgePickerDialog::setStatus(const QString &text, bool error)
         return;
     this->statusLabel_->setText(text);
     this->statusLabel_->setVisible(!text.isEmpty());
-    auto muted = this->theme->window.text;
-    muted.setAlpha(150);
-    const auto color =
-        error ? QStringLiteral("#ff9e9e") : muted.name(QColor::HexArgb);
-    this->statusLabel_->setStyleSheet(QStringLiteral("color: %1;").arg(color));
+    const auto color = error ? chatterino::semantic::error()
+                             : chatterino::semantic::mutedText();
+    this->statusLabel_->setStyleSheet(
+        QStringLiteral("color: %1;").arg(color.name(QColor::HexArgb)));
 }
 
 void TwitchBadgePickerDialog::applyPreviewDialogWidth(int contentPixelWidth)
@@ -2163,8 +2168,6 @@ void TwitchBadgePickerDialog::refreshStyle()
     const auto rawScale = this->scale();
     const auto effectiveScale = rawScale;
     const int radius = std::max(1, int(2 * rawScale));
-    const int inputPaddingX = std::max(4, int(5 * effectiveScale));
-    const int inputMinHeight = std::max(14, int(20 * effectiveScale));
     const int scrollbarWidth = std::max(3, int(4 * effectiveScale));
     const int scrollbarRadius = std::max(1, int(2 * effectiveScale));
     const int scrollbarMinHeight = std::max(12, int(16 * effectiveScale));
@@ -2249,23 +2252,43 @@ void TwitchBadgePickerDialog::refreshStyle()
     }
 
     const auto *theme = this->theme;
-    auto textColor = theme->window.text;
-    auto mutedColor = textColor;
-    mutedColor.setAlpha(160);
-    const auto bg = theme->window.background.name();
-    const auto text = textColor.name(QColor::HexArgb);
-    const auto border = theme->splits.header.border.name();
-    const auto muted = mutedColor.name(QColor::HexArgb);
-    const auto inputBg = theme->splits.input.background.name();
-    const auto focusedBorder = theme->splits.header.focusedBorder.name();
-    const auto hoverBg =
-        theme->isLightTheme()
-            ? theme->splits.input.background.darker(104).name()
-            : theme->splits.input.background.lighter(108).name();
+    const auto textColor = theme->messages.textColors.regular;
+    const auto mutedColor = theme->messages.textColors.system;
 
-    this->closeButton_->setColor(textColor);
+    // Base roles follow the palette so the standard line edits and buttons
+    // render like the rest of the app; only accents and hover states live in
+    // the dynamic stylesheet below.
+    QPalette pal = this->palette();
+    pal.setColor(QPalette::Window, theme->window.background);
+    pal.setColor(QPalette::WindowText, textColor);
+    pal.setColor(QPalette::Base, theme->splits.input.background);
+    pal.setColor(QPalette::Text, textColor);
+    pal.setColor(QPalette::PlaceholderText, mutedColor);
+    pal.setColor(QPalette::Button, theme->window.background);
+    pal.setColor(QPalette::ButtonText, textColor);
+    pal.setColor(QPalette::Highlight, theme->tabs.selected.backgrounds.regular);
+    pal.setColor(QPalette::HighlightedText, theme->tabs.selected.text);
+    pal.setColor(QPalette::Disabled, QPalette::Base, theme->window.background);
+    pal.setColor(QPalette::Disabled, QPalette::Text, mutedColor);
+    pal.setColor(QPalette::Disabled, QPalette::ButtonText, mutedColor);
+    this->setPalette(pal);
 
-    this->setStyleSheet(QStringLiteral(R"(
+    this->closeButton_->setColor(theme->window.text);
+
+    const QString bg = theme->window.background.name();
+    const QString text = textColor.name(QColor::HexArgb);
+    const QString border = theme->splits.header.border.name();
+    const QString muted = mutedColor.name(QColor::HexArgb);
+    const QString tabSelectedBg =
+        theme->tabs.selected.backgrounds.regular.name(QColor::HexArgb);
+    const QString tabSelectedText =
+        theme->tabs.selected.text.name(QColor::HexArgb);
+    const QString rowHover =
+        theme->tabs.regular.backgrounds.hover.name(QColor::HexArgb);
+    const QString scrollbarThumb = theme->scrollbars.thumb.name();
+
+    this->setStyleSheet(
+        QStringLiteral(R"(
         QWidget#TwitchBadgePickerDialogRoot {
             background: %1;
             color: %2;
@@ -2274,10 +2297,7 @@ void TwitchBadgePickerDialog::refreshStyle()
             background: transparent;
         }
         QWidget#TwitchBadgePickerPreview {
-            background: %5;
-            border: 1px solid %3;
-            border-radius: %6px;
-            padding: 4px 6px;
+            background: transparent;
         }
         QFrame#TwitchBadgePickerDialogSeparator,
         QWidget#TwitchBadgePickerDialogSeparator {
@@ -2296,13 +2316,12 @@ void TwitchBadgePickerDialog::refreshStyle()
             font-weight: 700;
         }
         QLabel#TwitchBadgePickerSectionLabel {
-            color: %2;
+            color: %4;
             font-weight: 600;
             padding-top: 4px;
         }
         QLabel#TwitchBadgePickerEventBadgePrice {
             color: %4;
-            font-size: 10px;
             font-weight: 600;
         }
         QLabel#TwitchBadgePickerStatus,
@@ -2310,14 +2329,14 @@ void TwitchBadgePickerDialog::refreshStyle()
             color: %4;
         }
         QScrollBar:vertical {
-            width: %10px;
+            width: %5px;
             background: transparent;
             margin: 0;
         }
         QScrollBar::handle:vertical {
-            background: %3;
-            min-height: %12px;
-            border-radius: %11px;
+            background: %6;
+            min-height: %7px;
+            border-radius: %8px;
         }
         QScrollBar::add-line:vertical,
         QScrollBar::sub-line:vertical,
@@ -2327,81 +2346,34 @@ void TwitchBadgePickerDialog::refreshStyle()
             height: 0;
         }
         QPushButton#TwitchBadgePickerTab {
-            background: %5;
+            background: transparent;
             color: %2;
             border: 1px solid %3;
-            border-radius: %6px;
+            border-radius: %9px;
             padding: 3px 10px;
         }
-        QPushButton#TwitchBadgePickerTab:checked {
-            background: #9146ff;
-            color: #ffffff;
-            border-color: #9146ff;
-        }
         QPushButton#TwitchBadgePickerTab:hover:!checked {
-            background: %8;
-            border-color: %7;
+            background: %10;
         }
-        QLineEdit#TwitchBadgePickerSearch {
-            background: %5;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: %6px;
-            padding: 0 %9px;
-            min-height: %13px;
-        }
-        QLineEdit#TwitchBadgePickerSearch:focus {
-            border-color: %7;
-        }
-        QLineEdit#TwitchBadgePickerHexInput {
-            background: %5;
-            color: %2;
-            border: 1px solid %3;
-            border-radius: %6px;
-            padding: 0 %9px;
-            min-height: %13px;
-        }
-        QLineEdit#TwitchBadgePickerHexInput:focus {
-            border-color: %7;
-        }
-        QPushButton#TwitchBadgePickerApplyButton {
-            background: #9146ff;
-            color: #ffffff;
-            border: 1px solid #9146ff;
-            border-radius: %6px;
-            padding: 0 14px;
-            min-height: %13px;
-            font-weight: 600;
-        }
-        QPushButton#TwitchBadgePickerApplyButton:hover:enabled {
-            background: #a970ff;
-            border-color: #a970ff;
-        }
-        QPushButton#TwitchBadgePickerApplyButton:disabled {
-            background: %5;
-            color: %4;
-            border-color: %3;
-            font-weight: 400;
-        }
-        QWidget#TwitchBadgePickerCustomColorRow {
-            background: transparent;
+        QPushButton#TwitchBadgePickerTab:checked {
+            background: %11;
+            color: %12;
+            border: 1px solid %11;
         }
         QWidget#TwitchBadgePickerSettingRow {
-            background: %5;
-            border: 1px solid %3;
-            border-radius: %6px;
+            background: transparent;
         }
         QLabel#TwitchBadgePickerSettingLabel {
             color: %2;
         }
     )")
-                            .arg(bg, text, border, muted, inputBg,
-                                 QString::number(radius), focusedBorder,
-                                 hoverBg, QString::number(inputPaddingX),
-                                 QString::number(scrollbarWidth),
-                                 QString::number(scrollbarRadius),
-                                 QString::number(scrollbarMinHeight),
-                                 QString::number(inputMinHeight)));
+            .arg(bg, text, border, muted, QString::number(scrollbarWidth),
+                 scrollbarThumb, QString::number(scrollbarMinHeight),
+                 QString::number(scrollbarRadius), QString::number(radius),
+                 rowHover, tabSelectedBg, tabSelectedText));
+
+    // Reapply status coloring (semantic error/muted) after a theme change.
+    this->setStatus(this->statusText_, this->statusIsError_);
 }
 
 void TwitchBadgePickerDialog::applySizeConstraints()
