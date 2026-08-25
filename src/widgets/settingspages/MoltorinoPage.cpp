@@ -7,6 +7,7 @@
 #include "singletons/Settings.hpp"
 #include "util/Clipboard.hpp"
 #include "util/FuzzyConvert.hpp"
+#include "util/SemanticColors.hpp"
 #include "widgets/buttons/SignalLabel.hpp"
 #include "widgets/dialogs/MoltorinoAuthDialog.hpp"
 #include "widgets/settingspages/GeneralPageView.hpp"
@@ -154,7 +155,7 @@ MoltorinoPage::MoltorinoPage()
 
     view->addTitle("Authentication");
     view->addDescription(
-        "Logging in enables Sloperino features like pins, polls, "
+        "Logging in enables Moltorino features like pins, polls, "
         "predictions, and channel points.");
 
     auto *tokenControls = new QFrame(view);
@@ -168,7 +169,7 @@ MoltorinoPage::MoltorinoPage()
 
     this->addAuthAccountButton_ = new QPushButton("Log In", tokenControls);
     this->addAuthAccountButton_->setToolTip(
-        "Log in or manage saved Sloperino accounts.");
+        "Log in or manage saved Moltorino accounts.");
     this->refreshAuthAccountsButton_ =
         new QPushButton("Refresh Accounts", tokenControls);
     this->refreshAuthAccountsButton_->setToolTip(
@@ -182,7 +183,8 @@ MoltorinoPage::MoltorinoPage()
     this->authInstructionsLabel_ = new QLabel(tokenControls);
     this->authInstructionsLabel_->setWordWrap(true);
     this->authInstructionsLabel_->setStyleSheet(
-        "QLabel { color: #9aa0a6; font-size: 12px; }");
+        QStringLiteral("QLabel { color: %1; font-size: 12px; }")
+            .arg(chatterino::semantic::mutedText().name(QColor::HexArgb)));
     tokenLayout->addWidget(this->authInstructionsLabel_);
 
     this->authStatusLabel_ = new QLabel(tokenControls);
@@ -222,7 +224,9 @@ MoltorinoPage::MoltorinoPage()
     auto *botBadgeTitle =
         new QLabel("Bot Badge (Developer)", this->botBadgeFrame_);
     botBadgeTitle->setStyleSheet(
-        "QLabel { font-size: 16px; font-weight: 700; color: #f5f7fa; }");
+        QStringLiteral("QLabel { font-size: 16px; font-weight: 700; color: "
+                       "%1; }")
+            .arg(chatterino::semantic::regularText().name(QColor::HexArgb)));
     botBadgeLayout->addWidget(botBadgeTitle);
 
     auto *botBadgeDescription = new QLabel(
@@ -523,11 +527,11 @@ MoltorinoPage::MoltorinoPage()
 
     SettingWidget::checkbox("Show predictions", s.enablePredictions)
         ->setTooltip(
-            "Show prediction banners and open prediction menus from Sloperino.")
+            "Show prediction banners and open prediction menus from Moltorino.")
         ->addTo(*view);
 
     SettingWidget::checkbox("Show polls", s.enablePolls)
-        ->setTooltip("Show poll banners and open poll menus from Sloperino.")
+        ->setTooltip("Show poll banners and open poll menus from Moltorino.")
         ->addTo(*view);
 
     addBannerScaleDropdown("Prediction banner content scale",
@@ -987,7 +991,7 @@ MoltorinoPage::MoltorinoPage()
     SettingWidget::checkbox("Show load more messages button",
                             s.showUsercardLoadMoreMessagesButton)
         ->setTooltip("Show a usercard button for loading older messages when "
-                     "your saved Sloperino login can moderate the channel.")
+                     "your saved Moltorino login can moderate the channel.")
         ->addTo(*view);
     SettingWidget::checkbox("Always load more messages when possible",
                             s.alwaysLoadMoreUsercardMessages)
@@ -1011,7 +1015,7 @@ MoltorinoPage::MoltorinoPage()
 #ifndef Q_OS_MACOS
     view->addTitle("Tray");
     view->addDescription(
-        "Keep Sloperino running in the tray after closing the window.");
+        "Keep Moltorino running in the tray after closing the window.");
 
     const bool trayAvailable = QSystemTrayIcon::isSystemTrayAvailable();
     const bool notificationAvailable =
@@ -1030,9 +1034,9 @@ MoltorinoPage::MoltorinoPage()
     }
 
     auto *hideToTrayWidget =
-        SettingWidget::checkbox("Hide to tray when closing Sloperino",
+        SettingWidget::checkbox("Hide to tray when closing Moltorino",
                                 s.trayHideOnClose)
-            ->setTooltip("Closing the main window hides Sloperino to the "
+            ->setTooltip("Closing the main window hides Moltorino to the "
                          "system tray instead of disconnecting from chat.");
     hideToTrayWidget->setEnabled(trayAvailable);
     hideToTrayWidget->addTo(*view);
@@ -1043,7 +1047,7 @@ MoltorinoPage::MoltorinoPage()
             s.trayNotifyOnSoundHighlights)
             ->setTooltip("Only highlight rules with Play sound enabled "
                          "will show a notification while "
-                         "Sloperino is hidden.");
+                         "Moltorino is hidden.");
     notifyWidget->setEnabled(notificationAvailable);
     notifyWidget->addTo(*view);
 #endif
@@ -1083,9 +1087,11 @@ MoltorinoPage::MoltorinoPage()
 
     view->addTitle("Miscellaneous");
     auto *miscDesc = new SignalLabel(this);
-    miscDesc->setText("General Sloperino tweaks and interface adjustments.");
+    miscDesc->setText("General Moltorino tweaks and interface adjustments.");
     miscDesc->setWordWrap(true);
-    miscDesc->setStyleSheet("QLabel { color: #9aa0a6; }");
+    miscDesc->setStyleSheet(
+        QStringLiteral("QLabel { color: %1; }")
+            .arg(chatterino::semantic::mutedText().name(QColor::HexArgb)));
     view->addWidget(miscDesc);
 
     QObject::connect(miscDesc, &SignalLabel::leftMouseUp, this, [this] {
@@ -1246,7 +1252,11 @@ void MoltorinoPage::updateAuthInstructions(const QString &text, bool isError)
 {
     this->authInstructionsLabel_->setText(text);
     this->authInstructionsLabel_->setStyleSheet(
-        QString("QLabel { color: %1; }").arg(isError ? "#ffb4a2" : "#9aa0a6"));
+        QStringLiteral("QLabel { color: %1; }")
+            .arg(isError
+                     ? chatterino::semantic::error().name(QColor::HexArgb)
+                     : chatterino::semantic::mutedText().name(
+                           QColor::HexArgb)));
 }
 
 void MoltorinoPage::updateAuthStatus(const QString &text, bool isValid,
@@ -1254,18 +1264,12 @@ void MoltorinoPage::updateAuthStatus(const QString &text, bool isValid,
 {
     this->authStatusLabel_->setText(text);
 
-    QString color = "#9aa0a6";
-    if (isValid)
-    {
-        color = "#47d16c";
-    }
-    else if (isError)
-    {
-        color = "#ff7b72";
-    }
+    const QColor color = isValid   ? chatterino::semantic::success()
+                         : isError ? chatterino::semantic::error()
+                                   : chatterino::semantic::mutedText();
 
     this->authStatusLabel_->setStyleSheet(
-        QString("QLabel { color: %1; }").arg(color));
+        QStringLiteral("QLabel { color: %1; }").arg(color.name(QColor::HexArgb)));
 }
 
 void MoltorinoPage::revealBotBadgeSettings(bool revealed)
@@ -1313,18 +1317,12 @@ void MoltorinoPage::updateBotBadgeStatus(const QString &text, bool isValid,
 {
     this->botBadgeStatusLabel_->setText(text);
 
-    QString color = "#9aa0a6";
-    if (isValid)
-    {
-        color = "#47d16c";
-    }
-    else if (isError)
-    {
-        color = "#ff7b72";
-    }
+    const QColor color = isValid   ? chatterino::semantic::success()
+                         : isError ? chatterino::semantic::error()
+                                   : chatterino::semantic::mutedText();
 
     this->botBadgeStatusLabel_->setStyleSheet(
-        QString("QLabel { color: %1; }").arg(color));
+        QStringLiteral("QLabel { color: %1; }").arg(color.name(QColor::HexArgb)));
 }
 
 void MoltorinoPage::openBotBadgeAuthorization()

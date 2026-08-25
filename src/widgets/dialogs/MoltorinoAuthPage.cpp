@@ -9,6 +9,7 @@
 #include "providers/moltorino/MoltorinoAuth.hpp"
 #include "singletons/Settings.hpp"
 #include "util/Clipboard.hpp"
+#include "util/SemanticColors.hpp"
 
 #include <QAbstractItemView>
 #include <QDesktopServices>
@@ -151,18 +152,14 @@ private:
             return;
         }
 
-        QString color = "#9aa0a6";
-        if (isValid)
-        {
-            color = "#47d16c";
-        }
-        else if (isError)
-        {
-            color = "#ff7b72";
-        }
+        const QColor color = isValid ? chatterino::semantic::success()
+                             : isError
+                                 ? chatterino::semantic::error()
+                                 : chatterino::semantic::mutedText();
 
         label->setText(text);
-        label->setStyleSheet(QString("QLabel { color: %1; }").arg(color));
+        label->setStyleSheet(
+            QStringLiteral("QLabel { color: %1; }").arg(color.name(QColor::HexArgb)));
     }
 
     static QTableWidgetItem *readOnlyItem(const QString &text)

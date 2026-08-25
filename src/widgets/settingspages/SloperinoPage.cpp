@@ -12,6 +12,7 @@
 #include "providers/firehose/FirehoseManager.hpp"
 #include "singletons/Settings.hpp"
 #include "util/Clipboard.hpp"
+#include "util/SemanticColors.hpp"
 #include "widgets/BaseWidget.hpp"
 #include "widgets/dialogs/MoltorinoAuthDialog.hpp"
 #include "widgets/helper/EditableModelView.hpp"
@@ -343,7 +344,8 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
     this->seventvDetailsLabel_ = new QLabel(authFrame);
     this->seventvDetailsLabel_->setWordWrap(true);
     this->seventvDetailsLabel_->setStyleSheet(
-        "QLabel { color: #9aa0a6; font-size: 12px; }");
+        QStringLiteral("QLabel { color: %1; font-size: 12px; }")
+            .arg(chatterino::semantic::mutedText().name(QColor::HexArgb)));
     authLayout->addWidget(this->seventvDetailsLabel_);
 
     auto *authRow = new QHBoxLayout;
@@ -454,7 +456,9 @@ void SloperinoPage::initLayout(GeneralPageView &layout)
         // Status badge label (updated by timer)
         auto *badge = new QLabel("●");
         badge->setFixedWidth(14);
-        badge->setStyleSheet("color: #666; font-size: 10px;");
+        badge->setStyleSheet(
+            QStringLiteral("color: %1; font-size: 10px;")
+                .arg(chatterino::semantic::mutedText().name(QColor::HexArgb)));
         rowLayout->addWidget(badge);
         this->endpointStatusLabels_.push_back(badge);
 
@@ -544,6 +548,13 @@ void SloperinoPage::refreshEndpointStatuses()
         return;
     }
     const auto statuses = fh->getEndpointStatuses();
+    const auto okColor =
+        chatterino::semantic::success().name(QColor::HexArgb);
+    const auto warnColor =
+        chatterino::semantic::warning().name(QColor::HexArgb);
+    const auto errColor = chatterino::semantic::error().name(QColor::HexArgb);
+    const auto offColor =
+        chatterino::semantic::mutedText().name(QColor::HexArgb);
     for (int i = 0;
          i < statuses.size() && i < this->endpointStatusLabels_.size(); ++i)
     {
@@ -554,22 +565,26 @@ void SloperinoPage::refreshEndpointStatuses()
         {
             case Status::Connected:
                 badge->setStyleSheet(
-                    "color: #2ecc71; font-size: 10px;");  // green
+                    QStringLiteral("color: %1; font-size: 10px;").arg(okColor));
                 badge->setToolTip("Connected");
                 break;
             case Status::Connecting:
-                badge->setStyleSheet(
-                    "color: #f39c12; font-size: 10px;");  // orange
+                badge->setStyleSheet(QStringLiteral(
+                                         "color: %1; font-size: 10px;")
+                                         .arg(warnColor));
                 badge->setToolTip("Connecting...");
                 break;
             case Status::Reconnecting:
-                badge->setStyleSheet(
-                    "color: #e67e22; font-size: 10px;");  // amber
+                badge->setStyleSheet(QStringLiteral(
+                                         "color: %1; font-size: 10px;")
+                                         .arg(errColor));
                 badge->setToolTip(QStringLiteral("Reconnecting... (backoff)"));
                 break;
             case Status::Disabled:
             default:
-                badge->setStyleSheet("color: #555; font-size: 10px;");  // grey
+                badge->setStyleSheet(QStringLiteral(
+                                         "color: %1; font-size: 10px;")
+                                         .arg(offColor));
                 badge->setToolTip(info.enabled ? "Disconnected" : "Disabled");
                 break;
         }
@@ -664,7 +679,10 @@ void SloperinoPage::openSeventvAuthDialog()
                 if (statusPtr)
                 {
                     statusPtr->setText("Please enter a 7TV token.");
-                    statusPtr->setStyleSheet("QLabel { color: #f44336; }");
+                    statusPtr->setStyleSheet(
+                        QStringLiteral("QLabel { color: %1; }")
+                            .arg(chatterino::semantic::error().name(
+                                QColor::HexArgb)));
                     statusPtr->show();
                 }
                 return;
@@ -677,7 +695,10 @@ void SloperinoPage::openSeventvAuthDialog()
             if (statusPtr)
             {
                 statusPtr->setText("Verifying with 7TV API...");
-                statusPtr->setStyleSheet("QLabel { color: #9aa0a6; }");
+                statusPtr->setStyleSheet(
+                    QStringLiteral("QLabel { color: %1; }")
+                        .arg(chatterino::semantic::mutedText().name(
+                            QColor::HexArgb)));
                 statusPtr->show();
             }
 
@@ -703,7 +724,10 @@ void SloperinoPage::openSeventvAuthDialog()
                     {
                         statusPtr->setText(
                             QString("Validation failed: %1").arg(error));
-                        statusPtr->setStyleSheet("QLabel { color: #f44336; }");
+                        statusPtr->setStyleSheet(
+                            QStringLiteral("QLabel { color: %1; }")
+                                .arg(chatterino::semantic::error().name(
+                                    QColor::HexArgb)));
                         statusPtr->show();
                     }
                 });
