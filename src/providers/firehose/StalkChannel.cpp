@@ -5,6 +5,7 @@
 #include "providers/firehose/StalkChannel.hpp"
 
 #include "Application.hpp"
+#include "messages/Message.hpp"
 #include "providers/firehose/FirehoseManager.hpp"
 #include "singletons/Paths.hpp"
 
