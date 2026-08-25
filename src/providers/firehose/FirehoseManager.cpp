@@ -663,7 +663,7 @@ void FirehoseManager::processBatch()
                              msg->displayName.compare(
                                  target, Qt::CaseInsensitive) == 0))
                         {
-                            stalk->addMessage(msg, MessageContext::Original);
+                            stalk->addStalkMessage(msg, item);
                         }
                         ++it;
                     }

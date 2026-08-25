@@ -143,6 +143,10 @@ public:
     // Returns a snapshot of connection status for each endpoint (UI use)
     QVector<EndpointStatusInfo> getEndpointStatuses() const;
 
+    MessagePtr parseRawPayload(const QByteArray &data, QString &outMsgId);
+    MessagePtr parseIrcLine(const QByteArray &data, QString &outMsgId);
+    MessagePtr parseJsonPayload(const QByteArray &data, QString &outMsgId);
+
 private:
     struct Endpoint {
         QString name;
@@ -202,10 +206,6 @@ private:
     void processBatch();
     void updateStats();
     void runWatchdog();
-
-    MessagePtr parseRawPayload(const QByteArray &data, QString &outMsgId);
-    MessagePtr parseIrcLine(const QByteArray &data, QString &outMsgId);
-    MessagePtr parseJsonPayload(const QByteArray &data, QString &outMsgId);
 
     WebSocketPool wsPool_{QStringLiteral("Firehose")};
     std::shared_ptr<FirehoseChannel> channel_;
