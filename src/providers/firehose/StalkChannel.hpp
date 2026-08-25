@@ -34,7 +34,7 @@ public:
 
 private:
     struct StalkCachedItem {
-        int64_t timeMs{0};
+        qint64 timeMs{0};
         QString channel;
         QString username;
         QString displayName;

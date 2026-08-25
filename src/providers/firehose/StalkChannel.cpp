@@ -259,7 +259,7 @@ void StalkChannel::saveCache()
     for (const auto &item : this->cachedItems_)
     {
         QJsonObject obj;
-        obj[QStringLiteral("time")] = item.timeMs;
+        obj[QStringLiteral("time")] = static_cast<qint64>(item.timeMs);
         obj[QStringLiteral("channel")] = item.channel;
         obj[QStringLiteral("username")] = item.username;
         obj[QStringLiteral("displayName")] = item.displayName;
