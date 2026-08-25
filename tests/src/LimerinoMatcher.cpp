@@ -1,8 +1,8 @@
 #include "providers/limerino/matcher/LimerinoMatcher.hpp"
+
 #include "providers/limerino/matcher/LimerinoMatcherValidation.hpp"
 
 #include <gtest/gtest.h>
-
 #include <QString>
 
 using namespace chatterino;
@@ -131,18 +131,18 @@ TEST(LimerinoMatcher, BothEmptyPairRejected)
 
     ASSERT_TRUE(result.has_value());
     // Must mention the reason, not just "invalid".
-    EXPECT_TRUE(result->contains(QStringLiteral("every message"),
-                                 Qt::CaseInsensitive));
+    EXPECT_TRUE(
+        result->contains(QStringLiteral("every message"), Qt::CaseInsensitive));
 }
 
 TEST(LimerinoMatcher, OneSidedPairsAccepted)
 {
     LimerinoMatcher empty;
 
-    EXPECT_FALSE(validateMatcherPair(regex(QStringLiteral("spam")), empty)
-                     .has_value());
-    EXPECT_FALSE(validateMatcherPair(empty, regex(QStringLiteral("spam")))
-                     .has_value());
+    EXPECT_FALSE(
+        validateMatcherPair(regex(QStringLiteral("spam")), empty).has_value());
+    EXPECT_FALSE(
+        validateMatcherPair(empty, regex(QStringLiteral("spam"))).has_value());
     EXPECT_FALSE(validateMatcherPair(literal(QStringLiteral("spam")), empty)
                      .has_value());
 }
@@ -163,8 +163,8 @@ TEST(LimerinoMatcher, SerdeRoundTripPreservesAllFields)
                              /*caseSensitive=*/true, /*isRegex=*/true);
 
     rapidjson::Document doc;
-    auto value = pajlada::Serialize<LimerinoMatcher>::get(original,
-                                                          doc.GetAllocator());
+    auto value =
+        pajlada::Serialize<LimerinoMatcher>::get(original, doc.GetAllocator());
 
     bool error = false;
     auto back = pajlada::Deserialize<LimerinoMatcher>::get(value, &error);

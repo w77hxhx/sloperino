@@ -105,10 +105,9 @@ LimerinoAppearanceWidget::LimerinoAppearanceWidget(Split *split)
         btn->setFixedSize(36, 28);
         btn->setMinimumSize(36, 28);
         btn->setToolTip(name);
-        QObject::connect(btn, &QAbstractButton::clicked, this,
-                         [this, name] {
-                             this->selectColorValue(name, false);
-                         });
+        QObject::connect(btn, &QAbstractButton::clicked, this, [this, name] {
+            this->selectColorValue(name, false);
+        });
         namedGrid->addWidget(btn, namedIndex / 5, namedIndex % 5);
         ++namedIndex;
     }
@@ -149,12 +148,18 @@ LimerinoAppearanceWidget::LimerinoAppearanceWidget(Split *split)
     root->addStretch(1);
 
     QObject::connect(this->badgeCombo_,
-                     QOverload<int>::of(&QComboBox::currentIndexChanged),
-                     this, [this] { this->refreshPreview(); });
+                     QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+                     [this] {
+                         this->refreshPreview();
+                     });
     QObject::connect(this->applyBadgeButton_, &QPushButton::clicked, this,
-                     [this] { this->applyBadge(); });
+                     [this] {
+                         this->applyBadge();
+                     });
     QObject::connect(this->applyColorButton_, &QPushButton::clicked, this,
-                     [this] { this->applyColor(); });
+                     [this] {
+                         this->applyColor();
+                     });
 
     const QString last = loadLastChatColor();
     if (!last.isEmpty())
@@ -193,10 +198,9 @@ void LimerinoAppearanceWidget::rebuildRecentSwatches()
         btn->setFixedSize(36, 28);
         btn->setMinimumSize(36, 28);
         btn->setToolTip(value);
-        QObject::connect(btn, &QAbstractButton::clicked, this,
-                         [this, value] {
-                             this->selectColorValue(value, true);
-                         });
+        QObject::connect(btn, &QAbstractButton::clicked, this, [this, value] {
+            this->selectColorValue(value, true);
+        });
         layout->addWidget(btn);
     }
     layout->addStretch(1);
@@ -229,8 +233,8 @@ void LimerinoAppearanceWidget::selectColorValue(const QString &value,
 
 void LimerinoAppearanceWidget::refreshBadges()
 {
-    auto *tchan = dynamic_cast<TwitchChannel *>(
-        this->split_->getSelectedChannel().get());
+    auto *tchan =
+        dynamic_cast<TwitchChannel *>(this->split_->getSelectedChannel().get());
     if (tchan == nullptr)
     {
         this->statusLabel_->setText(QStringLiteral("not a twitch channel"));
@@ -252,8 +256,8 @@ void LimerinoAppearanceWidget::refreshBadges()
         gql::PQ_CHAT_SETTINGS_BADGES,
         QJsonObject{{QStringLiteral("channelLogin"), tchan->getName()}},
         token.token,
-        [g = QPointer<LimerinoAppearanceWidget>(this), this](
-            const QJsonObject &data) {
+        [g = QPointer<LimerinoAppearanceWidget>(this),
+         this](const QJsonObject &data) {
             if (!g)
             {
                 return;
@@ -261,8 +265,9 @@ void LimerinoAppearanceWidget::refreshBadges()
             this->badgeCombo_->clear();
 
             const QJsonArray badges =
-                data[QStringLiteral("currentUser")].toObject()[
-                    QStringLiteral("availableBadges")].toArray();
+                data[QStringLiteral("currentUser")]
+                    .toObject()[QStringLiteral("availableBadges")]
+                    .toArray();
             QList<DisplayBadge> items;
             for (const QJsonValue v : badges)
             {
@@ -281,7 +286,7 @@ void LimerinoAppearanceWidget::refreshBadges()
             }
             getApp()->getTwitchBadges()->getBadgeIcons(
                 items, [combo = QPointer<QComboBox>(this->badgeCombo_)](
-                             QString identifier, const auto &icon) {
+                           QString identifier, const auto &icon) {
                     if (!combo)
                     {
                         return;
@@ -314,8 +319,7 @@ void LimerinoAppearanceWidget::refreshPreview()
         self && !self->isAnon() ? self->getUserName() : QStringLiteral("you");
 
     this->previewLabel_->setText(
-        QStringLiteral("%1's messages will show the selected badge")
-            .arg(name));
+        QStringLiteral("%1's messages will show the selected badge").arg(name));
 
     const QColor color = parseChatColor(this->selectedColorValue_);
     if (color.isValid())
@@ -372,7 +376,8 @@ void LimerinoAppearanceWidget::applyBadge()
             g->statusLabel_->setText(
                 code.isEmpty()
                     ? QStringLiteral("Successfully selected global badge!")
-                    : QStringLiteral("Unable to select global badge! Status: %1")
+                    : QStringLiteral(
+                          "Unable to select global badge! Status: %1")
                           .arg(code));
         },
         [g = QPointer<LimerinoAppearanceWidget>(this)](const gql::GqlError &e) {

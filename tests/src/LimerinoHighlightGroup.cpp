@@ -113,8 +113,7 @@ TEST(LimerinoHighlightGroup, DisplayName)
               "All except: twitch:forsen, kick:someone");
 
     HighlightGroup unnamedOnly(QUuid::createUuid(), "",
-                               HighlightGroup::Scope::Only,
-                               {"twitch:forsen"});
+                               HighlightGroup::Scope::Only, {"twitch:forsen"});
     EXPECT_EQ(unnamedOnly.displayName(), "Only: twitch:forsen");
 }
 
@@ -236,8 +235,7 @@ TEST(LimerinoHighlightGroup, SentinelChannelBehaviour)
 
     // The same special channels never match an Only group unless listed.
     HighlightGroup onlyForsen(QUuid::createUuid(), "",
-                              HighlightGroup::Scope::Only,
-                              {"twitch:forsen"});
+                              HighlightGroup::Scope::Only, {"twitch:forsen"});
     EXPECT_FALSE(onlyForsen.matches("special:whispers"));
     EXPECT_FALSE(onlyForsen.matches("special:mentions"));
 }

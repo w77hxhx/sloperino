@@ -17,17 +17,15 @@ namespace {
 // Build the `data.user` object for one fetch. Empty/default strings and
 // empty objects are the "absent" state. To leave a field out entirely, pass
 // std::nullopt-style via the bools below.
-QJsonObject makeUser(const QString &languageTag = QString(),
-                     bool includeSettings = true,
-                     const QString &teamName = QString(),
-                     bool includePrimaryTeam = true,
-                     bool includeSubscription = true,
-                     const QString &platform = QString(),
-                     const QString &tier = QString(),
-                     bool purchasedWithPrime = false, bool isGift = false,
-                     int tenureMonths = 0, const QString &thirdPartySKU = QString(),
-                     const QString &gifterDisplayName = QString(),
-                     const QString &gifterLogin = QString())
+QJsonObject makeUser(
+    const QString &languageTag = QString(), bool includeSettings = true,
+    const QString &teamName = QString(), bool includePrimaryTeam = true,
+    bool includeSubscription = true, const QString &platform = QString(),
+    const QString &tier = QString(), bool purchasedWithPrime = false,
+    bool isGift = false, int tenureMonths = 0,
+    const QString &thirdPartySKU = QString(),
+    const QString &gifterDisplayName = QString(),
+    const QString &gifterLogin = QString())
 {
     QJsonObject user;
 
@@ -180,9 +178,11 @@ TEST(LimerinoUserCardExtrasParse, SettingsFailedIgnoresPayload)
 
 TEST(LimerinoUserCardExtrasParse, RelationshipFailedIgnoresSubscription)
 {
-    const auto user = makeUser(QStringLiteral("en"), true, QString(), false,
-                               true, QStringLiteral("web"), QStringLiteral("1000"));
-    const auto out = parseUserCardExtras(user, false, /*relationshipFailed*/ true);
+    const auto user =
+        makeUser(QStringLiteral("en"), true, QString(), false, true,
+                 QStringLiteral("web"), QStringLiteral("1000"));
+    const auto out =
+        parseUserCardExtras(user, false, /*relationshipFailed*/ true);
 
     EXPECT_EQ(out.preferredLanguageTag, QStringLiteral("en"));
     EXPECT_FALSE(out.subscription.has_value());
@@ -193,8 +193,8 @@ TEST(LimerinoUserCardExtrasParse, RelationshipFailedIgnoresSubscription)
 TEST(LimerinoUserCardExtrasParse, NullTeam)
 {
     // primaryTeam silently null for a user on no team is the common case.
-    const auto user = makeUser(QStringLiteral("de"), true, QString(), true,
-                               false);
+    const auto user =
+        makeUser(QStringLiteral("de"), true, QString(), true, false);
 
     const auto out = parseUserCardExtras(user, false, false);
 
@@ -207,9 +207,9 @@ TEST(LimerinoUserCardExtrasParse, NullSubscription)
 {
     // relationship present but subscriptionBenefit null (target not subbed).
     QJsonObject user;
-    user.insert(QStringLiteral("relationship"),
-                QJsonObject{{QStringLiteral("subscriptionBenefit"),
-                             QJsonValue::Null}});
+    user.insert(
+        QStringLiteral("relationship"),
+        QJsonObject{{QStringLiteral("subscriptionBenefit"), QJsonValue::Null}});
 
     const auto out = parseUserCardExtras(user, false, false);
 
@@ -222,9 +222,9 @@ TEST(LimerinoUserCardExtrasParse, NullSubscription)
 TEST(LimerinoUserCardExtrasParse, GiftWithGifterDisplayName)
 {
     const auto user =
-        makeUser(QString(), false, QString(), false, true, QStringLiteral("web"),
-                 QStringLiteral("1000"), false, true, 0, QString(),
-                 QStringLiteral("Alice"), QStringLiteral("alice"));
+        makeUser(QString(), false, QString(), false, true,
+                 QStringLiteral("web"), QStringLiteral("1000"), false, true, 0,
+                 QString(), QStringLiteral("Alice"), QStringLiteral("alice"));
 
     const auto out = parseUserCardExtras(user, false, false);
 
@@ -236,9 +236,9 @@ TEST(LimerinoUserCardExtrasParse, GiftWithGifterDisplayName)
 TEST(LimerinoUserCardExtrasParse, GiftGifterFallsBackToLogin)
 {
     const auto user =
-        makeUser(QString(), false, QString(), false, true, QStringLiteral("web"),
-                 QStringLiteral("1000"), false, true, 0, QString(), QString(),
-                 QStringLiteral("bob"));
+        makeUser(QString(), false, QString(), false, true,
+                 QStringLiteral("web"), QStringLiteral("1000"), false, true, 0,
+                 QString(), QString(), QStringLiteral("bob"));
 
     const auto out = parseUserCardExtras(user, false, false);
 

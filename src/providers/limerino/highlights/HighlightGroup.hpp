@@ -45,8 +45,8 @@ private:
     QUuid id_;
     QString name_;
     Scope scope_;
-    QStringList channels_;        // normalised, see .cpp
-    QSet<QString> channelSet_;    // derived at construction, for matches()
+    QStringList channels_;      // normalised, see .cpp
+    QSet<QString> channelSet_;  // derived at construction, for matches()
 };
 
 }  // namespace chatterino

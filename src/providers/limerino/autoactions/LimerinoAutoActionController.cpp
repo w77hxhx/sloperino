@@ -3,8 +3,8 @@
 #include "providers/limerino/autoactions/LimerinoAutoActionController.hpp"
 
 #include "providers/limerino/autoactions/LimerinoAutoAction.hpp"
-#include "providers/limerino/autoactions/LimerinoAutoActionStore.hpp"
 #include "providers/limerino/autoactions/LimerinoAutoActionRuntime.hpp"
+#include "providers/limerino/autoactions/LimerinoAutoActionStore.hpp"
 #include "singletons/Settings.hpp"
 
 namespace chatterino::limerino {
@@ -29,9 +29,10 @@ LimerinoAutoActionController::LimerinoAutoActionController(Settings &settings,
     this->rebuildListener_.addSetting(this->settings_.limerinoAutoActions,
                                       /*autoInvoke=*/false);
 
-    QObject::connect(this, &LimerinoAutoActionController::rulesChanged, this, [] {
-        LimerinoAutoActionRuntime_resetCooldowns();
-    });
+    QObject::connect(this, &LimerinoAutoActionController::rulesChanged, this,
+                     [] {
+                         LimerinoAutoActionRuntime_resetCooldowns();
+                     });
 }
 
 void LimerinoAutoActionController::rebuild()

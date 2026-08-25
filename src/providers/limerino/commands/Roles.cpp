@@ -47,18 +47,20 @@ void fetchSeventvUserId(const QString &twitchUserId,
                    NetworkRequestType::Post)
         .header("Content-Type", "application/json")
         .header("Accept", "application/json")
-        .payload(QJsonDocument(QJsonObject{{QStringLiteral("query"),
-                                            gql::SEVENTV_USER_BY_CONNECTION_QUERY
-                                                .arg(twitchUserId)}})
+        .payload(QJsonDocument(
+                     QJsonObject{{QStringLiteral("query"),
+                                  gql::SEVENTV_USER_BY_CONNECTION_QUERY.arg(
+                                      twitchUserId)}})
                      .toJson(QJsonDocument::Compact))
         .timeout(5000)
         .onSuccess([onOk, onErr](NetworkResult result) {
-            const QString id = QJsonDocument::fromJson(result.getData())
-                                   .object()[QStringLiteral("data")]
-                                   .toObject()[QStringLiteral("users")]
-                                   .toObject()[QStringLiteral("userByConnection")]
-                                   .toObject()[QStringLiteral("id")]
-                                   .toString();
+            const QString id =
+                QJsonDocument::fromJson(result.getData())
+                    .object()[QStringLiteral("data")]
+                    .toObject()[QStringLiteral("users")]
+                    .toObject()[QStringLiteral("userByConnection")]
+                    .toObject()[QStringLiteral("id")]
+                    .toString();
             if (id.isEmpty())
             {
                 onErr(QStringLiteral("Failed to fetch 7TV user ID."));
@@ -83,41 +85,42 @@ void communityRoleMutation(bool grant, const QString &userLogin,
     auto token = LimerinoAuth::resolveCurrentUserToken(&err);
     if (!token.hasToken())
     {
-        say(channel,
-            err.isEmpty()
-                ? LimerinoAuth::errors::tokenRequiredMessage(
-                      grant ? QStringLiteral("grant artist")
-                            : QStringLiteral("revoke artist"))
-                : err);
+        say(channel, err.isEmpty()
+                         ? LimerinoAuth::errors::tokenRequiredMessage(
+                               grant ? QStringLiteral("grant artist")
+                                     : QStringLiteral("revoke artist"))
+                         : err);
         return;
     }
 
     const QString opField = grant ? QStringLiteral("grantCommunityRole")
                                   : QStringLiteral("revokeCommunityRole");
-    const QString manageField = grant ? QStringLiteral("granteeLogin")
-                                      : QStringLiteral("revokeeLogin");
+    const QString manageField =
+        grant ? QStringLiteral("granteeLogin") : QStringLiteral("revokeeLogin");
     gql::executePersisted(
         grant ? gql::PQ_GRANT_COMMUNITY_ROLE : gql::PQ_REVOKE_COMMUNITY_ROLE,
-        QJsonObject{{QStringLiteral("input"),
-                     QJsonObject{{QStringLiteral("channelID"), token.userId},
-                                 {manageField, userLogin},
-                                 {QStringLiteral("role"),
-                                  QStringLiteral("ARTIST")}}}},
+        QJsonObject{
+            {QStringLiteral("input"),
+             QJsonObject{{QStringLiteral("channelID"), token.userId},
+                         {manageField, userLogin},
+                         {QStringLiteral("role"), QStringLiteral("ARTIST")}}}},
         token.token,
-        [weak = std::weak_ptr(channel), grant, opField](
-            const QJsonObject &data) {
+        [weak = std::weak_ptr(channel), grant,
+         opField](const QJsonObject &data) {
             if (auto chan = weak.lock())
             {
-                const QString code =
-                    data[opField].toObject()[QStringLiteral("error")]
-                        .toObject()[QStringLiteral("code")]
-                        .toString();
+                const QString code = data[opField]
+                                         .toObject()[QStringLiteral("error")]
+                                         .toObject()[QStringLiteral("code")]
+                                         .toString();
                 if (!code.isEmpty())
                 {
                     chan->addSystemMessage(
-                        grant ? QStringLiteral("Unable to grant artist! Status: %1")
+                        grant ? QStringLiteral(
+                                    "Unable to grant artist! Status: %1")
                                     .arg(code)
-                              : QStringLiteral("Unable to revoke artist role! Error: %1")
+                              : QStringLiteral(
+                                    "Unable to revoke artist role! Error: %1")
                                     .arg(code));
                 }
                 else
@@ -131,9 +134,10 @@ void communityRoleMutation(bool grant, const QString &userLogin,
         [weak = std::weak_ptr(channel), grant](const gql::GqlError &e) {
             if (auto chan = weak.lock())
             {
-                chan->addSystemMessage((grant ? QStringLiteral("Unable to grant artist! ")
-                                              : QStringLiteral("Unable to revoke artist role! ")) +
-                                       e.message);
+                chan->addSystemMessage(
+                    (grant ? QStringLiteral("Unable to grant artist! ")
+                           : QStringLiteral("Unable to revoke artist role! ")) +
+                    e.message);
             }
         });
 }
@@ -204,10 +208,9 @@ void grantLeadMod(const QString &userLogin, const ChannelPtr &channel)
     auto token = LimerinoAuth::resolveCurrentUserToken(&err);
     if (!token.hasToken())
     {
-        say(channel, err.isEmpty()
-                         ? LimerinoAuth::errors::tokenRequiredMessage(
-                               QStringLiteral("grant lead mod"))
-                         : err);
+        say(channel, err.isEmpty() ? LimerinoAuth::errors::tokenRequiredMessage(
+                                         QStringLiteral("grant lead mod"))
+                                   : err);
         return;
     }
 
@@ -217,8 +220,7 @@ void grantLeadMod(const QString &userLogin, const ChannelPtr &channel)
         QJsonObject{{QStringLiteral("login"), userLogin},
                     {QStringLiteral("lookupType"), QStringLiteral("ALL")}},
         token.token,
-        [weak = std::weak_ptr(channel), token](
-            const QJsonObject &data) {
+        [weak = std::weak_ptr(channel), token](const QJsonObject &data) {
             const QString uid = data[QStringLiteral("user")]
                                     .toObject()[QStringLiteral("id")]
                                     .toString();
@@ -234,12 +236,12 @@ void grantLeadMod(const QString &userLogin, const ChannelPtr &channel)
             }
             gql::executePersisted(
                 gql::PQ_ASSIGN_CHANNEL_ROLE,
-                QJsonObject{{QStringLiteral("input"),
-                             QJsonObject{{QStringLiteral("channelID"),
-                                          token.userId},
-                                         {QStringLiteral("targetUserID"), uid},
-                                          {QStringLiteral("roleID"),
-                                           QStringLiteral("lead_mod")}}}},
+                QJsonObject{
+                    {QStringLiteral("input"),
+                     QJsonObject{{QStringLiteral("channelID"), token.userId},
+                                 {QStringLiteral("targetUserID"), uid},
+                                 {QStringLiteral("roleID"),
+                                  QStringLiteral("lead_mod")}}}},
                 token.token,
                 [weak](const QJsonObject &assignData) {
                     if (auto ch = weak.lock())
@@ -252,7 +254,8 @@ void grantLeadMod(const QString &userLogin, const ChannelPtr &channel)
                         ch->addSystemMessage(
                             code.isEmpty()
                                 ? QStringLiteral("Successfully assigned role!")
-                                : QStringLiteral("Unable to assign role! Status: %1")
+                                : QStringLiteral(
+                                      "Unable to assign role! Status: %1")
                                       .arg(code));
                     }
                 },
@@ -298,12 +301,11 @@ void showSeventvUserEditors(const QString &twitchUserId,
                            NetworkRequestType::Post)
                 .header("Content-Type", "application/json")
                 .payload(QJsonDocument(
-                             QJsonObject{
-                                 {QStringLiteral("query"),
-                                  gql::SEVENTV_ONE_USER_QUERY},
-                                 {QStringLiteral("variables"),
-                                  QJsonObject{
-                                      {QStringLiteral("id"), stvUserId}}}})
+                             QJsonObject{{QStringLiteral("query"),
+                                          gql::SEVENTV_ONE_USER_QUERY},
+                                         {QStringLiteral("variables"),
+                                          QJsonObject{{QStringLiteral("id"),
+                                                       stvUserId}}}})
                              .toJson(QJsonDocument::Compact))
                 .timeout(5000)
                 .onSuccess([label, feedbackChannel](NetworkResult result) {
@@ -355,8 +357,8 @@ void showSeventvUserEditors(const QString &twitchUserId,
                     dialog->resultList()->setColumns(
                         {QStringLiteral("name"), QStringLiteral("7tv id")});
                     dialog->resultList()->setRows(rows);
-                    dialog->resultList()->setStatusText(QStringLiteral(
-                        "click a row to open the 7tv profile"));
+                    dialog->resultList()->setStatusText(
+                        QStringLiteral("click a row to open the 7tv profile"));
                     dialog->resultList()->setRowOpenUrlProvider(
                         [](const QStringList &row) {
                             const QString id = row.value(1);
@@ -375,7 +377,9 @@ void showSeventvUserEditors(const QString &twitchUserId,
                 })
                 .execute();
         },
-        [feedbackChannel](const QString &err) { say(feedbackChannel, err); });
+        [feedbackChannel](const QString &err) {
+            say(feedbackChannel, err);
+        });
 }
 
 void showSeventvUserEditorIn(const QString &userLogin)
@@ -394,75 +398,86 @@ void showSeventvUserEditorIn(const QString &userLogin)
         token.token,
         [userLogin](const QJsonObject &data) {
             const QString twitchId = data[QStringLiteral("user")]
-                                             .toObject()[QStringLiteral("id")]
-                                             .toString();
+                                         .toObject()[QStringLiteral("id")]
+                                         .toString();
             if (twitchId.isEmpty())
             {
                 return;
             }
-            fetchSeventvUserId(twitchId, [userLogin](const QString &stvUserId) {
-                NetworkRequest(QUrl(QStringLiteral("https://7tv.io/v3/gql")),
-                               NetworkRequestType::Post)
-                    .header("Content-Type", "application/json")
-                    .payload(QJsonDocument(
-                                 QJsonObject{{QStringLiteral("operationName"),
-                                              QStringLiteral("GetUserEditorOf")},
-                                             {QStringLiteral("variables"),
-                                              QJsonObject{{QStringLiteral("id"),
-                                                           stvUserId}}},
-                                             {QStringLiteral("query"),
-                                              gql::SEVENTV_EDITOR_OF_QUERY}})
-                                 .toJson(QJsonDocument::Compact))
-                    .timeout(5000)
-                    .onSuccess([userLogin](NetworkResult result) {
-                        const QJsonObject user =
-                            QJsonDocument::fromJson(result.getData())
-                                .object()[QStringLiteral("data")]
-                                .toObject()[QStringLiteral("user")]
-                                .toObject();
-                        const QString displayName =
-                            user[QStringLiteral("display_name")].toString();
-                        const QJsonArray editorOf =
-                            user[QStringLiteral("editor_of")].toArray();
-
-                        QVector<QStringList> rows;
-                        for (int i = 0; i < editorOf.size(); ++i)
-                        {
-                            const QJsonObject u =
-                                editorOf.at(i)
+            fetchSeventvUserId(
+                twitchId,
+                [userLogin](const QString &stvUserId) {
+                    NetworkRequest(
+                        QUrl(QStringLiteral("https://7tv.io/v3/gql")),
+                        NetworkRequestType::Post)
+                        .header("Content-Type", "application/json")
+                        .payload(
+                            QJsonDocument(
+                                QJsonObject{{QStringLiteral("operationName"),
+                                             QStringLiteral("GetUserEditorOf")},
+                                            {QStringLiteral("variables"),
+                                             QJsonObject{{QStringLiteral("id"),
+                                                          stvUserId}}},
+                                            {QStringLiteral("query"),
+                                             gql::SEVENTV_EDITOR_OF_QUERY}})
+                                .toJson(QJsonDocument::Compact))
+                        .timeout(5000)
+                        .onSuccess([userLogin](NetworkResult result) {
+                            const QJsonObject user =
+                                QJsonDocument::fromJson(result.getData())
+                                    .object()[QStringLiteral("data")]
                                     .toObject()[QStringLiteral("user")]
                                     .toObject();
-                            rows.append({u[QStringLiteral("display_name")]
-                                             .toString(),
-                                         u[QStringLiteral("id")].toString()});
-                        }
+                            const QString displayName =
+                                user[QStringLiteral("display_name")].toString();
+                            const QJsonArray editorOf =
+                                user[QStringLiteral("editor_of")].toArray();
 
-                        auto *dialog = new limerino::LimerinoResultDialog;
-                        dialog->setAttribute(Qt::WA_DeleteOnClose);
-                        dialog->setWindowTitle(
-                            QStringLiteral("Editor-in-channels - %1")
-                                .arg(userLogin));
-                        dialog->resultList()->setTitleText(QStringLiteral(
-                            "Channels (%1) that %2 can edit:").arg(rows.size()).arg(displayName));
-                        dialog->resultList()->setColumns(
-                            {QStringLiteral("name"), QStringLiteral("7tv id")});
-                        dialog->resultList()->setRows(rows);
-                        dialog->resultList()->setStatusText(
-                            QStringLiteral("click a row to open the 7tv profile"));
-                        dialog->resultList()->setRowOpenUrlProvider(
-                            [](const QStringList &row) {
-                                const QString id = row.value(1);
-                                return id.isEmpty()
-                                           ? QString()
-                                           : QStringLiteral("https://7tv.app/users/%1")
-                                                 .arg(id);
-                            });
-                        dialog->resize(420, 460);
-                        dialog->show();
-                    })
-                    .onError([](NetworkResult) {})
-                    .execute();
-            }, [](const QString &) {});
+                            QVector<QStringList> rows;
+                            for (int i = 0; i < editorOf.size(); ++i)
+                            {
+                                const QJsonObject u =
+                                    editorOf.at(i)
+                                        .toObject()[QStringLiteral("user")]
+                                        .toObject();
+                                rows.append(
+                                    {u[QStringLiteral("display_name")]
+                                         .toString(),
+                                     u[QStringLiteral("id")].toString()});
+                            }
+
+                            auto *dialog = new limerino::LimerinoResultDialog;
+                            dialog->setAttribute(Qt::WA_DeleteOnClose);
+                            dialog->setWindowTitle(
+                                QStringLiteral("Editor-in-channels - %1")
+                                    .arg(userLogin));
+                            dialog->resultList()->setTitleText(
+                                QStringLiteral(
+                                    "Channels (%1) that %2 can edit:")
+                                    .arg(rows.size())
+                                    .arg(displayName));
+                            dialog->resultList()->setColumns(
+                                {QStringLiteral("name"),
+                                 QStringLiteral("7tv id")});
+                            dialog->resultList()->setRows(rows);
+                            dialog->resultList()->setStatusText(QStringLiteral(
+                                "click a row to open the 7tv profile"));
+                            dialog->resultList()->setRowOpenUrlProvider(
+                                [](const QStringList &row) {
+                                    const QString id = row.value(1);
+                                    return id.isEmpty()
+                                               ? QString()
+                                               : QStringLiteral(
+                                                     "https://7tv.app/users/%1")
+                                                     .arg(id);
+                                });
+                            dialog->resize(420, 460);
+                            dialog->show();
+                        })
+                        .onError([](NetworkResult) {})
+                        .execute();
+                },
+                [](const QString &) {});
         },
         [](const gql::GqlError &) {});
 }

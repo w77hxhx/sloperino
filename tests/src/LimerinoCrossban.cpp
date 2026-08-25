@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-#include "providers/limerino/crossban/CrossbanStrike.hpp"
 #include "providers/limerino/crossban/CrossbanComments.hpp"
 #include "providers/limerino/crossban/CrossbanPresets.hpp"
+#include "providers/limerino/crossban/CrossbanStrike.hpp"
 
 #include <gtest/gtest.h>
 #include <QJsonDocument>
@@ -43,7 +43,8 @@ TEST(LimerinoCrossban, ParseBannedStrike)
     EXPECT_EQ(strike.kind, CrossbanStrikeKind::Banned);
     EXPECT_EQ(strike.reason, QStringLiteral("testmodcomment"));
     EXPECT_EQ(strike.actorLogin, QStringLiteral("lime"));
-    EXPECT_TRUE(strike.detailLabel().contains(QStringLiteral("testmodcomment")));
+    EXPECT_TRUE(
+        strike.detailLabel().contains(QStringLiteral("testmodcomment")));
 }
 
 TEST(LimerinoCrossban, ParseTimeoutStrike)
@@ -116,9 +117,9 @@ TEST(LimerinoCrossban, EnsureAllModeratedKeepsCustomPresets)
     CrossbanPreset custom;
     custom.id = QUuid::createUuid();
     custom.name = QStringLiteral("My mods snapshot");
-    custom.channels.append(
-        CrossbanChannel{QStringLiteral("1"), QStringLiteral("forsen"),
-                        QStringLiteral("Forsen")});
+    custom.channels.append(CrossbanChannel{QStringLiteral("1"),
+                                           QStringLiteral("forsen"),
+                                           QStringLiteral("Forsen")});
 
     QVector<CrossbanPreset> presets{custom};
     EXPECT_TRUE(ensureAllModeratedPreset(presets));

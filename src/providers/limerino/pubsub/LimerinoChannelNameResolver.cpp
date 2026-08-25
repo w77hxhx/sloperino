@@ -181,10 +181,9 @@ void startHelix(const QStringList &ids)
                     user.value(QStringLiteral("login")).toString();
                 const QString display =
                     user.value(QStringLiteral("display_name")).toString();
-                const QString name =
-                    !login.isEmpty()
-                        ? login
-                        : (!display.isEmpty() ? display : id);
+                const QString name = !login.isEmpty()
+                                         ? login
+                                         : (!display.isEmpty() ? display : id);
                 if (!id.isEmpty())
                 {
                     got.insert(id, name);

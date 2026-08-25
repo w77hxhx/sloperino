@@ -48,7 +48,7 @@ enum class PubSubTopicAuth {
 /// raw notification, kept for tooltips/debug only - never rendered as text.
 struct PubSubEvent {
     QString topic;
-    QString channelId;    // topic suffix annotation (client.js L182, L461)
+    QString channelId;  // topic suffix annotation (client.js L182, L461)
     QString eventType;
     QString category;     // controller-derived from the topic prefix
     QJsonObject payload;  // raw notification (tooltip / copy-raw)
@@ -91,18 +91,17 @@ public:
     /// Re-enter authentication on connections stalled for this key.
     virtual void retryAuthentication(const QString &tokenKey) = 0;
 
-    virtual pajlada::Signals::Signal<const QString &>
-        &subscribeSucceeded() = 0;
-    virtual pajlada::Signals::Signal<const QString &, const QString &>
-        &subscribeFailed() = 0;
-    virtual pajlada::Signals::Signal<const QString &, const QString &>
-        &authSucceeded() = 0;
-    virtual pajlada::Signals::Signal<const QString &, const QString &>
-        &authFailed() = 0;
-    virtual pajlada::Signals::Signal<const QString &, const QString &>
-        &authUnavailable() = 0;
-    virtual pajlada::Signals::Signal<const QString &, const QJsonObject &>
-        &topicMessage() = 0;
+    virtual pajlada::Signals::Signal<const QString &> &subscribeSucceeded() = 0;
+    virtual pajlada::Signals::Signal<const QString &, const QString &> &
+        subscribeFailed() = 0;
+    virtual pajlada::Signals::Signal<const QString &, const QString &> &
+        authSucceeded() = 0;
+    virtual pajlada::Signals::Signal<const QString &, const QString &> &
+        authFailed() = 0;
+    virtual pajlada::Signals::Signal<const QString &, const QString &> &
+        authUnavailable() = 0;
+    virtual pajlada::Signals::Signal<const QString &, const QJsonObject &> &
+        topicMessage() = 0;
 };
 
 /// Resolve a topic's account right now. token+userId empty = unresolvable;
@@ -120,15 +119,16 @@ class LimerinoPubSubController
 public:
     struct Config {
         std::chrono::milliseconds retryBase{2000};
-        int maxAttempts = 5;      // failed subscribes before terminal failure
-        int maxAuthFailures = 2;  // consecutive auth failures before failing its topics
+        int maxAttempts = 5;  // failed subscribes before terminal failure
+        int maxAuthFailures =
+            2;  // consecutive auth failures before failing its topics
     };
 
     enum class TopicState {
-        Pending,   // submitted, awaiting subscribeResponse
+        Pending,  // submitted, awaiting subscribeResponse
         Active,
-        Retrying,  // waiting out backoff before an automatic re-submit
-        Failed,    // exhausted retries (or repeated auth failure) - surfaced
+        Retrying,     // waiting out backoff before an automatic re-submit
+        Failed,       // exhausted retries (or repeated auth failure) - surfaced
         AuthBlocked,  // extra auth missing/expired: NOT subscribed (rule 5)
     };
 
@@ -184,9 +184,8 @@ public:
     /// event.displayText (and may drive their own feature side effects) and
     /// return whether the message was understood. The generic PubSubEvent is
     /// emitted for every notification regardless (events channel sees all).
-    using TopicMessageHandler =
-        std::function<bool(const QString &topic, const QJsonObject &payload,
-                           PubSubEvent &event)>;
+    using TopicMessageHandler = std::function<bool(
+        const QString &topic, const QJsonObject &payload, PubSubEvent &event)>;
     void registerTopicHandler(const QString &prefix,
                               TopicMessageHandler handler);
 

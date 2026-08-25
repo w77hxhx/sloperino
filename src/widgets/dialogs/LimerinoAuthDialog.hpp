@@ -7,9 +7,8 @@
 #include "providers/limerino/LimerinoAuth.hpp"
 #include "widgets/BasePopup.hpp"
 
-#include <QPointer>
-
 #include <pajlada/signals/signalholder.hpp>
+#include <QPointer>
 
 class QComboBox;
 class QLabel;
@@ -28,8 +27,7 @@ public:
 
 private:
     void rebuildAccountsTable();
-    void setDeviceStatusText(
-        const LimerinoAuth::DeviceLogin::Status &status);
+    void setDeviceStatusText(const LimerinoAuth::DeviceLogin::Status &status);
     void updateDeviceResult();
 
     struct {

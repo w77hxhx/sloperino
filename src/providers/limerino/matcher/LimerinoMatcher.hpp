@@ -29,11 +29,11 @@
 namespace chatterino::limerino {
 
 struct LimerinoMatcher {
-    QString pattern;           // empty == matches anything
+    QString pattern;  // empty == matches anything
     bool caseSensitive = false;
     bool isRegex = true;
     QRegularExpression compiled;  // precompiled at construction
-    QString literalNeedle;        // pre-lowered when !caseSensitive (literal mode)
+    QString literalNeedle;  // pre-lowered when !caseSensitive (literal mode)
 
     LimerinoMatcher() = default;
     LimerinoMatcher(QString pattern, bool isCaseSensitive, bool isRegex);

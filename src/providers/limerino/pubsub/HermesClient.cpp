@@ -29,8 +29,9 @@ HermesClient::HermesClient(HermesManager &manager)
     : manager_(manager)
 {
     this->keepaliveTimer_.setInterval(2000);  // HEALTH_CHECK_INTERVAL_MS (L29)
-    QObject::connect(&this->keepaliveTimer_, &QTimer::timeout,
-                     [this] { this->checkKeepalive(); });
+    QObject::connect(&this->keepaliveTimer_, &QTimer::timeout, [this] {
+        this->checkKeepalive();
+    });
 }
 
 HermesClient::~HermesClient() = default;
@@ -277,8 +278,8 @@ void HermesClient::onWelcome(const QJsonObject &object)
         return;
     }
     // client.js L356: (msg.welcome.keepaliveSec || 10) + 2.5
-    this->keepaliveMs_ =
-        std::chrono::milliseconds(static_cast<qint64>(welcome->keepaliveSec * 1000) + 2500);
+    this->keepaliveMs_ = std::chrono::milliseconds(
+        static_cast<qint64>(welcome->keepaliveSec * 1000) + 2500);
     this->lastKeepaliveAt_ = QDateTime::currentDateTimeUtc();
     this->keepaliveTimer_.start();
 }
@@ -342,8 +343,8 @@ void HermesClient::onSubscribeResponse(const QJsonObject &object)
 
     const QString error =
         response->error.isEmpty() ? response->errorCode : response->error;
-    this->manager_.clientSubscribeFailed(this, topic,
-                                         error.isEmpty() ? u"unknown"_s : error);
+    this->manager_.clientSubscribeFailed(
+        this, topic, error.isEmpty() ? u"unknown"_s : error);
 }
 
 void HermesClient::onUnsubscribeResponse(const QJsonObject &object)
@@ -373,8 +374,7 @@ void HermesClient::onNotification(const QJsonObject &object)
         return;
     }
 
-    this->manager_.clientTopicMessage(topicIt->second,
-                                      notification->payload);
+    this->manager_.clientTopicMessage(topicIt->second, notification->payload);
 }
 
 void HermesClient::checkKeepalive()

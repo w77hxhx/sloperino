@@ -2,7 +2,6 @@
 // Pure-function tests for the Limerino theme creator. No app, no mock, no UI.
 
 #include "providers/limerino/theme/LimerinoThemeGenerator.hpp"
-
 #include "providers/limerino/theme/LimerinoThemeSeed.hpp"
 
 #include <gtest/gtest.h>
@@ -113,10 +112,9 @@ TEST(LimerinoTheme, StyleSheetNeverEmitted)
 TEST(LimerinoTheme, SchemaUsesPublicLimerinoUrl)
 {
     const auto dark = generateTheme(LimerinoThemeSeed::darkPreset());
-    EXPECT_EQ(
-        dark[QStringLiteral("$schema")].toString(),
-        QStringLiteral("https://raw.githubusercontent.com/lagx/Limerino/"
-                       "limerino/docs/ChatterinoTheme.schema.json"));
+    EXPECT_EQ(dark[QStringLiteral("$schema")].toString(),
+              QStringLiteral("https://raw.githubusercontent.com/lagx/Limerino/"
+                             "limerino/docs/ChatterinoTheme.schema.json"));
 }
 
 TEST(LimerinoTheme, IconThemeFollowsLightness)
@@ -233,13 +231,12 @@ TEST(LimerinoTheme, BuiltinDarkAlternateIsNotGuessedBlend)
             .toObject()[QStringLiteral("alternate")]
             .toString()
             .toLower();
-    const auto gotAlternate =
-        generated[QStringLiteral("colors")]
-            .toObject()[QStringLiteral("messages")]
-            .toObject()[QStringLiteral("backgrounds")]
-            .toObject()[QStringLiteral("alternate")]
-            .toString()
-            .toLower();
+    const auto gotAlternate = generated[QStringLiteral("colors")]
+                                  .toObject()[QStringLiteral("messages")]
+                                  .toObject()[QStringLiteral("backgrounds")]
+                                  .toObject()[QStringLiteral("alternate")]
+                                  .toString()
+                                  .toLower();
     EXPECT_EQ(gotAlternate, expectedAlternate);
     EXPECT_EQ(expectedAlternate, QStringLiteral("#222222"));
 }

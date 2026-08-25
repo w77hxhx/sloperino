@@ -2,11 +2,11 @@
 
 #include "providers/limerino/commands/LimerinoCommands.hpp"
 
-#include "controllers/commands/CommandController.hpp"
 #include "controllers/commands/CommandContext.hpp"
+#include "controllers/commands/CommandController.hpp"
+#include "providers/limerino/commands/ChatUtils.hpp"
 #include "providers/limerino/commands/Follows.hpp"
 #include "providers/limerino/commands/Identity.hpp"
-#include "providers/limerino/commands/ChatUtils.hpp"
 #include "providers/limerino/commands/Moderation.hpp"
 #include "providers/limerino/commands/NukeCommands.hpp"
 #include "providers/limerino/commands/Pins.hpp"
@@ -40,7 +40,8 @@ void initialize(CommandController &commands)
 
     // Batch 10 - Moderation
     commands.registerExternalCommand("/modlogs", &modlogs);
-    commands.registerExternalCommand("/acknowledgewarning", &acknowledgeWarning);
+    commands.registerExternalCommand("/acknowledgewarning",
+                                     &acknowledgeWarning);
 
     // Batch N3 - Nuke (moderator emergency tool)
     commands.registerExternalCommand("/cancelnuke", &cancelNuke);

@@ -8,7 +8,6 @@
 #include "util/Twitch.hpp"
 
 #include <pajlada/serialize.hpp>
-
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -127,8 +126,7 @@ QStringList pushChatColorRecent(QStringList existing, const QString &value,
         for (const auto &entry : existing)
         {
             const QColor other = parseChatColor(entry);
-            if (other.isValid() &&
-                other.name(QColor::HexArgb) == key)
+            if (other.isValid() && other.name(QColor::HexArgb) == key)
             {
                 continue;
             }
@@ -164,7 +162,8 @@ QStringList loadChatColorRecents()
     QStringList out;
     for (const auto &entry : list)
     {
-        out = pushChatColorRecent(std::move(out), entry, kChatColorRecentsLimit);
+        out =
+            pushChatColorRecent(std::move(out), entry, kChatColorRecentsLimit);
     }
     return out;
 }
@@ -186,8 +185,7 @@ void saveChatColorRecents(const QStringList &recents)
     rapidjson::Writer<rapidjson::StringBuffer> writer(buf);
     value.Accept(writer);
     getSettings()->limerinoChatColorRecents.setValue(
-        QString::fromUtf8(buf.GetString(),
-                          static_cast<int>(buf.GetSize())));
+        QString::fromUtf8(buf.GetString(), static_cast<int>(buf.GetSize())));
 }
 
 QString loadLastChatColor()

@@ -17,8 +17,8 @@
 #include <QColor>
 #include <QHash>
 #include <QStringList>
-#include <QUuid>
 #include <QUrl>
+#include <QUuid>
 
 #include <cstdint>
 #include <memory>

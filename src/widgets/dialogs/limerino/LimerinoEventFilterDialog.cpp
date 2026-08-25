@@ -19,9 +19,8 @@ LimerinoEventFilterDialog::LimerinoEventFilterDialog(QWidget *parent)
 
     auto *root = new QVBoxLayout(this);
     root->addWidget(new QLabel(
-        QStringLiteral(
-            "Choose which event types appear in the %1 channel. "
-            "Filters apply to newly arriving events.")
+        QStringLiteral("Choose which event types appear in the %1 channel. "
+                       "Filters apply to newly arriving events.")
             .arg(pubSubEventsChannelName()),
         this));
 
@@ -53,10 +52,9 @@ void LimerinoEventFilterDialog::rebuild()
     {
         auto *box = new QCheckBox(type, this);
         box->setChecked(!pubSubEventTypeHidden(type));
-        QObject::connect(box, &QCheckBox::toggled, this,
-                         [type](bool checked) {
-                             setPubSubEventTypeHidden(type, !checked);
-                         });
+        QObject::connect(box, &QCheckBox::toggled, this, [type](bool checked) {
+            setPubSubEventTypeHidden(type, !checked);
+        });
         this->listLayout_->addWidget(box);
     }
     this->listLayout_->addStretch();

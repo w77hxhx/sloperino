@@ -13,6 +13,7 @@
 #include "providers/twitch/TwitchChannel.hpp"
 #include "widgets/dialogs/limerino/LimerinoResultDialog.hpp"
 #include "widgets/dialogs/limerino/LimerinoResultList.hpp"
+
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -74,9 +75,10 @@ void fetchUserId(const QString &login,
 }
 
 // Plugin's getNameHistory: GET https://logs.zonian.dev/namehistory[login:]<user>
-void fetchNameHistory(const QString &user,
-                      const std::function<void(const QStringList &logins)> &onOk,
-                      const std::function<void(const QString &err)> &onErr)
+void fetchNameHistory(
+    const QString &user,
+    const std::function<void(const QStringList &logins)> &onOk,
+    const std::function<void(const QString &err)> &onErr)
 {
     QString url;
     if (user.startsWith(QStringLiteral("id:")))
@@ -178,7 +180,8 @@ QString nameHistory(const CommandContext &ctx)
     auto *tchan = ctx.twitchChannel;
     if (tchan == nullptr)
     {
-        return QStringLiteral("/namehistory: only available in Twitch channels");
+        return QStringLiteral(
+            "/namehistory: only available in Twitch channels");
     }
 
     const QString user = ctx.words.value(1);
@@ -194,8 +197,9 @@ QString nameHistory(const CommandContext &ctx)
         [weak = std::weak_ptr(channel)](const QStringList &logins) {
             if (auto chan = weak.lock())
             {
-                chan->addSystemMessage(QStringLiteral("Username history: %1")
-                                           .arg(logins.join(QStringLiteral("\n"))));
+                chan->addSystemMessage(
+                    QStringLiteral("Username history: %1")
+                        .arg(logins.join(QStringLiteral("\n"))));
             }
         },
         [weak = std::weak_ptr(channel)](const QString &err) {
@@ -262,10 +266,10 @@ QString modList(const CommandContext &ctx)
     auto token = LimerinoAuth::resolveCurrentUserToken(&err);
     if (!token.hasToken())
     {
-        say(ctx.channel, err.isEmpty()
-                             ? LimerinoAuth::errors::tokenRequiredMessage(
-                                   QStringLiteral("list your moderated channels"))
-                             : err);
+        say(ctx.channel,
+            err.isEmpty() ? LimerinoAuth::errors::tokenRequiredMessage(
+                                QStringLiteral("list your moderated channels"))
+                          : err);
         return {};
     }
 
@@ -298,9 +302,9 @@ QString modList(const CommandContext &ctx)
                     return;
                 }
 
-                chan->addSystemMessage(QStringLiteral(
-                                           "Found %1 moderated channels:")
-                                           .arg(self.moderatedChannels.size()));
+                chan->addSystemMessage(
+                    QStringLiteral("Found %1 moderated channels:")
+                        .arg(self.moderatedChannels.size()));
 
                 QVector<QStringList> rows;
                 rows.reserve(self.moderatedChannels.size());
@@ -311,13 +315,13 @@ QString modList(const CommandContext &ctx)
 
                 auto *dialog = new limerino::LimerinoResultDialog;
                 dialog->setAttribute(Qt::WA_DeleteOnClose);
-                dialog->setWindowTitle(QStringLiteral(
-                    "Moderated channels - %1").arg(self.displayName));
-                dialog->resultList()->setTitleText(QStringLiteral(
-                    "%1 moderates %2 channels")
-                    .arg(self.displayName.isEmpty() ? self.login
-                                                    : self.displayName)
-                    .arg(rows.size()));
+                dialog->setWindowTitle(QStringLiteral("Moderated channels - %1")
+                                           .arg(self.displayName));
+                dialog->resultList()->setTitleText(
+                    QStringLiteral("%1 moderates %2 channels")
+                        .arg(self.displayName.isEmpty() ? self.login
+                                                        : self.displayName)
+                        .arg(rows.size()));
                 dialog->resultList()->setColumns(
                     {QStringLiteral("login"), QStringLiteral("display name")});
                 dialog->resultList()->setRows(rows);

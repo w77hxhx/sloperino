@@ -17,7 +17,6 @@
 #pragma once
 
 #include "providers/limerino/matcher/LimerinoMatcher.hpp"
-
 #include "util/RapidjsonHelpers.hpp"
 #include "util/RapidJsonSerializeQString.hpp"
 
@@ -33,22 +32,22 @@ struct AutoActionContext;
 
 struct LimerinoAutoAction {
     QUuid id = QUuid::createUuid();
-    QString name;                   // user-facing, for the editor + logs
+    QString name;  // user-facing, for the editor + logs
     bool enabled = true;
 
-    LimerinoMatcher content;        // message text
-    LimerinoMatcher sender;         // sender login
+    LimerinoMatcher content;  // message text
+    LimerinoMatcher sender;   // sender login
 
     enum class Scope { AllExcept, Only };
     Scope scope = Scope::AllExcept;
-    QStringList channels;           // normalised lowercase "platform:name" keys
+    QStringList channels;  // normalised lowercase "platform:name" keys
 
-    QString action;                 // command template, e.g. "/ban {sender.name}"
+    QString action;  // command template, e.g. "/ban {sender.name}"
 
-    int cooldownSeconds = 10;       // per-rule cooldown
+    int cooldownSeconds = 10;  // per-rule cooldown
 
     // --- cached, derived ---
-    QSet<QString> channelSet;       // rebuilt from channels at load
+    QSet<QString> channelSet;  // rebuilt from channels at load
 
     bool operator==(const LimerinoAutoAction &other) const;
 

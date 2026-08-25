@@ -10,6 +10,8 @@
 
 #include "common/UniqueAccess.hpp"
 
+#include <pajlada/settings/settinglistener.hpp>
+#include <pajlada/signals/signalholder.hpp>
 #include <QHash>
 #include <QObject>
 #include <QString>
@@ -17,9 +19,6 @@
 
 #include <memory>
 #include <vector>
-
-#include <pajlada/settings/settinglistener.hpp>
-#include <pajlada/signals/signalholder.hpp>
 
 namespace chatterino {
 

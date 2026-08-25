@@ -33,8 +33,8 @@ enum class NukeAction {
 /// One moderation target for ban / timeout / warn. Multiple messages from the
 /// same sender collapse into a single NukeTarget.
 struct NukeTarget {
-    QString userId;       // empty when the platform buffer cannot supply one
-    QString login;        // lowercased login
+    QString userId;  // empty when the platform buffer cannot supply one
+    QString login;   // lowercased login
     QString displayName;
     int matchedMessages = 0;
 };
@@ -64,9 +64,8 @@ namespace pajlada {
 
 template <>
 struct Serialize<chatterino::limerino::NukeTarget> {
-    static rapidjson::Value get(
-        const chatterino::limerino::NukeTarget &value,
-        rapidjson::Document::AllocatorType &a);
+    static rapidjson::Value get(const chatterino::limerino::NukeTarget &value,
+                                rapidjson::Document::AllocatorType &a);
 };
 
 template <>

@@ -90,8 +90,7 @@ rapidjson::Value Serialize<chatterino::limerino::LimerinoAutoAction>::get(
 {
     rapidjson::Value ret(rapidjson::kObjectType);
 
-    chatterino::rj::set(ret, "id",
-                        value.id.toString(QUuid::WithoutBraces), a);
+    chatterino::rj::set(ret, "id", value.id.toString(QUuid::WithoutBraces), a);
     chatterino::rj::set(ret, "name", value.name, a);
     chatterino::rj::set(ret, "enabled", value.enabled, a);
     chatterino::rj::set(ret, "content", value.content, a);

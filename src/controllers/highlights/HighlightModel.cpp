@@ -25,8 +25,9 @@ HighlightModel::HighlightModel(QObject *parent)
     // immediately. Rebuild the per-row Group-cell option lists when the group
     // set changes (same signal the resolver uses - no second path).
     this->groupRefreshHolder_.managedConnect(
-        getSettings()->highlightGroups.delayedItemsChanged,
-        [this] { this->refreshGroupCells(); });
+        getSettings()->highlightGroups.delayedItemsChanged, [this] {
+            this->refreshGroupCells();
+        });
 }
 
 void HighlightModel::refreshGroupCells()
@@ -55,9 +56,9 @@ void HighlightModel::refreshGroupCells()
         // Re-derive the displayed name: renames show up immediately and a
         // deleted group falls back to Default like getRowFromItem does.
         const int found = ids.indexOf(cell->data(Qt::UserRole).toString());
-        cell->setData(found >= 0 ? names.value(found)
-                                 : QStringLiteral("Default"),
-                      Qt::DisplayRole);
+        cell->setData(
+            found >= 0 ? names.value(found) : QStringLiteral("Default"),
+            Qt::DisplayRole);
     }
 
     const int groupRowCount = int(this->rows().size());

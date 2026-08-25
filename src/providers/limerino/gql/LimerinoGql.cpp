@@ -29,8 +29,10 @@ GqlError makeGraphqlError(const QJsonArray &errors)
     err.message = errors::fromGraphQlErrors(errors);
     for (int i = 0; i < errors.size(); ++i)
     {
-        err.rawErrors.append(
-            errors.at(i).toObject().value(QStringLiteral("message")).toString());
+        err.rawErrors.append(errors.at(i)
+                                 .toObject()
+                                 .value(QStringLiteral("message"))
+                                 .toString());
     }
     return err;
 }
@@ -40,8 +42,8 @@ void deliver(const QJsonDocument &doc, const GqlSuccessCallback &onSuccess,
 {
     // The plugin always batches exactly one operation per POST ([ {...} ]).
     const QJsonArray batch = doc.array();
-    const QJsonObject op = batch.isEmpty() ? QJsonObject()
-                                           : batch.first().toObject();
+    const QJsonObject op =
+        batch.isEmpty() ? QJsonObject() : batch.first().toObject();
     const QJsonArray errors = op[QStringLiteral("errors")].toArray();
     if (!errors.isEmpty())
     {
@@ -63,8 +65,8 @@ void deliverAllowPartial(const QJsonDocument &doc,
                          const GqlErrorCallback &onError)
 {
     const QJsonArray batch = doc.array();
-    const QJsonObject op = batch.isEmpty() ? QJsonObject()
-                                           : batch.first().toObject();
+    const QJsonObject op =
+        batch.isEmpty() ? QJsonObject() : batch.first().toObject();
     const QJsonArray errors = op.value(QStringLiteral("errors")).toArray();
     const QJsonValue dataVal = op.value(QStringLiteral("data"));
 
@@ -99,7 +101,8 @@ std::function<void(NetworkResult)> makeHttpErrorHandler(
     };
 }
 
-QByteArray makeInlineBody(const QString &operationName, const QString &queryText,
+QByteArray makeInlineBody(const QString &operationName,
+                          const QString &queryText,
                           const QJsonObject &variables)
 {
     QJsonObject op{
@@ -124,8 +127,7 @@ void executeBody(const QByteArray &body, const QString &gqlToken,
             return NetworkRequest(QUrl(GQL_URL), NetworkRequestType::Post)
                 .header("Content-Type", "application/json")
                 .header("client-id", LimerinoAuth::CLIENT_ID)
-                .header("authorization",
-                        QStringLiteral("OAuth ") + gqlToken)
+                .header("authorization", QStringLiteral("OAuth ") + gqlToken)
                 .hideRequestBody()
                 .payload(body)
                 .timeout(timeoutMs);
@@ -148,8 +150,7 @@ void executeBodyAllowPartial(const QByteArray &body, const QString &gqlToken,
             return NetworkRequest(QUrl(GQL_URL), NetworkRequestType::Post)
                 .header("Content-Type", "application/json")
                 .header("client-id", LimerinoAuth::CLIENT_ID)
-                .header("authorization",
-                        QStringLiteral("OAuth ") + gqlToken)
+                .header("authorization", QStringLiteral("OAuth ") + gqlToken)
                 .hideRequestBody()
                 .payload(body)
                 .timeout(timeoutMs);
@@ -172,11 +173,10 @@ void executePersisted(const PersistedQuery &operation,
         {QStringLiteral("operationName"), QString::fromLatin1(operation.name)},
         {QStringLiteral("variables"), variables},
         {QStringLiteral("extensions"),
-         QJsonObject{
-             {QStringLiteral("persistedQuery"),
-              QJsonObject{{QStringLiteral("version"), 1},
-                          {QStringLiteral("sha256Hash"),
-                           QString::fromLatin1(operation.sha256)}}}}},
+         QJsonObject{{QStringLiteral("persistedQuery"),
+                      QJsonObject{{QStringLiteral("version"), 1},
+                                  {QStringLiteral("sha256Hash"),
+                                   QString::fromLatin1(operation.sha256)}}}}},
     };
     const QByteArray body =
         QJsonDocument(QJsonArray{op}).toJson(QJsonDocument::Compact);

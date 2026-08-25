@@ -161,8 +161,8 @@ public:
         this->description_->setVisible(expanded);
         const int row = this->isExpanded_ ? 1 : 0;
         (void)row;
-        const QString chevron = expanded ? QStringLiteral("▾ ")
-                                         : QStringLiteral("▸ ");
+        const QString chevron =
+            expanded ? QStringLiteral("▾ ") : QStringLiteral("▸ ");
         this->nameButton_->setText(chevron + this->baseName_);
         this->isExpanded_ = expanded;
     }
@@ -191,8 +191,9 @@ LimerinoWikiWidget::LimerinoWikiWidget(QWidget *parent)
     root->addLayout(this->listLayout_);
     root->addStretch(1);
 
-    QObject::connect(this->filterEdit_, &QLineEdit::textChanged, this,
-                     [this] { this->rebuild(); });
+    QObject::connect(this->filterEdit_, &QLineEdit::textChanged, this, [this] {
+        this->rebuild();
+    });
 
     this->rebuild();
 }
@@ -240,7 +241,8 @@ void LimerinoWikiWidget::rebuild()
             catLabel->setStyleSheet(
                 QStringLiteral("font-weight: bold; border-bottom: 1px solid "
                                "%1; padding-top: 6px;")
-                    .arg(getTheme()->messages.textColors.chatPlaceholder.name()));
+                    .arg(getTheme()
+                             ->messages.textColors.chatPlaceholder.name()));
             this->listLayout_->addWidget(catLabel);
         }
 

@@ -30,7 +30,8 @@ enum class AccessKind {
 
 struct FeatureAccess {
     AccessKind kind;
-    QString detail;  // user-readable path, e.g. "split 3-dot menu > Filter events..."
+    QString
+        detail;  // user-readable path, e.g. "split 3-dot menu > Filter events..."
 };
 
 struct LimerinoFeature {

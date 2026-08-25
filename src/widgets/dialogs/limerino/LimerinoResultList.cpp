@@ -4,6 +4,7 @@
 
 #include "util/Clipboard.hpp"
 
+#include <QDesktopServices>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
@@ -11,7 +12,6 @@
 #include <QPushButton>
 #include <QTableWidget>
 #include <QTableWidgetItem>
-#include <QDesktopServices>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -94,61 +94,59 @@ LimerinoResultList::LimerinoResultList(QWidget *parent)
             this->applyPage();
         }
     });
-    QObject::connect(this->filterEdit_, &QLineEdit::textChanged, this,
-                     [this] { this->refreshFilter(); });
+    QObject::connect(this->filterEdit_, &QLineEdit::textChanged, this, [this] {
+        this->refreshFilter();
+    });
 
-    QObject::connect(this->table_, &QTableWidget::cellActivated, this,
-                     [this](int row, int column) {
-                         if (this->rowOpenUrlProvider_)
-                         {
-                             QStringList cells;
-                             for (int c = 0; c < this->headers_.size(); ++c)
-                             {
-                                 auto *item = this->table_->item(row, c);
-                                 cells.append(item != nullptr ? item->text()
-                                                              : QString());
-                             }
-                             const QString url = this->rowOpenUrlProvider_(cells);
-                             if (!url.isEmpty())
-                             {
-                                 QDesktopServices::openUrl(QUrl(url));
-                                 return;
-                             }
-                         }
-                         this->copyCell(row, column);
-                     });
+    QObject::connect(
+        this->table_, &QTableWidget::cellActivated, this,
+        [this](int row, int column) {
+            if (this->rowOpenUrlProvider_)
+            {
+                QStringList cells;
+                for (int c = 0; c < this->headers_.size(); ++c)
+                {
+                    auto *item = this->table_->item(row, c);
+                    cells.append(item != nullptr ? item->text() : QString());
+                }
+                const QString url = this->rowOpenUrlProvider_(cells);
+                if (!url.isEmpty())
+                {
+                    QDesktopServices::openUrl(QUrl(url));
+                    return;
+                }
+            }
+            this->copyCell(row, column);
+        });
 
-    QObject::connect(this->table_,
-                     &QTableWidget::customContextMenuRequested, this,
-                     [this](const QPoint &pos) {
-                         const int row = this->table_->rowAt(pos.y());
-                         if (row < 0)
-                         {
-                             return;
-                         }
-                         QStringList cells;
-                         for (int c = 0; c < this->headers_.size(); ++c)
-                         {
-                             auto *item = this->table_->item(row, c);
-                             cells.append(item != nullptr ? item->text()
-                                                          : QString());
-                         }
+    QObject::connect(
+        this->table_, &QTableWidget::customContextMenuRequested, this,
+        [this](const QPoint &pos) {
+            const int row = this->table_->rowAt(pos.y());
+            if (row < 0)
+            {
+                return;
+            }
+            QStringList cells;
+            for (int c = 0; c < this->headers_.size(); ++c)
+            {
+                auto *item = this->table_->item(row, c);
+                cells.append(item != nullptr ? item->text() : QString());
+            }
 
-                         QMenu menu(this);
-                         if (this->rowMenuProvider_)
-                         {
-                             this->rowMenuProvider_(cells, &menu);
-                         }
-                         menu.addAction(QStringLiteral("Copy row"), [cells] {
-                             crossPlatformCopy(
-                                 cells.join(QStringLiteral("\t")));
-                         });
-                         if (!menu.isEmpty())
-                         {
-                             menu.exec(this->table_->viewport()->mapToGlobal(
-                                 pos));
-                         }
-                     });
+            QMenu menu(this);
+            if (this->rowMenuProvider_)
+            {
+                this->rowMenuProvider_(cells, &menu);
+            }
+            menu.addAction(QStringLiteral("Copy row"), [cells] {
+                crossPlatformCopy(cells.join(QStringLiteral("\t")));
+            });
+            if (!menu.isEmpty())
+            {
+                menu.exec(this->table_->viewport()->mapToGlobal(pos));
+            }
+        });
 }
 
 void LimerinoResultList::enableSearch(bool enabled)
@@ -264,7 +262,8 @@ void LimerinoResultList::applyPage()
             this->table_->setItem(r - start, c, item);
         }
 
-        auto *copyButton = new QPushButton(QStringLiteral("copy"), this->table_);
+        auto *copyButton =
+            new QPushButton(QStringLiteral("copy"), this->table_);
         const QString joined = cols.join(QStringLiteral("\t"));
         QObject::connect(copyButton, &QPushButton::clicked, this, [joined] {
             crossPlatformCopy(joined);

@@ -92,8 +92,8 @@ void fitDialogToAvailableScreen(QWidget *dialog, int preferredWidth,
 void boundPlainTextHeight(QPlainTextEdit *edit, int visibleLines)
 {
     const int lineH = edit->fontMetrics().lineSpacing();
-    const int pad = edit->contentsMargins().top() +
-                    edit->contentsMargins().bottom() + 8;
+    const int pad =
+        edit->contentsMargins().top() + edit->contentsMargins().bottom() + 8;
     edit->setMinimumHeight(lineH * 3 + pad);
     edit->setMaximumHeight(lineH * visibleLines + pad);
 }
@@ -131,8 +131,7 @@ LimerinoNukeDialog::LimerinoNukeDialog(Split *split, ChannelPtr channel)
             new QCheckBox(QStringLiteral("Case sensitive"), this);
         this->contentError_ = new QLabel(this);
         this->contentError_->setWordWrap(true);
-        this->contentError_->setStyleSheet(
-            QStringLiteral("color: #d9534f;"));
+        this->contentError_->setStyleSheet(QStringLiteral("color: #d9534f;"));
 
         auto *row = new QHBoxLayout();
         row->setContentsMargins(0, 0, 0, 0);
@@ -230,10 +229,9 @@ LimerinoNukeDialog::LimerinoNukeDialog(Split *split, ChannelPtr channel)
     {
         auto *row = new QHBoxLayout();
         row->setContentsMargins(0, 0, 0, 0);
-        this->previewButton_ =
-            new QPushButton(QStringLiteral("Preview"), this);
-        this->previewSummary_ = new QLabel(QStringLiteral("Not previewed."),
-                                           this);
+        this->previewButton_ = new QPushButton(QStringLiteral("Preview"), this);
+        this->previewSummary_ =
+            new QLabel(QStringLiteral("Not previewed."), this);
         this->previewSummary_->setWordWrap(true);
         row->addWidget(this->previewButton_);
         row->addWidget(this->previewSummary_, 1);
@@ -299,10 +297,8 @@ LimerinoNukeDialog::LimerinoNukeDialog(Split *split, ChannelPtr channel)
     {
         auto *row = new QHBoxLayout();
         row->setContentsMargins(0, 0, 0, 0);
-        this->executeButton_ =
-            new QPushButton(QStringLiteral("Execute"), this);
-        this->cancelButton_ =
-            new QPushButton(QStringLiteral("Cancel"), this);
+        this->executeButton_ = new QPushButton(QStringLiteral("Execute"), this);
+        this->cancelButton_ = new QPushButton(QStringLiteral("Cancel"), this);
         this->cancelButton_->setVisible(false);
         this->undoButton_ = new QPushButton(QStringLiteral("Undo last"), this);
         this->undoButton_->setToolTip(QStringLiteral(
@@ -338,41 +334,36 @@ LimerinoNukeDialog::LimerinoNukeDialog(Split *split, ChannelPtr channel)
                      QOverload<int>::of(&QSpinBox::valueChanged), this,
                      invalidate);
 #endif
-    QObject::connect(this->actionCombo_,
-                     QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-                     [this](int) {
-                         this->onFieldChanged();
-                         const auto a = this->currentAction();
-                         const bool isTime = a == NukeAction::Timeout ||
-                                             a == NukeAction::DeleteAndTimeout;
-                         const bool usesReason =
-                             a == NukeAction::Ban || a == NukeAction::Timeout ||
-                             a == NukeAction::Warn;
-                         const bool usesDelete =
-                             a == NukeAction::Delete ||
-                             a == NukeAction::DeleteAndTimeout;
-                         this->timeoutSpin_->setVisible(isTime);
-                         this->reasonEdit_->setVisible(usesReason);
-                         this->irreversibleLabel_->setVisible(usesDelete);
-                     });
+    QObject::connect(
+        this->actionCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        this, [this](int) {
+            this->onFieldChanged();
+            const auto a = this->currentAction();
+            const bool isTime =
+                a == NukeAction::Timeout || a == NukeAction::DeleteAndTimeout;
+            const bool usesReason = a == NukeAction::Ban ||
+                                    a == NukeAction::Timeout ||
+                                    a == NukeAction::Warn;
+            const bool usesDelete =
+                a == NukeAction::Delete || a == NukeAction::DeleteAndTimeout;
+            this->timeoutSpin_->setVisible(isTime);
+            this->reasonEdit_->setVisible(usesReason);
+            this->irreversibleLabel_->setVisible(usesDelete);
+        });
 
-    QObject::connect(this->previewButton_, &QPushButton::clicked, this,
-                     [this] {
-                         this->onPreview();
-                     });
-    QObject::connect(this->executeButton_, &QPushButton::clicked, this,
-                     [this] {
-                         this->onExecute();
-                     });
-    QObject::connect(this->cancelButton_, &QPushButton::clicked, this,
-                     [this] {
-                         this->onCancel();
-                     });
+    QObject::connect(this->previewButton_, &QPushButton::clicked, this, [this] {
+        this->onPreview();
+    });
+    QObject::connect(this->executeButton_, &QPushButton::clicked, this, [this] {
+        this->onExecute();
+    });
+    QObject::connect(this->cancelButton_, &QPushButton::clicked, this, [this] {
+        this->onCancel();
+    });
 
-    QObject::connect(this->undoButton_, &QPushButton::clicked, this,
-                     [this] {
-                         this->onUndoLast();
-                     });
+    QObject::connect(this->undoButton_, &QPushButton::clicked, this, [this] {
+        this->onUndoLast();
+    });
 
     QObject::connect(this->presetList_, &QListWidget::currentRowChanged, this,
                      [this](int row) {
@@ -486,20 +477,18 @@ void LimerinoNukeDialog::onPreview()
         return;
     }
 
-    const auto plan = buildPlan(this->channel_->getMessageSnapshot(),
-                                this->channel_->messagePlatform(),
-                                this->channel_->getName(),
-                                nukeSelfLogin(*this->channel_),
-                                this->contentMatcher(), this->senderMatcher(),
-                                this->lookbackSpin_->value(),
-                                this->currentAction());
+    const auto plan = buildPlan(
+        this->channel_->getMessageSnapshot(), this->channel_->messagePlatform(),
+        this->channel_->getName(), nukeSelfLogin(*this->channel_),
+        this->contentMatcher(), this->senderMatcher(),
+        this->lookbackSpin_->value(), this->currentAction());
 
     // Summarise.
     QString summary;
     if (this->currentAction() == NukeAction::Delete)
     {
-        summary = QStringLiteral("%1 message(s) matched.")
-                      .arg(plan.messagesMatched);
+        summary =
+            QStringLiteral("%1 message(s) matched.").arg(plan.messagesMatched);
     }
     else
     {
@@ -510,8 +499,8 @@ void LimerinoNukeDialog::onPreview()
     }
     if (!plan.warnings.isEmpty())
     {
-        summary += QStringLiteral("  ") +
-                   plan.warnings.join(QStringLiteral(" · "));
+        summary +=
+            QStringLiteral("  ") + plan.warnings.join(QStringLiteral(" · "));
     }
     this->previewSummary_->setText(summary);
 
@@ -524,11 +513,9 @@ void LimerinoNukeDialog::onPreview()
                            QStringLiteral("HH:mm:ss")))
                        .arg(plan.bufferNewest.toLocalTime().toString(
                            QStringLiteral("HH:mm:ss")));
-        const auto coveredSecs =
-            plan.bufferNewest.toSecsSinceEpoch() -
-            plan.bufferOldest.toSecsSinceEpoch();
-        coverage += QStringLiteral(" (about %1 s of history)")
-                        .arg(coveredSecs);
+        const auto coveredSecs = plan.bufferNewest.toSecsSinceEpoch() -
+                                 plan.bufferOldest.toSecsSinceEpoch();
+        coverage += QStringLiteral(" (about %1 s of history)").arg(coveredSecs);
     }
     else
     {
@@ -536,10 +523,9 @@ void LimerinoNukeDialog::onPreview()
     }
     if (plan.lookbackExceedsBuffer)
     {
-        coverage +=
-            QStringLiteral(
-                "  ⚠ Requested lookback exceeds buffered history; only the "
-                "messages inside the buffer can be affected.");
+        coverage += QStringLiteral(
+            "  ⚠ Requested lookback exceeds buffered history; only the "
+            "messages inside the buffer can be affected.");
     }
     this->previewCoverage_->setText(coverage);
 
@@ -592,13 +578,11 @@ void LimerinoNukeDialog::onExecute()
     }
 
     // Re-derive the plan at execution time so we act on the freshest buffer.
-    const auto plan = buildPlan(this->channel_->getMessageSnapshot(),
-                                this->channel_->messagePlatform(),
-                                this->channel_->getName(),
-                                nukeSelfLogin(*this->channel_),
-                                this->contentMatcher(), this->senderMatcher(),
-                                this->lookbackSpin_->value(),
-                                this->currentAction());
+    const auto plan = buildPlan(
+        this->channel_->getMessageSnapshot(), this->channel_->messagePlatform(),
+        this->channel_->getName(), nukeSelfLogin(*this->channel_),
+        this->contentMatcher(), this->senderMatcher(),
+        this->lookbackSpin_->value(), this->currentAction());
 
     if (plan.targets.isEmpty() && plan.messageIds.isEmpty())
     {
@@ -607,11 +591,9 @@ void LimerinoNukeDialog::onExecute()
         return;
     }
 
-    this->executor_ = new NukeExecutor(this->channel_, plan,
-                                       this->currentAction(),
-                                       this->timeoutSpin_->value(),
-                                       this->reasonEdit_->text().trimmed(),
-                                       this);
+    this->executor_ = new NukeExecutor(
+        this->channel_, plan, this->currentAction(),
+        this->timeoutSpin_->value(), this->reasonEdit_->text().trimmed(), this);
 
     QObject::connect(this->executor_, &NukeExecutor::progress, this,
                      &LimerinoNukeDialog::onProgress);
@@ -622,8 +604,8 @@ void LimerinoNukeDialog::onExecute()
     this->previewButton_->setEnabled(false);
     this->cancelButton_->setVisible(true);
     this->progressBar_->setVisible(true);
-    this->progressBar_->setRange(0, plan.targets.size() +
-                                        plan.messageIds.size());
+    this->progressBar_->setRange(0,
+                                 plan.targets.size() + plan.messageIds.size());
     this->resultsView_->clear();
 
     this->executor_->start();
@@ -650,23 +632,20 @@ void LimerinoNukeDialog::onProgress(int done, int total, int succeeded,
             .arg(failed));
 }
 
-void LimerinoNukeDialog::onFinished(bool cancelled,
-                                    const QStringList &failures)
+void LimerinoNukeDialog::onFinished(bool cancelled, const QStringList &failures)
 {
     this->cancelButton_->setVisible(false);
     this->previewButton_->setEnabled(true);
 
     this->progressLabel_->setText(
-        cancelled
-            ? QStringLiteral("Cancelled after %1 succeeded, %2 failed.")
-                  .arg(this->progressBar_->value())
-                  .arg(failures.size())
-            : QStringLiteral("Done. %1 failed.").arg(failures.size()));
+        cancelled ? QStringLiteral("Cancelled after %1 succeeded, %2 failed.")
+                        .arg(this->progressBar_->value())
+                        .arg(failures.size())
+                  : QStringLiteral("Done. %1 failed.").arg(failures.size()));
 
     if (!failures.isEmpty())
     {
-        this->resultsView_->appendPlainText(
-            QStringLiteral("--- failures ---"));
+        this->resultsView_->appendPlainText(QStringLiteral("--- failures ---"));
         for (const auto &f : failures)
         {
             this->resultsView_->appendPlainText(f);
@@ -713,10 +692,9 @@ void LimerinoNukeDialog::onPresetSelected(int row)
 void LimerinoNukeDialog::onPresetSave()
 {
     bool ok = false;
-    const auto name =
-        QInputDialog::getText(this, QStringLiteral("Save preset"),
-                              QStringLiteral("Preset name:"),
-                              QLineEdit::Normal, {}, &ok);
+    const auto name = QInputDialog::getText(this, QStringLiteral("Save preset"),
+                                            QStringLiteral("Preset name:"),
+                                            QLineEdit::Normal, {}, &ok);
     if (!ok || name.trimmed().isEmpty())
     {
         return;
@@ -759,9 +737,9 @@ void LimerinoNukeDialog::onPresetDelete()
     }
     const auto name = presets[row].name;
 
-    const auto choice =
-        QMessageBox::question(this, QStringLiteral("Delete preset"),
-                              QStringLiteral("Delete preset \"%1\"?").arg(name));
+    const auto choice = QMessageBox::question(
+        this, QStringLiteral("Delete preset"),
+        QStringLiteral("Delete preset \"%1\"?").arg(name));
     if (choice != QMessageBox::Yes)
     {
         return;
@@ -785,8 +763,8 @@ void LimerinoNukeDialog::applyPreset(const LimerinoNukePreset &preset)
     this->timeoutSpin_->setValue(preset.timeoutSeconds);
     this->reasonEdit_->setText(preset.reason);
 
-    const int idx = this->actionCombo_->findData(
-        static_cast<int>(preset.action));
+    const int idx =
+        this->actionCombo_->findData(static_cast<int>(preset.action));
     if (idx >= 0)
     {
         this->actionCombo_->setCurrentIndex(idx);

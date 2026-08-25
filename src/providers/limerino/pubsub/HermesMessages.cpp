@@ -191,10 +191,9 @@ std::optional<HermesNotification> parseHermesNotification(
     {
         return std::nullopt;
     }
-    const QString subscriptionId =
-        notification[QStringLiteral("subscription")]
-            .toObject()[QStringLiteral("id")]
-            .toString();
+    const QString subscriptionId = notification[QStringLiteral("subscription")]
+                                       .toObject()[QStringLiteral("id")]
+                                       .toString();
     if (subscriptionId.isEmpty())
     {
         return std::nullopt;

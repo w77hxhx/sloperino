@@ -13,8 +13,7 @@ namespace {
 
 /// Built-in placeholder table. Anything not listed here is *unknown* and
 /// expands to empty (and logs). {msg.text} is intentionally absent in v1.
-QString lookup(const QString &key, const AutoActionContext &ctx,
-               bool *ok)
+QString lookup(const QString &key, const AutoActionContext &ctx, bool *ok)
 {
     *ok = true;
     if (key == QLatin1String("msg.id"))
@@ -70,8 +69,7 @@ std::optional<QString> expandAutoAction(const QString &templ,
     out.reserve(templ.size() * 2);
 
     // {{ -> literal {, }} -> literal }. All other braces delimit a key.
-    const QRegularExpression re(QStringLiteral(
-        R"(\{\{|\}\}|\{([^{}]+)\})"));
+    const QRegularExpression re(QStringLiteral(R"(\{\{|\}\}|\{([^{}]+)\})"));
     auto it = re.globalMatch(templ);
     qsizetype last = 0;
 

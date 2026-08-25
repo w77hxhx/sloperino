@@ -2,29 +2,28 @@
 // Unit tests for the pure nuke-plan builder (batch N2). No Channel, no app
 // state — the engine only sees a vector<MessagePtr>.
 
-#include "providers/limerino/nuke/NukeEngine.hpp"
-
 #include "messages/Message.hpp"
 #include "providers/limerino/matcher/LimerinoMatcher.hpp"
+#include "providers/limerino/nuke/NukeEngine.hpp"
 
 #include <gtest/gtest.h>
-
 #include <QDateTime>
 
 using namespace chatterino;
+using chatterino::limerino::buildPlan;
 using chatterino::limerino::LimerinoMatcher;
 using chatterino::limerino::NukeAction;
 using chatterino::limerino::NukePlan;
-using chatterino::limerino::buildPlan;
 using chatterino::limerino::validateNukeRequest;
 
 namespace {
 
-const QDateTime NOW = QDateTime::fromString(
-    QStringLiteral("2026-08-04T12:00:00Z"), Qt::ISODate);
+const QDateTime NOW =
+    QDateTime::fromString(QStringLiteral("2026-08-04T12:00:00Z"), Qt::ISODate);
 
 const QString CHANNEL = QStringLiteral("somechannel");
-const QString SELF = QString();  // no logged-in self: only the broadcaster is excluded
+const QString SELF =
+    QString();  // no logged-in self: only the broadcaster is excluded
 
 MessagePtr chatMessage(const QString &login, const QString &text,
                        const QDateTime &time, const QString &id = {})
@@ -134,8 +133,8 @@ TEST(LimerinoNuke, DeletedMessagesAreSkipped)
 
 TEST(LimerinoNuke, SystemAndTimeoutRecordsAreSkipped)
 {
-    auto sys = chatMessage(QString(), QStringLiteral("spam notice"),
-                           NOW.addSecs(-5));
+    auto sys =
+        chatMessage(QString(), QStringLiteral("spam notice"), NOW.addSecs(-5));
     sys->flags.set(MessageFlag::System);
 
     auto to = chatMessage(QStringLiteral("badactor"), QStringLiteral("spam"),
@@ -157,10 +156,10 @@ TEST(LimerinoNuke, SystemAndTimeoutRecordsAreSkipped)
 
 TEST(LimerinoNuke, BroadcasterIsExcluded)
 {
-    auto msgs = snapshot(
-        {chatMessage(CHANNEL, QStringLiteral("spam"), NOW.addSecs(-5)),
-         chatMessage(QStringLiteral("badactor"), QStringLiteral("spam"),
-                     NOW.addSecs(-5))});
+    auto msgs =
+        snapshot({chatMessage(CHANNEL, QStringLiteral("spam"), NOW.addSecs(-5)),
+                  chatMessage(QStringLiteral("badactor"),
+                              QStringLiteral("spam"), NOW.addSecs(-5))});
 
     LimerinoMatcher content(QStringLiteral("spam"), false, true);
     LimerinoMatcher sender;
@@ -174,11 +173,11 @@ TEST(LimerinoNuke, BroadcasterIsExcluded)
 
 TEST(LimerinoNuke, SelfIsExcludedWhenProvided)
 {
-    auto msgs = snapshot(
-        {chatMessage(QStringLiteral("operator"), QStringLiteral("spam"),
-                     NOW.addSecs(-5)),
-         chatMessage(QStringLiteral("badactor"), QStringLiteral("spam"),
-                     NOW.addSecs(-5))});
+    auto msgs =
+        snapshot({chatMessage(QStringLiteral("operator"),
+                              QStringLiteral("spam"), NOW.addSecs(-5)),
+                  chatMessage(QStringLiteral("badactor"),
+                              QStringLiteral("spam"), NOW.addSecs(-5))});
 
     LimerinoMatcher content(QStringLiteral("spam"), false, true);
     LimerinoMatcher sender;
@@ -254,9 +253,9 @@ TEST(LimerinoNuke, DeleteAndTimeoutPopulatesBothLists)
     LimerinoMatcher content(QStringLiteral("spam"), false, true);
     LimerinoMatcher sender;
 
-    auto plan = buildPlan(msgs, MessagePlatform::AnyOrTwitch, CHANNEL, SELF,
-                          content, sender, 600,
-                          NukeAction::DeleteAndTimeout, NOW);
+    auto plan =
+        buildPlan(msgs, MessagePlatform::AnyOrTwitch, CHANNEL, SELF, content,
+                  sender, 600, NukeAction::DeleteAndTimeout, NOW);
 
     ASSERT_EQ(plan.targets.size(), 2);
     EXPECT_EQ(plan.targets[0].matchedMessages + plan.targets[1].matchedMessages,
@@ -266,9 +265,8 @@ TEST(LimerinoNuke, DeleteAndTimeoutPopulatesBothLists)
 
 TEST(LimerinoNuke, InvalidRegexProducesEmptyPlan)
 {
-    auto msgs = snapshot(
-        {chatMessage(QStringLiteral("badactor"), QStringLiteral("spam"),
-                     NOW.addSecs(-10))});
+    auto msgs = snapshot({chatMessage(
+        QStringLiteral("badactor"), QStringLiteral("spam"), NOW.addSecs(-10))});
 
     LimerinoMatcher content(QStringLiteral("(unclosed"), false, true);
     ASSERT_TRUE(content.compileError().has_value());
@@ -283,9 +281,8 @@ TEST(LimerinoNuke, InvalidRegexProducesEmptyPlan)
 
 TEST(LimerinoNuke, WarnOnKickClearsTargetsWithWarning)
 {
-    auto msgs = snapshot(
-        {chatMessage(QStringLiteral("badactor"), QStringLiteral("spam"),
-                     NOW.addSecs(-10))});
+    auto msgs = snapshot({chatMessage(
+        QStringLiteral("badactor"), QStringLiteral("spam"), NOW.addSecs(-10))});
 
     LimerinoMatcher content(QStringLiteral("spam"), false, true);
     LimerinoMatcher sender;

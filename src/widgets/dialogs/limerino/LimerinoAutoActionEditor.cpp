@@ -2,8 +2,8 @@
 
 #include "widgets/dialogs/limerino/LimerinoAutoActionEditor.hpp"
 
-#include "providers/limerino/autoactions/LimerinoAutoAction.hpp"
 #include "providers/limerino/autoactions/AutoActionPlaceholders.hpp"
+#include "providers/limerino/autoactions/LimerinoAutoAction.hpp"
 #include "providers/limerino/matcher/LimerinoMatcher.hpp"
 #include "providers/limerino/matcher/LimerinoMatcherValidation.hpp"
 #include "util/LayoutHelper.hpp"
@@ -64,15 +64,16 @@ void fitDialogToAvailableScreen(QWidget *dialog, int preferredWidth,
 
 }  // namespace
 
-LimerinoAutoActionEditor::LimerinoAutoActionEditor(QWidget *parent,
-                                                   const LimerinoAutoAction &existing)
+LimerinoAutoActionEditor::LimerinoAutoActionEditor(
+    QWidget *parent, const LimerinoAutoAction &existing)
     : BasePopup({BaseWindow::Flags::Dialog}, parent)
     , id_(existing.id)
 {
-    this->setWindowTitle(existing.name.isEmpty()
-                             ? QStringLiteral("New auto action (Limerino)")
-                             : QStringLiteral("Edit auto action - %1 (Limerino)")
-                                   .arg(existing.name));
+    this->setWindowTitle(
+        existing.name.isEmpty()
+            ? QStringLiteral("New auto action (Limerino)")
+            : QStringLiteral("Edit auto action - %1 (Limerino)")
+                  .arg(existing.name));
 
     auto *outer = new QVBoxLayout(this);
 
@@ -162,14 +163,15 @@ LimerinoAutoActionEditor::LimerinoAutoActionEditor(QWidget *parent,
 
     // Scope
     this->scopeCombo_ = new QComboBox(content);
-    this->scopeCombo_->addItem(QStringLiteral("All except..."), kScopeAllExcept);
+    this->scopeCombo_->addItem(QStringLiteral("All except..."),
+                               kScopeAllExcept);
     this->scopeCombo_->addItem(QStringLiteral("Only in..."), kScopeOnly);
     this->scopeCombo_->setCurrentIndex(
         existing.scope == LimerinoAutoAction::Scope::Only ? 1 : 0);
     form->addRow(QStringLiteral("Scope"), this->scopeCombo_);
 
-    this->channelsEdit_ = new QLineEdit(
-        existing.channels.join(QStringLiteral(", ")), content);
+    this->channelsEdit_ =
+        new QLineEdit(existing.channels.join(QStringLiteral(", ")), content);
     this->channelsEdit_->setPlaceholderText(
         QStringLiteral("twitch:forsen, kick:amouranth"));
     form->addRow(QStringLiteral("Channel list"), this->channelsEdit_);
@@ -226,13 +228,16 @@ LimerinoAutoActionEditor::LimerinoAutoActionEditor(QWidget *parent,
     auto onChange = [this] {
         this->rebuildValidation();
     };
-    QObject::connect(this->contentEdit_, &QLineEdit::textChanged, this, onChange);
-    QObject::connect(this->senderEdit_, &QLineEdit::textChanged, this, onChange);
+    QObject::connect(this->contentEdit_, &QLineEdit::textChanged, this,
+                     onChange);
+    QObject::connect(this->senderEdit_, &QLineEdit::textChanged, this,
+                     onChange);
     QObject::connect(this->contentRegex_, &QCheckBox::toggled, this, onChange);
     QObject::connect(this->contentCase_, &QCheckBox::toggled, this, onChange);
     QObject::connect(this->senderRegex_, &QCheckBox::toggled, this, onChange);
     QObject::connect(this->senderCase_, &QCheckBox::toggled, this, onChange);
-    QObject::connect(this->actionEdit_, &QLineEdit::textChanged, this, onChange);
+    QObject::connect(this->actionEdit_, &QLineEdit::textChanged, this,
+                     onChange);
 
     this->rebuildValidation();
 }
@@ -261,12 +266,12 @@ void LimerinoAutoActionEditor::addActionRow(QVBoxLayout *layout)
 
 void LimerinoAutoActionEditor::rebuildValidation()
 {
-    const LimerinoMatcher content(
-        this->contentEdit_->text(), this->contentCase_->isChecked(),
-        this->contentRegex_->isChecked());
-    const LimerinoMatcher sender(
-        this->senderEdit_->text(), this->senderCase_->isChecked(),
-        this->senderRegex_->isChecked());
+    const LimerinoMatcher content(this->contentEdit_->text(),
+                                  this->contentCase_->isChecked(),
+                                  this->contentRegex_->isChecked());
+    const LimerinoMatcher sender(this->senderEdit_->text(),
+                                 this->senderCase_->isChecked(),
+                                 this->senderRegex_->isChecked());
 
     if (auto err = content.compileError())
     {
@@ -302,12 +307,12 @@ void LimerinoAutoActionEditor::rebuildValidation()
 
 void LimerinoAutoActionEditor::onTest()
 {
-    const LimerinoMatcher content(
-        this->contentEdit_->text(), this->contentCase_->isChecked(),
-        this->contentRegex_->isChecked());
-    const LimerinoMatcher sender(
-        this->senderEdit_->text(), this->senderCase_->isChecked(),
-        this->senderRegex_->isChecked());
+    const LimerinoMatcher content(this->contentEdit_->text(),
+                                  this->contentCase_->isChecked(),
+                                  this->contentRegex_->isChecked());
+    const LimerinoMatcher sender(this->senderEdit_->text(),
+                                 this->senderCase_->isChecked(),
+                                 this->senderRegex_->isChecked());
 
     const QString channelKey = this->testChannel_->text().trimmed().toLower();
     const QString testSender = this->testSender_->text().trimmed();
@@ -345,7 +350,8 @@ void LimerinoAutoActionEditor::onTest()
         ctx.senderLogin = testSender.toLower();
         ctx.senderDisplayName = testSender;
         ctx.senderId = QStringLiteral("123456");
-        ctx.channelName = channelKey.mid(channelKey.indexOf(QLatin1Char(':')) + 1);
+        ctx.channelName =
+            channelKey.mid(channelKey.indexOf(QLatin1Char(':')) + 1);
         ctx.channelId = QStringLiteral("channelid");
         ctx.platform = channelKey.left(channelKey.indexOf(QLatin1Char(':')));
 
@@ -370,12 +376,12 @@ void LimerinoAutoActionEditor::onTest()
 void LimerinoAutoActionEditor::onSave()
 {
     // Final hard validation: do not save if the matchers are broken.
-    const LimerinoMatcher content(
-        this->contentEdit_->text(), this->contentCase_->isChecked(),
-        this->contentRegex_->isChecked());
-    const LimerinoMatcher sender(
-        this->senderEdit_->text(), this->senderCase_->isChecked(),
-        this->senderRegex_->isChecked());
+    const LimerinoMatcher content(this->contentEdit_->text(),
+                                  this->contentCase_->isChecked(),
+                                  this->contentRegex_->isChecked());
+    const LimerinoMatcher sender(this->senderEdit_->text(),
+                                 this->senderCase_->isChecked(),
+                                 this->senderRegex_->isChecked());
 
     if (auto err = validateMatcherPair(content, sender))
     {
@@ -400,12 +406,11 @@ void LimerinoAutoActionEditor::onSave()
     rule.content = content;
     rule.sender = sender;
     rule.action = this->actionEdit_->text().trimmed();
-    rule.scope =
-        this->scopeCombo_->currentIndex() == 1
-            ? LimerinoAutoAction::Scope::Only
-            : LimerinoAutoAction::Scope::AllExcept;
-    rule.channels = this->channelsEdit_->text().split(
-        QStringLiteral(","), Qt::SkipEmptyParts);
+    rule.scope = this->scopeCombo_->currentIndex() == 1
+                     ? LimerinoAutoAction::Scope::Only
+                     : LimerinoAutoAction::Scope::AllExcept;
+    rule.channels = this->channelsEdit_->text().split(QStringLiteral(","),
+                                                      Qt::SkipEmptyParts);
     for (auto &c : rule.channels)
     {
         c = c.trimmed().toLower();

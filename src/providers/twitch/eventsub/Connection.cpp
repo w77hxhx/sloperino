@@ -13,11 +13,11 @@
 #include "messages/Message.hpp"
 #include "messages/MessageBuilder.hpp"
 #include "messages/MessageElement.hpp"
+#include "providers/limerino/highlights/HighlightGroupChannelKey.hpp"
 #include "providers/twitch/eventsub/Controller.hpp"
 #include "providers/twitch/eventsub/MessageBuilder.hpp"
 #include "providers/twitch/eventsub/MessageHandlers.hpp"
 #include "providers/twitch/PubSubManager.hpp"
-#include "providers/limerino/highlights/HighlightGroupChannelKey.hpp"
 #include "providers/twitch/TwitchBadge.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
@@ -403,8 +403,7 @@ void Connection::onAutomodMessageHold(
     auto userLogin = payload.event.userLogin.qt();
 
     runInGuiThread([channel, messageText, userLogin, header, body] {
-        const auto channelKey =
-            limerino::highlightChannelKey(*channel);
+        const auto channelKey = limerino::highlightChannelKey(*channel);
         auto [highlighted, highlightResult] = getApp()->getHighlights()->check(
             {}, {}, userLogin, messageText, body->flags,
             MessagePlatform::AnyOrTwitch, channelKey);

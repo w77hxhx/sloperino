@@ -58,8 +58,7 @@ TEST(LimerinoFeatures, EveryEntryHasAccessPaths)
             << "feature with no access path: " << f.id;
         for (const auto &a : f.access)
         {
-            EXPECT_FALSE(a.detail.isEmpty())
-                << "empty access detail: " << f.id;
+            EXPECT_FALSE(a.detail.isEmpty()) << "empty access detail: " << f.id;
         }
     }
 }

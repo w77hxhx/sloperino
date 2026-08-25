@@ -38,11 +38,10 @@ void openModLogs(const ChannelPtr &channel, const QString &channelId,
                                                       channel->getName(), &err);
     if (!token.hasToken())
     {
-        say(channel,
-            err.isEmpty()
-                ? LimerinoAuth::errors::tokenRequiredMessage(
-                      QStringLiteral("view moderator actions"))
-                : err);
+        say(channel, err.isEmpty()
+                         ? LimerinoAuth::errors::tokenRequiredMessage(
+                               QStringLiteral("view moderator actions"))
+                         : err);
         return;
     }
     auto *dialog = new limerino::LimerinoModLogsDialog(
@@ -113,8 +112,8 @@ QString modlogs(const CommandContext &ctx)
     // user-given: resolve their id first, then open the dialog filtered
     // by that display name (the plugin resolves getUserId first as well)
     QString err;
-    auto token = LimerinoAuth::resolveModerationToken(
-        tchan->roomId(), tchan->getName(), &err);
+    auto token = LimerinoAuth::resolveModerationToken(tchan->roomId(),
+                                                      tchan->getName(), &err);
     if (!token.hasToken())
     {
         say(channel, err.isEmpty()
@@ -128,8 +127,8 @@ QString modlogs(const CommandContext &ctx)
         QJsonObject{{QStringLiteral("login"), user},
                     {QStringLiteral("lookupType"), QStringLiteral("ALL")}},
         token.token,
-        [weak = std::weak_ptr(channel), user, days, channelId = tchan->roomId()](
-            const QJsonObject &data) {
+        [weak = std::weak_ptr(channel), user, days,
+         channelId = tchan->roomId()](const QJsonObject &data) {
             if (auto chan = weak.lock())
             {
                 openModLogs(chan, channelId, user, days);
@@ -150,26 +149,26 @@ QString acknowledgeWarning(const CommandContext &ctx)
     const ChannelPtr channel = ctx.channel;
     if (tchan == nullptr)
     {
-        return QStringLiteral("/acknowledgewarning: only available in Twitch channels");
+        return QStringLiteral(
+            "/acknowledgewarning: only available in Twitch channels");
     }
 
     QString err;
     auto token = LimerinoAuth::resolveReadToken(&err);
     if (!token.hasToken())
     {
-        say(ctx.channel,
-            err.isEmpty()
-                ? LimerinoAuth::errors::tokenRequiredMessage(
-                      QStringLiteral("acknowledge a chat warning"))
-                : err);
+        say(ctx.channel, err.isEmpty()
+                             ? LimerinoAuth::errors::tokenRequiredMessage(
+                                   QStringLiteral("acknowledge a chat warning"))
+                             : err);
         return {};
     }
 
     gql::executePersisted(
         gql::PQ_ACKNOWLEDGE_CHAT_WARNING,
-        QJsonObject{{QStringLiteral("input"),
-                     QJsonObject{{QStringLiteral("channelID"),
-                                  tchan->roomId()}}}},
+        QJsonObject{
+            {QStringLiteral("input"),
+             QJsonObject{{QStringLiteral("channelID"), tchan->roomId()}}}},
         token.token,
         [weak = std::weak_ptr(channel)](const QJsonObject &data) {
             if (auto chan = weak.lock())

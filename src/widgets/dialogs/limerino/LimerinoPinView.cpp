@@ -43,13 +43,16 @@ LimerinoPinView::LimerinoPinView(Split *split)
     this->setVisible(true);
     this->refreshTint();
 
-    QObject::connect(this->closeButton_, &QPushButton::clicked, this,
-                     [this] { this->dismiss(); });
+    QObject::connect(this->closeButton_, &QPushButton::clicked, this, [this] {
+        this->dismiss();
+    });
 
     // Tint follows the global highlight color (changeable under
     // Settings > Highlights), re-rendered live when the setting changes.
     getSettings()->highlightColor.connect(
-        [this](const QString & /*value*/) { this->refreshTint(); },
+        [this](const QString & /*value*/) {
+            this->refreshTint();
+        },
         this->signalHolder_);
 
     // Mount dynamically into the split's layout: the widget goes directly
@@ -75,15 +78,15 @@ void LimerinoPinView::refreshTint()
 
 void LimerinoPinView::refreshInfoLabel()
 {
-    QString info = QStringLiteral("\U0001F4CC Pinned by %1")
-                       .arg(this->pinnedByName_.isEmpty()
-                                ? QStringLiteral("unknown mod")
-                                : this->pinnedByName_);
+    QString info =
+        QStringLiteral("\U0001F4CC Pinned by %1")
+            .arg(this->pinnedByName_.isEmpty() ? QStringLiteral("unknown mod")
+                                               : this->pinnedByName_);
     if (this->pinnedAt_.isValid())
     {
-        info += QStringLiteral(", %1").arg(this->pinnedAt_.toLocalTime()
-                                               .toString(QStringLiteral(
-                                                   "yyyy-MM-dd hh:mm")));
+        info +=
+            QStringLiteral(", %1").arg(this->pinnedAt_.toLocalTime().toString(
+                QStringLiteral("yyyy-MM-dd hh:mm")));
     }
     this->infoLabel_->setText(info);
 }
@@ -113,9 +116,8 @@ void LimerinoPinView::setPlainMessage(const QString &senderName,
     // Fallback: the message is out of local history, so only the plain text
     // payload from the GQL op is available (no badges/emote rendering).
     this->view_->setVisible(false);
-    this->infoLabel_->setText(
-        this->infoLabel_->text() +
-        QStringLiteral(" - ") + senderName + QStringLiteral(": ") + text);
+    this->infoLabel_->setText(this->infoLabel_->text() + QStringLiteral(" - ") +
+                              senderName + QStringLiteral(": ") + text);
 }
 
 void LimerinoPinView::dismiss()

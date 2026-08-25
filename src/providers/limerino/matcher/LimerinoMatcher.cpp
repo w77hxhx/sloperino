@@ -18,17 +18,16 @@ void LimerinoMatcher::rebuild()
     if (this->isRegex)
     {
         this->compiled = QRegularExpression(
-            this->pattern,
-            this->caseSensitive
-                ? QRegularExpression::NoPatternOption
-                : QRegularExpression::CaseInsensitiveOption);
+            this->pattern, this->caseSensitive
+                               ? QRegularExpression::NoPatternOption
+                               : QRegularExpression::CaseInsensitiveOption);
         this->literalNeedle.clear();
     }
     else
     {
         this->compiled = QRegularExpression();
-        this->literalNeedle = this->caseSensitive ? this->pattern
-                                                  : this->pattern.toLower();
+        this->literalNeedle =
+            this->caseSensitive ? this->pattern : this->pattern.toLower();
     }
 }
 

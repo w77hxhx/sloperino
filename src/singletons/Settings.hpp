@@ -1128,8 +1128,8 @@ public:
 
     // Limerino: suppress duplicate Hermes notifications in /events (B4.1).
     // Off = show every wire notification (debug "why did my event vanish").
-    BoolSetting limerinoPubSubDedupeEnabled{
-        "/limerino/pubsub/dedupeEnabled", true};
+    BoolSetting limerinoPubSubDedupeEnabled{"/limerino/pubsub/dedupeEnabled",
+                                            true};
 
     // Limerino: auto-acknowledge chat warnings received over
     // chatrooms-user-v1.

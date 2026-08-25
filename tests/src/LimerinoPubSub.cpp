@@ -2,12 +2,11 @@
 // State-machine tests for the Hermes live-updates controller. No network: a
 // recording IPubSubSink double drives the transport signals.
 
-#include "providers/limerino/pubsub/LimerinoPubSubController.hpp"
-
 #include "providers/limerino/LimerinoAuth.hpp"
 #include "providers/limerino/pubsub/HermesChannelTopics.hpp"
 #include "providers/limerino/pubsub/HermesMessages.hpp"
 #include "providers/limerino/pubsub/HermesUserTopics.hpp"
+#include "providers/limerino/pubsub/LimerinoPubSubController.hpp"
 #include "providers/limerino/pubsub/LimerinoPubSubEventDedupe.hpp"
 #include "Test.hpp"
 
@@ -94,28 +93,28 @@ public:
     {
         return this->sigSubscribeSucceeded;
     }
-    pajlada::Signals::Signal<const QString &, const QString &>
-        &subscribeFailed() override
+    pajlada::Signals::Signal<const QString &, const QString &> &
+        subscribeFailed() override
     {
         return this->sigSubscribeFailed;
     }
-    pajlada::Signals::Signal<const QString &, const QString &>
-        &authSucceeded() override
+    pajlada::Signals::Signal<const QString &, const QString &> &authSucceeded()
+        override
     {
         return this->sigAuthSucceeded;
     }
-    pajlada::Signals::Signal<const QString &, const QString &>
-        &authFailed() override
+    pajlada::Signals::Signal<const QString &, const QString &> &authFailed()
+        override
     {
         return this->sigAuthFailed;
     }
-    pajlada::Signals::Signal<const QString &, const QString &>
-        &authUnavailable() override
+    pajlada::Signals::Signal<const QString &, const QString &> &
+        authUnavailable() override
     {
         return this->sigAuthUnavailable;
     }
-    pajlada::Signals::Signal<const QString &, const QJsonObject &>
-        &topicMessage() override
+    pajlada::Signals::Signal<const QString &, const QJsonObject &> &
+        topicMessage() override
     {
         return this->sigTopicMessage;
     }
@@ -147,7 +146,8 @@ TEST(LimerinoPubSubController, UnauthTopicActivates)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -167,7 +167,8 @@ TEST(LimerinoPubSubController, FailedSubscribeRetriesThenSucceeds)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -194,7 +195,8 @@ TEST(LimerinoPubSubController, FailedSubscribeTerminatesAndManualRetry)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -296,7 +298,8 @@ TEST(LimerinoPubSubController, SweepRemovesForeignUserTopics)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {"tok", "u1", {}};
         },
         TEST_CONFIG);
@@ -321,7 +324,8 @@ TEST(LimerinoPubSubController, AuthFailuresFailTopicFast)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {"tok", "u1", {}};
         },
         TEST_CONFIG);
@@ -332,7 +336,8 @@ TEST(LimerinoPubSubController, AuthFailuresFailTopicFast)
     const auto *status = statusOf(&controller, "chatrooms-user-v1.u1");
     ASSERT_TRUE(status->state == LimerinoPubSubController::TopicState::Pending);
 
-    sinkPtr->sigAuthFailed.invoke("u1", "ERR");  // TEST_CONFIG.maxAuthFailures = 2
+    sinkPtr->sigAuthFailed.invoke("u1",
+                                  "ERR");  // TEST_CONFIG.maxAuthFailures = 2
     status = statusOf(&controller, "chatrooms-user-v1.u1");
     ASSERT_TRUE(status->state == LimerinoPubSubController::TopicState::Failed);
     ASSERT_TRUE(status->lastError == QStringLiteral("ERR"));
@@ -352,7 +357,8 @@ TEST(LimerinoPubSubController, NotificationBecomesGenericEvent)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -360,8 +366,9 @@ TEST(LimerinoPubSubController, NotificationBecomesGenericEvent)
     controller.ensureTopic("raid.1234", PubSubTopicAuth::None);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     QJsonObject payload{{"type", "raid_update_v2"},
                         {"raid", QJsonObject{{"id", "r1"}}}};
@@ -372,8 +379,8 @@ TEST(LimerinoPubSubController, NotificationBecomesGenericEvent)
     ASSERT_TRUE(events[0].channelId == QStringLiteral("1234"));
     ASSERT_TRUE(events[0].eventType == QStringLiteral("raid_update_v2"));
     ASSERT_FALSE(events[0].displayText.isEmpty());
-    ASSERT_TRUE(
-        controller.knownEventTypes().contains(QStringLiteral("raid_update_v2")));
+    ASSERT_TRUE(controller.knownEventTypes().contains(
+        QStringLiteral("raid_update_v2")));
 }
 
 TEST(LimerinoPubSubController, RegisteredHandlerFormatsEvent)
@@ -381,7 +388,8 @@ TEST(LimerinoPubSubController, RegisteredHandlerFormatsEvent)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -389,14 +397,15 @@ TEST(LimerinoPubSubController, RegisteredHandlerFormatsEvent)
     controller.registerTopicHandler(
         "raid.",
         [](const QString &, const QJsonObject &payload, PubSubEvent &event) {
-            event.displayText = QStringLiteral("raid event %1")
-                                    .arg(payload["type"].toString());
+            event.displayText =
+                QStringLiteral("raid event %1").arg(payload["type"].toString());
             return true;
         });
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     sinkPtr->sigTopicMessage.invoke("raid.1234",
                                     QJsonObject{{"type", "raid_update_v2"}});
@@ -413,7 +422,8 @@ TEST(LimerinoPubSubP1, HandlersInstallAndRaidFormats)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -421,8 +431,9 @@ TEST(LimerinoPubSubP1, HandlersInstallAndRaidFormats)
     limerino::installHermesChannelTopicHandlers(controller);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     const QJsonObject raid{
         {"id", "raid-1"},
@@ -433,8 +444,7 @@ TEST(LimerinoPubSubP1, HandlersInstallAndRaidFormats)
 
     // Reference shape: raid at top level (events.js L79).
     sinkPtr->sigTopicMessage.invoke(
-        "raid.2500",
-        QJsonObject{{"type", "raid_update_v2"}, {"raid", raid}});
+        "raid.2500", QJsonObject{{"type", "raid_update_v2"}, {"raid", raid}});
 
     ASSERT_EQ(events.size(), 1);
     ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("Target")));
@@ -445,16 +455,14 @@ TEST(LimerinoPubSubP1, HandlersInstallAndRaidFormats)
     // Nested data.raid shape (same raid id → still a second line when Settings
     // / dedupe is unavailable in this test harness).
     sinkPtr->sigTopicMessage.invoke(
-        "raid.2500",
-        QJsonObject{{"type", "raid_update_v2"},
-                    {"data", QJsonObject{{"raid", raid}}}});
+        "raid.2500", QJsonObject{{"type", "raid_update_v2"},
+                                 {"data", QJsonObject{{"raid", raid}}}});
     ASSERT_EQ(events.size(), 2);
     ASSERT_TRUE(events[1].displayText.contains(QStringLiteral("Target")));
 
     // raid_go_v2 is distinct from raid_update_v2 despite sharing raid.id.
     sinkPtr->sigTopicMessage.invoke(
-        "raid.2500",
-        QJsonObject{{"type", "raid_go_v2"}, {"raid", raid}});
+        "raid.2500", QJsonObject{{"type", "raid_go_v2"}, {"raid", raid}});
     ASSERT_EQ(events.size(), 3);
     ASSERT_TRUE(events[2].displayText.contains(QStringLiteral("raid started")));
 }
@@ -464,7 +472,8 @@ TEST(LimerinoPubSubP1, PollCreateListsChoicesWithoutZeroCounts)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -472,8 +481,9 @@ TEST(LimerinoPubSubP1, PollCreateListsChoicesWithoutZeroCounts)
     limerino::installHermesChannelTopicHandlers(controller);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     const QJsonObject poll{
         {"poll_id", "p1"},
@@ -483,16 +493,13 @@ TEST(LimerinoPubSubP1, PollCreateListsChoicesWithoutZeroCounts)
          QJsonObject{{"multi_choice", QJsonObject{{"is_enabled", true}}}}},
         {"choices",
          QJsonArray{
-             QJsonObject{{"title", "1"},
-                         {"votes", QJsonObject{{"total", 0}}}},
-             QJsonObject{{"title", "2"},
-                         {"votes", QJsonObject{{"total", 0}}}},
+             QJsonObject{{"title", "1"}, {"votes", QJsonObject{{"total", 0}}}},
+             QJsonObject{{"title", "2"}, {"votes", QJsonObject{{"total", 0}}}},
          }},
     };
     sinkPtr->sigTopicMessage.invoke(
-        "polls.99",
-        QJsonObject{{"type", "POLL_CREATE"},
-                    {"data", QJsonObject{{"poll", poll}}}});
+        "polls.99", QJsonObject{{"type", "POLL_CREATE"},
+                                {"data", QJsonObject{{"poll", poll}}}});
 
     ASSERT_EQ(events.size(), 1);
     ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("aa")));
@@ -507,7 +514,8 @@ TEST(LimerinoPubSubP1, UnknownTypesFallBackToTypeString)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -515,14 +523,16 @@ TEST(LimerinoPubSubP1, UnknownTypesFallBackToTypeString)
     limerino::installHermesChannelTopicHandlers(controller);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
-    sinkPtr->sigTopicMessage.invoke(
-        "polls.99", QJsonObject{{"type", "weird-poll-thing"}});
+    sinkPtr->sigTopicMessage.invoke("polls.99",
+                                    QJsonObject{{"type", "weird-poll-thing"}});
 
     ASSERT_EQ(events.size(), 1);
-    ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("weird-poll-thing")));
+    ASSERT_TRUE(
+        events[0].displayText.contains(QStringLiteral("weird-poll-thing")));
 }
 
 // ---- P2: user-topic handlers ----
@@ -532,7 +542,8 @@ TEST(LimerinoPubSubP2, UserModerationActionFormatsAndFilters)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {"tok", "u1", {}};
         },
         TEST_CONFIG);
@@ -540,24 +551,25 @@ TEST(LimerinoPubSubP2, UserModerationActionFormatsAndFilters)
     limerino::installHermesUserTopicHandlers(controller);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     // events.js L21 shape: type / data.{action,channel_id,target_id,reason}.
     sinkPtr->sigTopicMessage.invoke(
         "chatrooms-user-v1.u1",
         QJsonObject{
             {"type", "user_moderation_action"},
-            {"data",
-             QJsonObject{{"action", "warn"},
-                         {"channel_id", "12345"},
-                         {"target_id", "u1"},
-                         {"reason", "add spam to whitelist"}}}});
+            {"data", QJsonObject{{"action", "warn"},
+                                 {"channel_id", "12345"},
+                                 {"target_id", "u1"},
+                                 {"reason", "add spam to whitelist"}}}});
 
     ASSERT_EQ(events.size(), 1);
-    ASSERT_TRUE(events[0].eventType == QStringLiteral("user_moderation_action"));
-    ASSERT_TRUE(
-        events[0].displayText.contains(QStringLiteral("add spam to whitelist")));
+    ASSERT_TRUE(events[0].eventType ==
+                QStringLiteral("user_moderation_action"));
+    ASSERT_TRUE(events[0].displayText.contains(
+        QStringLiteral("add spam to whitelist")));
     // Known to the filter dialog from the moment of registration:
     ASSERT_TRUE(controller.knownEventTypes().contains(
         QStringLiteral("user_moderation_action")));
@@ -565,27 +577,24 @@ TEST(LimerinoPubSubP2, UserModerationActionFormatsAndFilters)
     // An action NOT in the specification allowlist is not treated specially.
     sinkPtr->sigTopicMessage.invoke(
         "chatrooms-user-v1.u1",
-        QJsonObject{
-            {"type", "user_moderation_action"},
-            {"data",
-             QJsonObject{{"action", "some_other_action"},
-                         {"channel_id", "12345"},
-                         {"target_id", "u1"}}}});
+        QJsonObject{{"type", "user_moderation_action"},
+                    {"data", QJsonObject{{"action", "some_other_action"},
+                                         {"channel_id", "12345"},
+                                         {"target_id", "u1"}}}});
     ASSERT_EQ(events.size(), 2);
     // falls through to generic display (topic + type):
     ASSERT_TRUE(events[1].displayText.contains(
         QStringLiteral("user_moderation_action")));
-    ASSERT_TRUE(events[1].displayText.contains(QStringLiteral("chatrooms-user")));
+    ASSERT_TRUE(
+        events[1].displayText.contains(QStringLiteral("chatrooms-user")));
 
     // targeting a different user is dropped (events.js L27 filter)
     sinkPtr->sigTopicMessage.invoke(
         "chatrooms-user-v1.u1",
-        QJsonObject{
-            {"type", "user_moderation_action"},
-            {"data",
-             QJsonObject{{"action", "warn"},
-                         {"channel_id", "12345"},
-                         {"target_id", "not-us"}}}});
+        QJsonObject{{"type", "user_moderation_action"},
+                    {"data", QJsonObject{{"action", "warn"},
+                                         {"channel_id", "12345"},
+                                         {"target_id", "not-us"}}}});
     ASSERT_EQ(events.size(), 2);
 }
 
@@ -594,7 +603,8 @@ TEST(LimerinoPubSubP2, PointsSpentShowsNewBalance)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {"tok", "u1", {}};
         },
         TEST_CONFIG);
@@ -602,30 +612,27 @@ TEST(LimerinoPubSubP2, PointsSpentShowsNewBalance)
     limerino::installHermesUserTopicHandlers(controller);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     sinkPtr->sigTopicMessage.invoke(
         "community-points-user-v1.u1",
-        QJsonObject{
-            {"type", "points-spent"},
-            {"data",
-             QJsonObject{
-                 {"timestamp", "2026-08-01T22:00:00Z"},
-                 {"balance",
-                  QJsonObject{{"user_id", "u1"},
-                              {"channel_id", "12345"},
-                              {"balance", 432}}}}}});
+        QJsonObject{{"type", "points-spent"},
+                    {"data", QJsonObject{{"timestamp", "2026-08-01T22:00:00Z"},
+                                         {"balance",
+                                          QJsonObject{{"user_id", "u1"},
+                                                      {"channel_id", "12345"},
+                                                      {"balance", 432}}}}}});
 
     ASSERT_EQ(events.size(), 1);
-    ASSERT_TRUE(
-        events[0].displayText.contains(QStringLiteral("432")));
+    ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("432")));
 
     // Unknown type on the same topic falls through unhandled.
-    sinkPtr->sigTopicMessage.invoke(
-        "community-points-user-v1.u1",
-        QJsonObject{{"type", "points-earned"}});
-    ASSERT_TRUE(events[1].displayText.contains(QStringLiteral("points-earned")));
+    sinkPtr->sigTopicMessage.invoke("community-points-user-v1.u1",
+                                    QJsonObject{{"type", "points-earned"}});
+    ASSERT_TRUE(
+        events[1].displayText.contains(QStringLiteral("points-earned")));
 }
 
 // ---- P3 addition: follows user topic ----
@@ -635,7 +642,8 @@ TEST(LimerinoPubSubP3, FollowsFollowAndUnfollow)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {"tok", "u1", {}};
         },
         TEST_CONFIG);
@@ -643,33 +651,31 @@ TEST(LimerinoPubSubP3, FollowsFollowAndUnfollow)
     limerino::installHermesUserTopicHandlers(controller);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     // client.js L53: followed shape.
     sinkPtr->sigTopicMessage.invoke(
-        "follows.u1",
-        QJsonObject{
-            {"type", "user-followed"},
-            {"timestamp", "2026-08-01T22:00:00Z"},
-            {"target_display_name", "forsen"},
-            {"target_username", "forsen"},
-            {"target_user_id", "22484632"}});
+        "follows.u1", QJsonObject{{"type", "user-followed"},
+                                  {"timestamp", "2026-08-01T22:00:00Z"},
+                                  {"target_display_name", "forsen"},
+                                  {"target_username", "forsen"},
+                                  {"target_user_id", "22484632"}});
     ASSERT_EQ(events.size(), 1);
     ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("forsen")));
 
     // client.js L65: unfollowed (display name absent, id present).
     sinkPtr->sigTopicMessage.invoke(
-        "follows.u1",
-        QJsonObject{{"type", "user-unfollowed"},
-                    {"timestamp", "2026-08-01T22:00:00Z"},
-                    {"target_user_id", "22484639"}});
+        "follows.u1", QJsonObject{{"type", "user-unfollowed"},
+                                  {"timestamp", "2026-08-01T22:00:00Z"},
+                                  {"target_user_id", "22484639"}});
     ASSERT_EQ(events.size(), 2);
     ASSERT_TRUE(events[1].displayText.contains(QStringLiteral("22484639")));
 
     // presence example in the same user-sub family for completeness
-    sinkPtr->sigTopicMessage.invoke(
-        "follows.u1", QJsonObject{{"type", "presence"}});
+    sinkPtr->sigTopicMessage.invoke("follows.u1",
+                                    QJsonObject{{"type", "presence"}});
     // presence has no handler here; falls back to type-display.
     ASSERT_TRUE(events[2].displayText.contains(QStringLiteral("presence")));
 }
@@ -690,7 +696,8 @@ TEST(LimerinoHermesEnvelope, WelcomeDefaultsAndParses)
 
     // (keepaliveSec absent) -> default 10 (client.js: msg.welcome.keepaliveSec || 10)
     // note: welcome must be a non-empty object for parseHermesWelcome to accept.
-    const auto bare = parseHermesFrame(R"({"type":"welcome","welcome":{"x":1}})");
+    const auto bare =
+        parseHermesFrame(R"({"type":"welcome","welcome":{"x":1}})");
     ASSERT_TRUE(bare.has_value());
     const auto bareWelcome = parseHermesWelcome(bare->object);
     ASSERT_TRUE(bareWelcome.has_value());
@@ -786,7 +793,8 @@ TEST(LimerinoPubSubR2, PredictionsChannelEventCreatedAndUpdated)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {};
         },
         TEST_CONFIG);
@@ -794,17 +802,17 @@ TEST(LimerinoPubSubR2, PredictionsChannelEventCreatedAndUpdated)
     limerino::installHermesChannelTopicHandlers(controller);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     const QJsonObject predictionEvent{
         {"id", "evt-1"},
         {"channel_id", "1234"},
         {"title", "Will it rain?"},
         {"status", "ACTIVE"},
-        {"outcomes",
-         QJsonArray{QJsonObject{{"title", "Yes"}},
-                    QJsonObject{{"title", "No"}}}},
+        {"outcomes", QJsonArray{QJsonObject{{"title", "Yes"}},
+                                QJsonObject{{"title", "No"}}}},
     };
 
     sinkPtr->sigTopicMessage.invoke(
@@ -813,17 +821,19 @@ TEST(LimerinoPubSubR2, PredictionsChannelEventCreatedAndUpdated)
                     {"data", QJsonObject{{"event", predictionEvent}}}});
     ASSERT_EQ(events.size(), 1);
     ASSERT_TRUE(events[0].eventType == QStringLiteral("event-created"));
-    ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("Will it rain?")));
+    ASSERT_TRUE(
+        events[0].displayText.contains(QStringLiteral("Will it rain?")));
     // outcome titles joined, not silently dropped
     ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("Yes")));
     ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("No")));
 
     sinkPtr->sigTopicMessage.invoke(
         "predictions-channel-v1.1234",
-        QJsonObject{{"type", "event-updated"},
-                    {"data", QJsonObject{{"event",
-                                          QJsonObject{{"title", "Will it rain?"},
-                                                      {"status", "LOCKED"}}}}}});
+        QJsonObject{
+            {"type", "event-updated"},
+            {"data",
+             QJsonObject{{"event", QJsonObject{{"title", "Will it rain?"},
+                                               {"status", "LOCKED"}}}}}});
     ASSERT_EQ(events.size(), 2);
     ASSERT_TRUE(events[1].displayText.contains(QStringLiteral("locked")));
 
@@ -847,7 +857,8 @@ TEST(LimerinoPubSubR2, PredictionsUserEventAndResult)
     auto sink = std::make_unique<FakeSink>();
     auto *sinkPtr = sink.get();
     LimerinoPubSubController controller(
-        std::move(sink), [](PubSubTopicAuth) -> PubSubTokenResolution {
+        std::move(sink),
+        [](PubSubTopicAuth) -> PubSubTokenResolution {
             return {"tok", "u1", {}};
         },
         TEST_CONFIG);
@@ -855,32 +866,34 @@ TEST(LimerinoPubSubR2, PredictionsUserEventAndResult)
     limerino::installHermesUserTopicHandlers(controller);
 
     std::vector<PubSubEvent> events;
-    controller.eventProduced.connect(
-        [&events](const PubSubEvent &event) { events.push_back(event); });
+    controller.eventProduced.connect([&events](const PubSubEvent &event) {
+        events.push_back(event);
+    });
 
     sinkPtr->sigTopicMessage.invoke(
         "predictions-user-v1.u1",
-        QJsonObject{{"type", "event-created"},
-                    {"data",
-                     QJsonObject{{"event",
-                                  QJsonObject{{"title", "Beat the boss"},
-                                              {"outcomes",
-                                               QJsonArray{QJsonObject{
-                                                   {"title", "Yes"}}}}}}}}});
+        QJsonObject{
+            {"type", "event-created"},
+            {"data",
+             QJsonObject{{"event", QJsonObject{{"title", "Beat the boss"},
+                                               {"outcomes",
+                                                QJsonArray{QJsonObject{
+                                                    {"title", "Yes"}}}}}}}}});
     ASSERT_EQ(events.size(), 1);
-    ASSERT_TRUE(events[0].displayText.contains(QStringLiteral("Beat the boss")));
+    ASSERT_TRUE(
+        events[0].displayText.contains(QStringLiteral("Beat the boss")));
 
     // prediction-result: WIN path uses data.prediction.result.type + points
     sinkPtr->sigTopicMessage.invoke(
         "predictions-user-v1.u1",
-        QJsonObject{{"type", "prediction-result"},
-                    {"data",
-                     QJsonObject{{"prediction",
-                                  QJsonObject{{"event_id", "evt-1"},
-                                              {"points", 250},
-                                              {"result",
-                                               QJsonObject{{"type",
-                                                            "WIN"}}}}}}}});
+        QJsonObject{
+            {"type", "prediction-result"},
+            {"data",
+             QJsonObject{
+                 {"prediction",
+                  QJsonObject{{"event_id", "evt-1"},
+                              {"points", 250},
+                              {"result", QJsonObject{{"type", "WIN"}}}}}}}});
     ASSERT_EQ(events.size(), 2);
     ASSERT_TRUE(events[1].eventType == QStringLiteral("prediction-result"));
     ASSERT_TRUE(events[1].displayText.contains(QStringLiteral("250")));
@@ -898,10 +911,9 @@ TEST(LimerinoPubSubDedupe, RaidIdentitySeparatesUpdateAndGo)
 {
     PubSubEvent update{
         .eventType = QStringLiteral("raid_update_v2"),
-        .payload =
-            QJsonObject{{"type", "raid_update_v2"},
-                        {"raid", QJsonObject{{"id", "r1"},
-                                             {"source_id", "1"}}}},
+        .payload = QJsonObject{{"type", "raid_update_v2"},
+                               {"raid",
+                                QJsonObject{{"id", "r1"}, {"source_id", "1"}}}},
     };
     PubSubEvent go = update;
     go.eventType = QStringLiteral("raid_go_v2");
@@ -913,12 +925,11 @@ TEST(LimerinoPubSubDedupe, RaidIdentitySeparatesUpdateAndGo)
     ASSERT_NE(idUpdate, idGo);
 
     PubSubEventDedupe dedupe;
-    ASSERT_FALSE(dedupe.isDuplicate(idUpdate, pubSubDedupeWindowMs(
-                                                  update.eventType)));
-    ASSERT_TRUE(dedupe.isDuplicate(idUpdate, pubSubDedupeWindowMs(
-                                                 update.eventType)));
     ASSERT_FALSE(
-        dedupe.isDuplicate(idGo, pubSubDedupeWindowMs(go.eventType)));
+        dedupe.isDuplicate(idUpdate, pubSubDedupeWindowMs(update.eventType)));
+    ASSERT_TRUE(
+        dedupe.isDuplicate(idUpdate, pubSubDedupeWindowMs(update.eventType)));
+    ASSERT_FALSE(dedupe.isDuplicate(idGo, pubSubDedupeWindowMs(go.eventType)));
 }
 
 TEST(LimerinoPubSubDedupe, PollIdentityIncludesType)
@@ -928,22 +939,18 @@ TEST(LimerinoPubSubDedupe, PollIdentityIncludesType)
         .payload =
             QJsonObject{
                 {"type", "POLL_CREATE"},
-                {"data",
-                 QJsonObject{
-                     {"poll", QJsonObject{{"poll_id", "p1"},
-                                          {"status", "ACTIVE"},
-                                          {"title", "aa"}}}}}},
+                {"data", QJsonObject{{"poll", QJsonObject{{"poll_id", "p1"},
+                                                          {"status", "ACTIVE"},
+                                                          {"title", "aa"}}}}}},
     };
     PubSubEvent update{
         .eventType = QStringLiteral("POLL_UPDATE"),
         .payload =
             QJsonObject{
                 {"type", "POLL_UPDATE"},
-                {"data",
-                 QJsonObject{
-                     {"poll", QJsonObject{{"poll_id", "p1"},
-                                          {"status", "ACTIVE"},
-                                          {"title", "aa"}}}}}},
+                {"data", QJsonObject{{"poll", QJsonObject{{"poll_id", "p1"},
+                                                          {"status", "ACTIVE"},
+                                                          {"title", "aa"}}}}}},
     };
 
     ASSERT_NE(pubSubEventIdentity(create), pubSubEventIdentity(update));

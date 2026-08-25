@@ -33,9 +33,9 @@ std::shared_ptr<HermesClient> HermesManager::makeClient()
 void HermesManager::listen(const QString &topic, const QString &tokenKey)
 {
     assertInGuiThread();
-    qCDebug(chatterinoLiveupdates) << "Hermes: subscribe" << topic
-                                   << "key:" << (tokenKey.isEmpty()
-                                                     ? u"<none>"_s : tokenKey);
+    qCDebug(chatterinoLiveupdates)
+        << "Hermes: subscribe" << topic
+        << "key:" << (tokenKey.isEmpty() ? u"<none>"_s : tokenKey);
     this->subscribe(HermesSubscription{topic, tokenKey});
 }
 

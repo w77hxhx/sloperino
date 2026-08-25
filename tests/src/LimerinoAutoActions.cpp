@@ -68,8 +68,7 @@ TEST(LimerinoAutoAction, MatchersAndActionStringRoundTrip)
     original.scope = LimerinoAutoAction::Scope::Only;
     original.channels = {QStringLiteral("twitch:forsen"),
                          QStringLiteral("kick:xqc")};
-    original.action =
-        QStringLiteral("/timeout {sender.name} 600 spam");
+    original.action = QStringLiteral("/timeout {sender.name} 600 spam");
     original.cooldownSeconds = 42;
     original.normalize();
 

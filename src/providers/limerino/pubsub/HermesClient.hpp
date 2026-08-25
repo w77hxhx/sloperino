@@ -101,7 +101,7 @@ public:
 
 private:
     enum class AuthState {
-        Idle,          // connected, nothing authenticated yet
+        Idle,  // connected, nothing authenticated yet
         Authenticating,
         Authenticated,
         Unauthenticated,  // no token needed/available; subscribes go out raw

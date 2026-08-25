@@ -32,8 +32,7 @@ namespace chatterino::LimerinoAuth {
 // everything else (Helix, GQL, Hermes WS URL, device flow) reads it from here.
 // Supported grants: OAuth 2.0 Device Authorization Grant (twitch.tv/activate)
 // and the refresh_token grant below; both public, no secret.
-const QString CLIENT_ID =
-    QStringLiteral("kd1unb4b3q4t58fwlpcbzcbnm76a8fp");
+const QString CLIENT_ID = QStringLiteral("kd1unb4b3q4t58fwlpcbzcbnm76a8fp");
 // NOTE: the device flow deliberately requests this broader scope list so the
 // Helix fallback path (chat/messages, moderation/channels) is authorized too.
 // Scopes are unchanged from the prior client - they are all public OAuth
@@ -117,10 +116,10 @@ LimerinoAuthAccount accountFromJson(const QJsonObject &o)
     for (const QJsonValue &v : channels)
     {
         const QJsonObject c = v.toObject();
-        a.moderatedChannels.append(LimerinoAuthChannel{
-            c[QStringLiteral("id")].toString(),
-            c[QStringLiteral("login")].toString(),
-            c[QStringLiteral("displayName")].toString()});
+        a.moderatedChannels.append(
+            LimerinoAuthChannel{c[QStringLiteral("id")].toString(),
+                                c[QStringLiteral("login")].toString(),
+                                c[QStringLiteral("displayName")].toString()});
     }
     return a;
 }
@@ -189,15 +188,16 @@ void save()
     {
         arr.append(accountToJson(a));
     }
-    getSettings()->limerinoAuthAccounts.setValue(QString::fromUtf8(
-        QJsonDocument(arr).toJson(QJsonDocument::Compact)));
+    getSettings()->limerinoAuthAccounts.setValue(
+        QString::fromUtf8(QJsonDocument(arr).toJson(QJsonDocument::Compact)));
     accountsChanged.invoke();
 }
 
 // Merge a freshly validated account over a stored one, preserving the device
 // grant's refresh token whenever the validate path (which never returns one)
 // would otherwise wipe it.
-void mergeResolved(LimerinoAuthAccount &dst, const LimerinoAuthAccount &resolved)
+void mergeResolved(LimerinoAuthAccount &dst,
+                   const LimerinoAuthAccount &resolved)
 {
     const QString priorRefreshToken = dst.refreshToken;
     dst = resolved;
@@ -225,9 +225,8 @@ QString normalizeToken(QString raw)
         QString before = raw;
         raw = raw.trimmed();
 
-        if (raw.size() >= 2 &&
-            ((raw.startsWith(u'"') && raw.endsWith(u'"')) ||
-             (raw.startsWith(u'\'') && raw.endsWith(u'\''))))
+        if (raw.size() >= 2 && ((raw.startsWith(u'"') && raw.endsWith(u'"')) ||
+                                (raw.startsWith(u'\'') && raw.endsWith(u'\''))))
         {
             raw = raw.mid(1, raw.size() - 2).trimmed();
         }
@@ -273,8 +272,9 @@ LimerinoAuthSummary summary()
     return out;
 }
 
-void resolveToken(const QString &normalizedToken,
-                  const std::function<void(const LimerinoAuthAccount &)> &onDone)
+void resolveToken(
+    const QString &normalizedToken,
+    const std::function<void(const LimerinoAuthAccount &)> &onDone)
 {
     auto account = std::make_shared<LimerinoAuthAccount>();
     account->token = normalizedToken;
@@ -285,91 +285,85 @@ void resolveToken(const QString &normalizedToken,
         onDone(*account);
     };
 
-    auto fetchModeratedChannels =
-        [account, onDone, failed](const QString &normalizedToken) {
-            // The broadcaster can always moderate their own channel; start from that.
-            account->moderatedChannels = {LimerinoAuthChannel{
-                account->userId, account->login, account->displayName}};
+    auto fetchModeratedChannels = [account, onDone,
+                                   failed](const QString &normalizedToken) {
+        // The broadcaster can always moderate their own channel; start from that.
+        account->moderatedChannels = {LimerinoAuthChannel{
+            account->userId, account->login, account->displayName}};
 
-            // Only enumerate channels when the token carries the scope;
-            // otherwise the own-channel list above is the honest answer.
-            if (!account->scopes.contains(
-                    QStringLiteral("user:read:moderated_channels")))
+        // Only enumerate channels when the token carries the scope;
+        // otherwise the own-channel list above is the honest answer.
+        if (!account->scopes.contains(
+                QStringLiteral("user:read:moderated_channels")))
+        {
+            onDone(*account);
+            return;
+        }
+        auto page = std::make_shared<std::function<void(const QString &)>>();
+        auto pages = std::make_shared<int>(0);
+        *page = [account, onDone, normalizedToken, page,
+                 pages](const QString &cursor) {
+            QString url =
+                QStringLiteral("%1?user_id=%2&first=100")
+                    .arg(HELIX_MODERATED_CHANNELS_URL, account->userId);
+            if (!cursor.isEmpty())
             {
-                onDone(*account);
-                return;
+                url += QStringLiteral("&after=%1")
+                           .arg(QString::fromUtf8(
+                               QUrl::toPercentEncoding(cursor)));
             }
-            auto page = std::make_shared<std::function<void(const QString &)>>();
-            auto pages = std::make_shared<int>(0);
-            *page = [account, onDone, normalizedToken, page,
-                     pages](const QString &cursor) {
-                QString url = QStringLiteral("%1?user_id=%2&first=100")
-                                  .arg(HELIX_MODERATED_CHANNELS_URL,
-                                       account->userId);
-                if (!cursor.isEmpty())
-                {
-                    url += QStringLiteral("&after=%1").arg(QString::fromUtf8(
-                        QUrl::toPercentEncoding(cursor)));
-                }
-                NetworkRequest(QUrl(url), NetworkRequestType::Get)
-                    .header("Client-Id", CLIENT_ID)
-                    .header("Authorization",
-                            QStringLiteral("Bearer ") + normalizedToken)
-                    .hideRequestBody()
-                    .timeout(REQUEST_TIMEOUT_MS)
-                    .onSuccess(
-                        [account, onDone, normalizedToken, page,
-                         pages](NetworkResult result) {
-                            const QJsonObject body = result.parseJson();
-                            const QJsonArray data =
-                                body[QStringLiteral("data")].toArray();
-                            for (const QJsonValue &v : data)
-                            {
-                                const QJsonObject c = v.toObject();
-                                const QString id =
-                                    c[QStringLiteral("broadcaster_id")]
-                                        .toString();
-                                if (id.isEmpty() || id == account->userId)
-                                {
-                                    continue;
-                                }
-                                account->moderatedChannels.append(
-                                    LimerinoAuthChannel{
-                                        id,
-                                        c[QStringLiteral("broadcaster_login")]
-                                            .toString(),
-                                        c[QStringLiteral("broadcaster_name")]
-                                            .toString()});
-                            }
+            NetworkRequest(QUrl(url), NetworkRequestType::Get)
+                .header("Client-Id", CLIENT_ID)
+                .header("Authorization",
+                        QStringLiteral("Bearer ") + normalizedToken)
+                .hideRequestBody()
+                .timeout(REQUEST_TIMEOUT_MS)
+                .onSuccess([account, onDone, normalizedToken, page,
+                            pages](NetworkResult result) {
+                    const QJsonObject body = result.parseJson();
+                    const QJsonArray data =
+                        body[QStringLiteral("data")].toArray();
+                    for (const QJsonValue &v : data)
+                    {
+                        const QJsonObject c = v.toObject();
+                        const QString id =
+                            c[QStringLiteral("broadcaster_id")].toString();
+                        if (id.isEmpty() || id == account->userId)
+                        {
+                            continue;
+                        }
+                        account->moderatedChannels.append(LimerinoAuthChannel{
+                            id,
+                            c[QStringLiteral("broadcaster_login")].toString(),
+                            c[QStringLiteral("broadcaster_name")].toString()});
+                    }
 
-                            const QString nextCursor =
-                                body[QStringLiteral("pagination")]
-                                    .toObject()[QStringLiteral("cursor")]
-                                    .toString();
-                            // Hard cap: 50 pages (5000 channels) as a runaway guard.
-                            if (!nextCursor.isEmpty() && ++(*pages) < 50)
-                            {
-                                (*page)(nextCursor);
-                            }
-                            else
-                            {
-                                onDone(*account);
-                            }
-                        })
-                    .onError(
-                        [account, onDone](NetworkResult /*result*/) {
-                            // tolerated: keep the own-channel list
-                            onDone(*account);
-                        })
-                    .execute();
-            };
-            (*page)(QString());
+                    const QString nextCursor =
+                        body[QStringLiteral("pagination")]
+                            .toObject()[QStringLiteral("cursor")]
+                            .toString();
+                    // Hard cap: 50 pages (5000 channels) as a runaway guard.
+                    if (!nextCursor.isEmpty() && ++(*pages) < 50)
+                    {
+                        (*page)(nextCursor);
+                    }
+                    else
+                    {
+                        onDone(*account);
+                    }
+                })
+                .onError([account, onDone](NetworkResult /*result*/) {
+                    // tolerated: keep the own-channel list
+                    onDone(*account);
+                })
+                .execute();
         };
+        (*page)(QString());
+    };
 
-    auto fetchDisplayName = [account, onDone,
-                             fetchModeratedChannels](const QString &login,
-                                                     const QString &userId,
-                                                     const QString &normalizedToken) {
+    auto fetchDisplayName = [account, onDone, fetchModeratedChannels](
+                                const QString &login, const QString &userId,
+                                const QString &normalizedToken) {
         account->userId = userId;
         account->login = login;
         account->displayName = login;
@@ -380,32 +374,29 @@ void resolveToken(const QString &normalizedToken,
                     QStringLiteral("Bearer ") + normalizedToken)
             .hideRequestBody()
             .timeout(REQUEST_TIMEOUT_MS)
-            .onSuccess(
-                [account, normalizedToken, fetchModeratedChannels,
-                 onDone](NetworkResult result) {
-                    const QJsonArray data =
-                        result.parseJson()[QStringLiteral("data")].toArray();
-                    if (!data.isEmpty())
+            .onSuccess([account, normalizedToken, fetchModeratedChannels,
+                        onDone](NetworkResult result) {
+                const QJsonArray data =
+                    result.parseJson()[QStringLiteral("data")].toArray();
+                if (!data.isEmpty())
+                {
+                    const QJsonObject user = data.first().toObject();
+                    const QString dn =
+                        user[QStringLiteral("display_name")].toString();
+                    const QString lg = user[QStringLiteral("login")].toString();
+                    if (!lg.isEmpty())
                     {
-                        const QJsonObject user = data.first().toObject();
-                        const QString dn =
-                            user[QStringLiteral("display_name")].toString();
-                        const QString lg =
-                            user[QStringLiteral("login")].toString();
-                        if (!lg.isEmpty())
-                        {
-                            account->login = lg;
-                        }
-                        account->displayName = dn.isEmpty() ? account->login : dn;
+                        account->login = lg;
                     }
-                    fetchModeratedChannels(normalizedToken);
-                })
-            .onError(
-                [account, normalizedToken, fetchModeratedChannels,
-                 onDone](NetworkResult /*result*/) {
-                    // Non-fatal: identity from /validate is already enough.
-                    fetchModeratedChannels(normalizedToken);
-                })
+                    account->displayName = dn.isEmpty() ? account->login : dn;
+                }
+                fetchModeratedChannels(normalizedToken);
+            })
+            .onError([account, normalizedToken, fetchModeratedChannels,
+                      onDone](NetworkResult /*result*/) {
+                // Non-fatal: identity from /validate is already enough.
+                fetchModeratedChannels(normalizedToken);
+            })
             .execute();
     };
 
@@ -414,56 +405,52 @@ void resolveToken(const QString &normalizedToken,
         .header("Authorization", QStringLiteral("OAuth ") + normalizedToken)
         .hideRequestBody()
         .timeout(REQUEST_TIMEOUT_MS)
-        .onSuccess(
-            [account, normalizedToken, fetchDisplayName,
-             onDone](NetworkResult result) {
-                const QJsonObject o = result.parseJson();
-                const QString login = o[QStringLiteral("login")].toString();
-                const QString userId = o[QStringLiteral("user_id")].toString();
-                if (userId.isEmpty() || login.isEmpty())
-                {
-                    account->valid = false;
-                    account->lastError = QStringLiteral(
-                        "validation response missing login/user_id");
-                    onDone(*account);
-                    return;
-                }
-                account->valid = true;
-                account->lastError.clear();
-                account->lastValidatedAt = QDateTime::currentDateTime();
-                account->scopes.clear();
-                for (const QJsonValue &v :
-                     o[QStringLiteral("scopes")].toArray())
-                {
-                    account->scopes.append(v.toString());
-                }
-                const long expiresIn =
-                    o[QStringLiteral("expires_in")].toInt(0);
-                if (expiresIn > 0)
-                {
-                    account->expiresAt =
-                        QDateTime::currentDateTime().addSecs(expiresIn);
-                }
-                fetchDisplayName(login, userId, normalizedToken);
-            })
-        .onError(
-            [account, onDone](NetworkResult result) {
-                QString reason;
-                if (result.status() && *result.status() == 401)
-                {
-                    reason = QStringLiteral(
-                        "token rejected (401): expired, revoked, or issued for "
-                        "a different client");
-                }
-                else
-                {
-                    reason = QStringLiteral("validation request failed: ") +
-                             result.formatError();
-                }
+        .onSuccess([account, normalizedToken, fetchDisplayName,
+                    onDone](NetworkResult result) {
+            const QJsonObject o = result.parseJson();
+            const QString login = o[QStringLiteral("login")].toString();
+            const QString userId = o[QStringLiteral("user_id")].toString();
+            if (userId.isEmpty() || login.isEmpty())
+            {
                 account->valid = false;
-                account->lastError = redact(reason, account->token);
+                account->lastError =
+                    QStringLiteral("validation response missing login/user_id");
                 onDone(*account);
-            })
+                return;
+            }
+            account->valid = true;
+            account->lastError.clear();
+            account->lastValidatedAt = QDateTime::currentDateTime();
+            account->scopes.clear();
+            for (const QJsonValue &v : o[QStringLiteral("scopes")].toArray())
+            {
+                account->scopes.append(v.toString());
+            }
+            const long expiresIn = o[QStringLiteral("expires_in")].toInt(0);
+            if (expiresIn > 0)
+            {
+                account->expiresAt =
+                    QDateTime::currentDateTime().addSecs(expiresIn);
+            }
+            fetchDisplayName(login, userId, normalizedToken);
+        })
+        .onError([account, onDone](NetworkResult result) {
+            QString reason;
+            if (result.status() && *result.status() == 401)
+            {
+                reason = QStringLiteral(
+                    "token rejected (401): expired, revoked, or issued for "
+                    "a different client");
+            }
+            else
+            {
+                reason = QStringLiteral("validation request failed: ") +
+                         result.formatError();
+            }
+            account->valid = false;
+            account->lastError = redact(reason, account->token);
+            onDone(*account);
+        })
         .execute();
 }
 
@@ -519,27 +506,26 @@ void addOrUpdateToken(const LimerinoAuthToken &token)
     }
     save();
 
-    resolveToken(t.token,
-                 [token = t.token](const LimerinoAuthAccount &resolved) {
-                     auto &items = store().items;
-                     auto it = std::find_if(items.begin(), items.end(),
-                                            [&](const LimerinoAuthAccount &a) {
-                                                return (!resolved.userId.isEmpty() &&
-                                                        a.userId ==
-                                                            resolved.userId) ||
-                                                       a.token == token;
-                                            });
-                      if (it == items.end())
-                    {
-                        items.append(resolved);
-                    }
-                    else
-                    {
-                        mergeResolved(*it, resolved);
-                    }
-                    sortItems(items);
-                    save();
-                });
+    resolveToken(
+        t.token, [token = t.token](const LimerinoAuthAccount &resolved) {
+            auto &items = store().items;
+            auto it = std::find_if(items.begin(), items.end(),
+                                   [&](const LimerinoAuthAccount &a) {
+                                       return (!resolved.userId.isEmpty() &&
+                                               a.userId == resolved.userId) ||
+                                              a.token == token;
+                                   });
+            if (it == items.end())
+            {
+                items.append(resolved);
+            }
+            else
+            {
+                mergeResolved(*it, resolved);
+            }
+            sortItems(items);
+            save();
+        });
 }
 
 void removeAccount(const QString &userId)
@@ -579,9 +565,8 @@ void refreshAccounts(
     {
         // Resolve (validate) a given token for this account and merge the result.
         auto resolveWith = [old, pending, result, done](const QString &token) {
-            resolveToken(token,
-                         [pending, result, old, done](
-                             const LimerinoAuthAccount &resolved) {
+            resolveToken(token, [pending, result, old,
+                                 done](const LimerinoAuthAccount &resolved) {
                 if (resolved.valid)
                 {
                     ++result->valid;
@@ -602,12 +587,10 @@ void refreshAccounts(
                 else
                 {
                     ++result->invalid;
-                    result->errors.append(
-                        QStringLiteral("%1: %2")
-                            .arg(old.login.isEmpty()
-                                     ? QStringLiteral("<unknown>")
-                                     : old.login,
-                                 resolved.lastError));
+                    result->errors.append(QStringLiteral("%1: %2").arg(
+                        old.login.isEmpty() ? QStringLiteral("<unknown>")
+                                            : old.login,
+                        resolved.lastError));
 
                     auto &items = store().items;
                     auto it = std::find_if(items.begin(), items.end(),
@@ -660,47 +643,42 @@ void refreshAccounts(
             .payload(refreshQuery.query(QUrl::FullyEncoded).toUtf8())
             .hideRequestBody()
             .timeout(REQUEST_TIMEOUT_MS)
-            .onSuccess(
-                [old, resolveWith](NetworkResult result) {
-                    const QJsonObject o = result.parseJson();
-                    const QString newToken =
-                        o[QStringLiteral("access_token")].toString();
-                    if (newToken.isEmpty())
-                    {
-                        resolveWith(old.token);
-                        return;
-                    }
-                    const QString newRefresh =
-                        o[QStringLiteral("refresh_token")].toString();
-                    const long expiresIn =
-                        o[QStringLiteral("expires_in")].toInt(0);
-
-                    auto &items = store().items;
-                    auto it = std::find_if(
-                        items.begin(), items.end(),
-                        [&](const LimerinoAuthAccount &a) {
-                            return a.userId == old.userId ||
-                                   a.token == old.token;
-                        });
-                    if (it != items.end())
-                    {
-                        it->token = newToken;
-                        it->refreshToken = newRefresh.isEmpty()
-                                               ? old.refreshToken
-                                               : newRefresh;
-                        if (expiresIn > 0)
-                        {
-                            it->expiresAt = QDateTime::currentDateTime()
-                                                .addSecs(expiresIn);
-                        }
-                    }
-                    resolveWith(newToken);
-                })
-            .onError(
-                [old, resolveWith](NetworkResult /*result*/) {
-                    // Refresh refused; fall through to validating the old one.
+            .onSuccess([old, resolveWith](NetworkResult result) {
+                const QJsonObject o = result.parseJson();
+                const QString newToken =
+                    o[QStringLiteral("access_token")].toString();
+                if (newToken.isEmpty())
+                {
                     resolveWith(old.token);
-                })
+                    return;
+                }
+                const QString newRefresh =
+                    o[QStringLiteral("refresh_token")].toString();
+                const long expiresIn = o[QStringLiteral("expires_in")].toInt(0);
+
+                auto &items = store().items;
+                auto it = std::find_if(items.begin(), items.end(),
+                                       [&](const LimerinoAuthAccount &a) {
+                                           return a.userId == old.userId ||
+                                                  a.token == old.token;
+                                       });
+                if (it != items.end())
+                {
+                    it->token = newToken;
+                    it->refreshToken =
+                        newRefresh.isEmpty() ? old.refreshToken : newRefresh;
+                    if (expiresIn > 0)
+                    {
+                        it->expiresAt =
+                            QDateTime::currentDateTime().addSecs(expiresIn);
+                    }
+                }
+                resolveWith(newToken);
+            })
+            .onError([old, resolveWith](NetworkResult /*result*/) {
+                // Refresh refused; fall through to validating the old one.
+                resolveWith(old.token);
+            })
             .execute();
     }
 }
@@ -713,7 +691,9 @@ void scheduleStartupRefresh()
         return;
     }
     scheduled = true;
-    QTimer::singleShot(30000, [] { refreshAccounts(); });
+    QTimer::singleShot(30000, [] {
+        refreshAccounts();
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -780,33 +760,31 @@ void DeviceLogin::start()
         .payload(formBody({{QStringLiteral("client_id"), CLIENT_ID},
                            {QStringLiteral("scopes"), CLIENT_SCOPES}}))
         .timeout(REQUEST_TIMEOUT_MS)
-        .onSuccess(
-            [guard = QPointer<DeviceLogin>(this),
-             generation](NetworkResult result) {
-                if (!guard || generation != guard->generation_)
-                {
-                    return;
-                }
-                const QJsonObject o = result.parseJson();
-                guard->onDeviceCode(
-                    o[QStringLiteral("device_code")].toString(),
-                    o[QStringLiteral("user_code")].toString(),
-                    o[QStringLiteral("verification_uri")].toString(),
-                    o[QStringLiteral("interval")].toInt(5),
-                    o[QStringLiteral("expires_in")].toInt(1800));
-            })
-        .onError(
-            [guard = QPointer<DeviceLogin>(this),
-             generation](NetworkResult result) {
-                if (!guard || generation != guard->generation_)
-                {
-                    return;
-                }
-                guard->setStatus(
-                    State::Failed,
-                    QStringLiteral("Could not request a device code: ") +
-                        result.formatError());
-            })
+        .onSuccess([guard = QPointer<DeviceLogin>(this),
+                    generation](NetworkResult result) {
+            if (!guard || generation != guard->generation_)
+            {
+                return;
+            }
+            const QJsonObject o = result.parseJson();
+            guard->onDeviceCode(
+                o[QStringLiteral("device_code")].toString(),
+                o[QStringLiteral("user_code")].toString(),
+                o[QStringLiteral("verification_uri")].toString(),
+                o[QStringLiteral("interval")].toInt(5),
+                o[QStringLiteral("expires_in")].toInt(1800));
+        })
+        .onError([guard = QPointer<DeviceLogin>(this),
+                  generation](NetworkResult result) {
+            if (!guard || generation != guard->generation_)
+            {
+                return;
+            }
+            guard->setStatus(
+                State::Failed,
+                QStringLiteral("Could not request a device code: ") +
+                    result.formatError());
+        })
         .execute();
 }
 
@@ -829,15 +807,15 @@ void DeviceLogin::onDeviceCode(const QString &deviceCode,
         QDateTime::currentMSecsSinceEpoch() + qint64(expiresInSec) * 1000;
 
     this->status_.userCode = userCode;
-    this->status_.verificationUri = verificationUri.isEmpty()
-                                        ? QStringLiteral("https://www.twitch.tv/"
-                                                         "activate")
-                                        : verificationUri;
+    this->status_.verificationUri =
+        verificationUri.isEmpty() ? QStringLiteral("https://www.twitch.tv/"
+                                                   "activate")
+                                  : verificationUri;
     this->status_.secondsRemaining = expiresInSec;
-    this->setStatus(State::WaitingForUser,
-                    QStringLiteral("Open %1 and enter code %2.")
-                        .arg(this->status_.verificationUri,
-                             this->status_.userCode));
+    this->setStatus(
+        State::WaitingForUser,
+        QStringLiteral("Open %1 and enter code %2.")
+            .arg(this->status_.verificationUri, this->status_.userCode));
 
     this->schedulePoll(this->intervalMs_);
 }
@@ -876,74 +854,72 @@ void DeviceLogin::poll(quint64 generation)
                            {QStringLiteral("device_code"), this->deviceCode_},
                            {QStringLiteral("grant_type"), DEVICE_GRANT_TYPE}}))
         .timeout(REQUEST_TIMEOUT_MS)
-        .onSuccess(
-            [guard = QPointer<DeviceLogin>(this),
-             generation](NetworkResult result) {
-                if (!guard || generation != guard->generation_)
-                {
-                    return;
-                }
-                const QJsonObject o = result.parseJson();
-                const QString accessToken =
-                    o[QStringLiteral("access_token")].toString();
-                if (accessToken.isEmpty())
-                {
-                    guard->setStatus(State::Failed,
-                                     QStringLiteral("Unexpected response: no "
-                                                    "access token in reply."));
-                    return;
-                }
-                addOrUpdateToken(LimerinoAuthToken{
-                    accessToken,
-                    {},
-                    {},
-                    o[QStringLiteral("refresh_token")].toString(),
-                    o[QStringLiteral("expires_in")].toInt(0)});
+        .onSuccess([guard = QPointer<DeviceLogin>(this),
+                    generation](NetworkResult result) {
+            if (!guard || generation != guard->generation_)
+            {
+                return;
+            }
+            const QJsonObject o = result.parseJson();
+            const QString accessToken =
+                o[QStringLiteral("access_token")].toString();
+            if (accessToken.isEmpty())
+            {
+                guard->setStatus(State::Failed,
+                                 QStringLiteral("Unexpected response: no "
+                                                "access token in reply."));
+                return;
+            }
+            addOrUpdateToken(
+                LimerinoAuthToken{accessToken,
+                                  {},
+                                  {},
+                                  o[QStringLiteral("refresh_token")].toString(),
+                                  o[QStringLiteral("expires_in")].toInt(0)});
+            guard->deviceCode_.clear();
+            guard->status_.userCode.clear();
+            guard->setStatus(State::Authorized,
+                             QStringLiteral("Authorized - account added."));
+        })
+        .onError([guard = QPointer<DeviceLogin>(this),
+                  generation](NetworkResult result) {
+            if (!guard || generation != guard->generation_)
+            {
+                return;
+            }
+            const QString code = oauthErrorCode(result.parseJson());
+            if (code == QLatin1String("authorization_pending"))
+            {
+                guard->schedulePoll(guard->intervalMs_);
+            }
+            else if (code == QLatin1String("slow_down"))
+            {
+                guard->intervalMs_ += SLOW_DOWN_EXTRA_MS;
+                guard->schedulePoll(guard->intervalMs_);
+            }
+            else if (code == QLatin1String("access_denied"))
+            {
                 guard->deviceCode_.clear();
                 guard->status_.userCode.clear();
-                guard->setStatus(State::Authorized,
-                                 QStringLiteral("Authorized - account added."));
-            })
-        .onError(
-            [guard = QPointer<DeviceLogin>(this),
-             generation](NetworkResult result) {
-                if (!guard || generation != guard->generation_)
-                {
-                    return;
-                }
-                const QString code = oauthErrorCode(result.parseJson());
-                if (code == QLatin1String("authorization_pending"))
-                {
-                    guard->schedulePoll(guard->intervalMs_);
-                }
-                else if (code == QLatin1String("slow_down"))
-                {
-                    guard->intervalMs_ += SLOW_DOWN_EXTRA_MS;
-                    guard->schedulePoll(guard->intervalMs_);
-                }
-                else if (code == QLatin1String("access_denied"))
-                {
-                    guard->deviceCode_.clear();
-                    guard->status_.userCode.clear();
-                    guard->setStatus(State::Denied,
-                                     QStringLiteral("Authorization was "
-                                                    "declined."));
-                }
-                else if (code == QLatin1String("expired_token"))
-                {
-                    guard->deviceCode_.clear();
-                    guard->status_.userCode.clear();
-                    guard->setStatus(State::Expired,
-                                     QStringLiteral("The device code expired. "
-                                                    "Start again."));
-                }
-                else
-                {
-                    guard->setStatus(State::Failed,
-                                     QStringLiteral("Token request failed: ") +
-                                         result.formatError());
-                }
-            })
+                guard->setStatus(State::Denied,
+                                 QStringLiteral("Authorization was "
+                                                "declined."));
+            }
+            else if (code == QLatin1String("expired_token"))
+            {
+                guard->deviceCode_.clear();
+                guard->status_.userCode.clear();
+                guard->setStatus(State::Expired,
+                                 QStringLiteral("The device code expired. "
+                                                "Start again."));
+            }
+            else
+            {
+                guard->setStatus(State::Failed,
+                                 QStringLiteral("Token request failed: ") +
+                                     result.formatError());
+            }
+        })
         .execute();
 }
 
@@ -1030,10 +1006,11 @@ LimerinoAuthToken resolveModerationToken(const QString &channelId,
     {
         return makeToken(*fallback);
     }
-    setErr(err, authRequiredMessage(QStringLiteral("moderate in %1")
-                                        .arg(channelLogin.isEmpty()
-                                                 ? QStringLiteral("this channel")
-                                                 : "#" + channelLogin)));
+    setErr(err,
+           authRequiredMessage(QStringLiteral("moderate in %1")
+                                   .arg(channelLogin.isEmpty()
+                                            ? QStringLiteral("this channel")
+                                            : "#" + channelLogin)));
     return {};
 }
 
@@ -1064,11 +1041,12 @@ LimerinoAuthToken resolveBroadcasterToken(const QString &channelId,
     {
         return makeToken(*fallback);
     }
-    setErr(err, authRequiredMessage(QStringLiteral("manage %1 as its "
-                                                   "broadcaster")
-                                        .arg(channelLogin.isEmpty()
-                                                 ? QStringLiteral("this channel")
-                                                 : "#" + channelLogin)));
+    setErr(err,
+           authRequiredMessage(QStringLiteral("manage %1 as its "
+                                              "broadcaster")
+                                   .arg(channelLogin.isEmpty()
+                                            ? QStringLiteral("this channel")
+                                            : "#" + channelLogin)));
     return {};
 }
 

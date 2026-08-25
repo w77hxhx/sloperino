@@ -8,7 +8,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
@@ -28,10 +27,10 @@ QJsonArray rulesToJson(const QVector<LimerinoAutoAction> &rules)
         rapidjson::StringBuffer buf;
         rapidjson::Writer<rapidjson::StringBuffer> w(buf);
         v.Accept(w);
-        arr.append(QJsonDocument::fromJson(
-                       QByteArray(buf.GetString(),
-                                  static_cast<int>(buf.GetSize())))
-                       .object());
+        arr.append(
+            QJsonDocument::fromJson(
+                QByteArray(buf.GetString(), static_cast<int>(buf.GetSize())))
+                .object());
     }
     return arr;
 }
@@ -56,8 +55,7 @@ QVector<LimerinoAutoAction> rulesFromJson(const QJsonArray &arr)
             continue;
         }
         bool error = false;
-        auto rule =
-            pajlada::Deserialize<LimerinoAutoAction>::get(doc, &error);
+        auto rule = pajlada::Deserialize<LimerinoAutoAction>::get(doc, &error);
         if (!error)
         {
             out.append(std::move(rule));
@@ -123,4 +121,3 @@ void removeLimerinoAutoAction(const QUuid &id)
 }
 
 }  // namespace chatterino::limerino
-

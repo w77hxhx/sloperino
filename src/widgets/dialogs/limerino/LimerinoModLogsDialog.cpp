@@ -37,8 +37,7 @@ QString modNameFromNode(const QJsonObject &node)
              .toObject()[QStringLiteral("localizedStringFragments")]
              .toArray())
     {
-        const QString name = v.toObject()
-                                 [QStringLiteral("token")]
+        const QString name = v.toObject()[QStringLiteral("token")]
                                  .toObject()[QStringLiteral("displayName")]
                                  .toString();
         if (!name.isEmpty())
@@ -51,9 +50,10 @@ QString modNameFromNode(const QJsonObject &node)
 
 }  // namespace
 
-LimerinoModLogsDialog::LimerinoModLogsDialog(
-    const QString &channelLogin, const QString &channelId,
-    const QString &userLabel, int days, QWidget *parent)
+LimerinoModLogsDialog::LimerinoModLogsDialog(const QString &channelLogin,
+                                             const QString &channelId,
+                                             const QString &userLabel, int days,
+                                             QWidget *parent)
     : BasePopup({BaseWindow::Flags::Dialog}, parent)
     , channelLogin_(channelLogin)
     , channelId_(channelId)
@@ -79,32 +79,30 @@ LimerinoModLogsDialog::LimerinoModLogsDialog(
     this->modsTable_->setNumericColumns({1, 2, 3, 4, 5});
     this->modsTable_->setRowOpenUrlProvider([](const QStringList &row) {
         const QString name = row.value(0);
-        return name.isEmpty() ? QString()
-                              : QStringLiteral("https://www.twitch.tv/%1")
-                                    .arg(name);
+        return name.isEmpty()
+                   ? QString()
+                   : QStringLiteral("https://www.twitch.tv/%1").arg(name);
     });
     root->addWidget(this->modsTable_, 1);
 
     this->actionsTable_ = new LimerinoResultList(this);
     this->actionsTable_->setTitleText(QStringLiteral("Actions"));
-    this->actionsTable_->setColumns({QStringLiteral("time"),
-                                     QStringLiteral("mod"),
-                                     QStringLiteral("action"),
-                                     QStringLiteral("type")});
+    this->actionsTable_->setColumns(
+        {QStringLiteral("time"), QStringLiteral("mod"),
+         QStringLiteral("action"), QStringLiteral("type")});
     root->addWidget(this->actionsTable_, 1);
 
     this->summaryLabel_->setText(QStringLiteral("fetching..."));
 
     QString err;
-    auto token = LimerinoAuth::resolveModerationToken(channelId, channelLogin,
-                                                      &err);
+    auto token =
+        LimerinoAuth::resolveModerationToken(channelId, channelLogin, &err);
     if (!token.hasToken())
     {
         this->summaryLabel_->setText(
-            err.isEmpty()
-                ? LimerinoAuth::errors::tokenRequiredMessage(
-                      QStringLiteral("view moderator actions"))
-                : err);
+            err.isEmpty() ? LimerinoAuth::errors::tokenRequiredMessage(
+                                QStringLiteral("view moderator actions"))
+                          : err);
         return;
     }
     this->token_ = token.token;
@@ -118,15 +116,16 @@ void LimerinoModLogsDialog::fetchPage(const QString &cursor)
         QJsonObject{{QStringLiteral("channelID"), this->channelId_},
                     {QStringLiteral("after"), cursor}},
         this->token_,
-        [g = QPointer<LimerinoModLogsDialog>(this), this](
-            const QJsonObject &data) {
+        [g = QPointer<LimerinoModLogsDialog>(this),
+         this](const QJsonObject &data) {
             if (!g)
             {
                 return;
             }
             const QJsonObject logs =
-                data[QStringLiteral("channel")].toObject()[
-                    QStringLiteral("moderationActionLogs")].toObject();
+                data[QStringLiteral("channel")]
+                    .toObject()[QStringLiteral("moderationActionLogs")]
+                    .toObject();
             if (logs.isEmpty())
             {
                 this->summaryLabel_->setText(
@@ -138,12 +137,11 @@ void LimerinoModLogsDialog::fetchPage(const QString &cursor)
             QString nextCursor;
 
             const QDateTime firstTs = QDateTime::fromString(
-                edges.isEmpty()
-                    ? QString()
-                    : edges.first()
-                          .toObject()[QStringLiteral("node")]
-                          .toObject()[QStringLiteral("createdAt")]
-                          .toString(),
+                edges.isEmpty() ? QString()
+                                : edges.first()
+                                      .toObject()[QStringLiteral("node")]
+                                      .toObject()[QStringLiteral("createdAt")]
+                                      .toString(),
                 Qt::ISODate);
             if (!this->cutoff_.isValid() && firstTs.isValid())
             {
@@ -152,12 +150,12 @@ void LimerinoModLogsDialog::fetchPage(const QString &cursor)
 
             for (const QJsonValue &v : edges)
             {
-                const QJsonObject node = v.toObject()[QStringLiteral("node")]
-                                             .toObject();
+                const QJsonObject node =
+                    v.toObject()[QStringLiteral("node")].toObject();
                 const QString createdAt =
                     node[QStringLiteral("createdAt")].toString();
-                const QDateTime ts = QDateTime::fromString(createdAt,
-                                                           Qt::ISODate);
+                const QDateTime ts =
+                    QDateTime::fromString(createdAt, Qt::ISODate);
                 if (this->cutoff_.isValid() && ts < this->cutoff_)
                 {
                     continue;  // beyond the day window
@@ -173,7 +171,8 @@ void LimerinoModLogsDialog::fetchPage(const QString &cursor)
                 const QString modName = modNameFromNode(node);
 
                 this->actionsRow_.append(
-                    {ts.toLocalTime().toString(QStringLiteral("yyyy-MM-dd hh:mm:ss")),
+                    {ts.toLocalTime().toString(
+                         QStringLiteral("yyyy-MM-dd hh:mm:ss")),
                      modName, icon, category});
 
                 if (modName.isEmpty())
@@ -264,9 +263,9 @@ void LimerinoModLogsDialog::finish()
     QVector<QStringList> rows;
     for (const ModStat &s : stats)
     {
-        rows.append({s.name, QString::number(s.total),
-                     QString::number(s.bans), QString::number(s.timeouts),
-                     QString::number(s.unbans), QString::number(s.untimeouts)});
+        rows.append({s.name, QString::number(s.total), QString::number(s.bans),
+                     QString::number(s.timeouts), QString::number(s.unbans),
+                     QString::number(s.untimeouts)});
     }
     this->modsTable_->setRows(rows);
     this->modsTable_->setStatusText(

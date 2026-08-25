@@ -548,8 +548,7 @@ void SloperinoPage::refreshEndpointStatuses()
         return;
     }
     const auto statuses = fh->getEndpointStatuses();
-    const auto okColor =
-        chatterino::semantic::success().name(QColor::HexArgb);
+    const auto okColor = chatterino::semantic::success().name(QColor::HexArgb);
     const auto warnColor =
         chatterino::semantic::warning().name(QColor::HexArgb);
     const auto errColor = chatterino::semantic::error().name(QColor::HexArgb);
@@ -569,22 +568,22 @@ void SloperinoPage::refreshEndpointStatuses()
                 badge->setToolTip("Connected");
                 break;
             case Status::Connecting:
-                badge->setStyleSheet(QStringLiteral(
-                                         "color: %1; font-size: 10px;")
-                                         .arg(warnColor));
+                badge->setStyleSheet(
+                    QStringLiteral("color: %1; font-size: 10px;")
+                        .arg(warnColor));
                 badge->setToolTip("Connecting...");
                 break;
             case Status::Reconnecting:
-                badge->setStyleSheet(QStringLiteral(
-                                         "color: %1; font-size: 10px;")
-                                         .arg(errColor));
+                badge->setStyleSheet(
+                    QStringLiteral("color: %1; font-size: 10px;")
+                        .arg(errColor));
                 badge->setToolTip(QStringLiteral("Reconnecting... (backoff)"));
                 break;
             case Status::Disabled:
             default:
-                badge->setStyleSheet(QStringLiteral(
-                                         "color: %1; font-size: 10px;")
-                                         .arg(offColor));
+                badge->setStyleSheet(
+                    QStringLiteral("color: %1; font-size: 10px;")
+                        .arg(offColor));
                 badge->setToolTip(info.enabled ? "Disconnected" : "Disabled");
                 break;
         }

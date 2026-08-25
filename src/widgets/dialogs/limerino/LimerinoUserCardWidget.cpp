@@ -55,8 +55,8 @@ void LimerinoUserCardWidget::setTarget(const QString &userId,
                                        const QString &channelId,
                                        const QString &loginForSubRow)
 {
-    const bool changed = (userId != this->userId_) ||
-                         (channelId != this->channelId_);
+    const bool changed =
+        (userId != this->userId_) || (channelId != this->channelId_);
 
     this->userId_ = userId;
     this->channelId_ = channelId;
@@ -117,9 +117,8 @@ void LimerinoUserCardWidget::rebuild()
     // the parent is hidden, so a language-only result never re-showed the
     // widget. Team already keyed off the string (and worked); language did
     // not — hence the tag only appeared when a team also forced show.
-    const bool showLang =
-        this->extras_.settingsFailed ||
-        !this->extras_.preferredLanguageTag.isEmpty();
+    const bool showLang = this->extras_.settingsFailed ||
+                          !this->extras_.preferredLanguageTag.isEmpty();
     if (this->extras_.settingsFailed)
     {
         this->languageTagLabel_->setText(QStringLiteral("—"));

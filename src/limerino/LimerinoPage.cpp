@@ -5,8 +5,8 @@
 #include "providers/limerino/LimerinoAuth.hpp"
 #include "providers/limerino/pubsub/LimerinoPubSubController.hpp"
 #include "singletons/Settings.hpp"
-#include "widgets/dialogs/LimerinoAuthDialog.hpp"
 #include "widgets/dialogs/limerino/LimerinoThemeDialog.hpp"
+#include "widgets/dialogs/LimerinoAuthDialog.hpp"
 #include "widgets/settingspages/GeneralPageView.hpp"
 #include "widgets/settingspages/SettingWidget.hpp"
 
@@ -78,11 +78,10 @@ void LimerinoPage::initLayout(GeneralPageView &layout)
         "that need a second, elevated sign-in. Stored separately from your "
         "main account."));
     this->authSummaryLabel_ = layout.addDescription(QString());
-    layout.addButton(QStringLiteral("Manage extra-features login..."),
-                     [this] {
-                         auto *dialog = new LimerinoAuthDialog(this);
-                         dialog->show();
-                     });
+    layout.addButton(QStringLiteral("Manage extra-features login..."), [this] {
+        auto *dialog = new LimerinoAuthDialog(this);
+        dialog->show();
+    });
 
     layout.addTitle("Events");
     layout.addDescription(QStringLiteral(
@@ -107,9 +106,9 @@ void LimerinoPage::initLayout(GeneralPageView &layout)
         limerino::openPubSubEventsChannelTab();
     });
 
-    layout.addDescription(QStringLiteral(
-        "Auto actions live on their own settings tab "
-        "(Settings > Auto Actions)."));
+    layout.addDescription(
+        QStringLiteral("Auto actions live on their own settings tab "
+                       "(Settings > Auto Actions)."));
 
     layout.addDescription(QStringLiteral(
         "Paste host used by list commands (/listfollows, /modlist, ...): "
@@ -121,15 +120,18 @@ void LimerinoPage::initLayout(GeneralPageView &layout)
                        "(defaults to https://h.potat.app)"))
         ->addTo(layout);
 
+    this->managedConnections_.managedConnect(LimerinoAuth::accountsChanged,
+                                             [this] {
+                                                 this->rebuildAuthSummary();
+                                             });
     this->managedConnections_.managedConnect(
-        LimerinoAuth::accountsChanged,
-        [this] { this->rebuildAuthSummary(); });
+        LimerinoAuth::accountsChanged, [this] {
+            this->rebuildPubSubDiagnostics();
+        });
     this->managedConnections_.managedConnect(
-        LimerinoAuth::accountsChanged,
-        [this] { this->rebuildPubSubDiagnostics(); });
-    this->managedConnections_.managedConnect(
-        limerino::getPubSubController()->diagChanged,
-        [this] { this->rebuildPubSubDiagnostics(); });
+        limerino::getPubSubController()->diagChanged, [this] {
+            this->rebuildPubSubDiagnostics();
+        });
     this->rebuildAuthSummary();
     this->rebuildPubSubDiagnostics();
 
@@ -170,19 +172,20 @@ void LimerinoPage::rebuildAuthSummary()
         }
         for (const auto &a : accounts)
         {
-            text += QStringLiteral("\n%1: %2, scopes: %3, checked: %4, "
-                                   "channels: %5")
-                        .arg(a.displayName.isEmpty() ? a.login : a.displayName)
-                        .arg(a.valid ? QStringLiteral("valid")
-                                     : QStringLiteral("invalid: ") + a.lastError)
-                        .arg(a.scopes.isEmpty()
-                                 ? QStringLiteral("(not validated yet)")
-                                 : QString::number(a.scopes.size()))
-                        .arg(a.lastValidatedAt.isValid()
-                                 ? a.lastValidatedAt.toString(
-                                       QStringLiteral("yyyy-MM-dd hh:mm"))
-                                 : QStringLiteral("never"))
-                        .arg(a.moderatedChannels.size());
+            text +=
+                QStringLiteral("\n%1: %2, scopes: %3, checked: %4, "
+                               "channels: %5")
+                    .arg(a.displayName.isEmpty() ? a.login : a.displayName)
+                    .arg(a.valid ? QStringLiteral("valid")
+                                 : QStringLiteral("invalid: ") + a.lastError)
+                    .arg(a.scopes.isEmpty()
+                             ? QStringLiteral("(not validated yet)")
+                             : QString::number(a.scopes.size()))
+                    .arg(a.lastValidatedAt.isValid()
+                             ? a.lastValidatedAt.toString(
+                                   QStringLiteral("yyyy-MM-dd hh:mm"))
+                             : QStringLiteral("never"))
+                    .arg(a.moderatedChannels.size());
         }
     }
     this->authSummaryLabel_->setText(text);
@@ -198,12 +201,13 @@ void LimerinoPage::rebuildPubSubDiagnostics()
     const auto snapshot = controller->diagSnapshot();
     const auto &t = snapshot.transport;
 
-    this->pubsubSummaryLabel_->setText(QStringLiteral(
-        "Connections: %1 open (%2 opened, %3 failed) - notifications: %4\n"
-        "Topics: %5 active, %6 pending, %7 retrying, %8 failed, %9 blocked "
-        "(need extra-features sign-in)\n"
-        "Listens: %10 confirmed, %11 failed - auth failures: %12 - "
-        "reconnects: %13 - missed keepalives: %14")
+    this->pubsubSummaryLabel_->setText(
+        QStringLiteral(
+            "Connections: %1 open (%2 opened, %3 failed) - notifications: %4\n"
+            "Topics: %5 active, %6 pending, %7 retrying, %8 failed, %9 blocked "
+            "(need extra-features sign-in)\n"
+            "Listens: %10 confirmed, %11 failed - auth failures: %12 - "
+            "reconnects: %13 - missed keepalives: %14")
             .arg(t.connections)
             .arg(t.connectionsOpened)
             .arg(t.connectionsFailed)
@@ -231,13 +235,13 @@ void LimerinoPage::rebuildPubSubDiagnostics()
         {
             detail += QLatin1Char('\n');
         }
-        detail += QStringLiteral(
-            "%1 topic(s) gave up after repeated failures - fix the sign-in "
-            "above, then press \"Retry failed listens\".")
-                      .arg(snapshot.topicsFailed);
+        detail +=
+            QStringLiteral(
+                "%1 topic(s) gave up after repeated failures - fix the sign-in "
+                "above, then press \"Retry failed listens\".")
+                .arg(snapshot.topicsFailed);
     }
     this->pubsubDetailLabel_->setText(detail);
 }
 
 }  // namespace chatterino
-

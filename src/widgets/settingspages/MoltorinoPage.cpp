@@ -1253,10 +1253,9 @@ void MoltorinoPage::updateAuthInstructions(const QString &text, bool isError)
     this->authInstructionsLabel_->setText(text);
     this->authInstructionsLabel_->setStyleSheet(
         QStringLiteral("QLabel { color: %1; }")
-            .arg(isError
-                     ? chatterino::semantic::error().name(QColor::HexArgb)
-                     : chatterino::semantic::mutedText().name(
-                           QColor::HexArgb)));
+            .arg(isError ? chatterino::semantic::error().name(QColor::HexArgb)
+                         : chatterino::semantic::mutedText().name(
+                               QColor::HexArgb)));
 }
 
 void MoltorinoPage::updateAuthStatus(const QString &text, bool isValid,
@@ -1269,7 +1268,8 @@ void MoltorinoPage::updateAuthStatus(const QString &text, bool isValid,
                                    : chatterino::semantic::mutedText();
 
     this->authStatusLabel_->setStyleSheet(
-        QStringLiteral("QLabel { color: %1; }").arg(color.name(QColor::HexArgb)));
+        QStringLiteral("QLabel { color: %1; }")
+            .arg(color.name(QColor::HexArgb)));
 }
 
 void MoltorinoPage::revealBotBadgeSettings(bool revealed)
@@ -1322,7 +1322,8 @@ void MoltorinoPage::updateBotBadgeStatus(const QString &text, bool isValid,
                                    : chatterino::semantic::mutedText();
 
     this->botBadgeStatusLabel_->setStyleSheet(
-        QStringLiteral("QLabel { color: %1; }").arg(color.name(QColor::HexArgb)));
+        QStringLiteral("QLabel { color: %1; }")
+            .arg(color.name(QColor::HexArgb)));
 }
 
 void MoltorinoPage::openBotBadgeAuthorization()

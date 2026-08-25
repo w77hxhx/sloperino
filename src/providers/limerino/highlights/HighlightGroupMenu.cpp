@@ -66,8 +66,7 @@ void buildHighlightGroupsMenuEntry(QMenu *menu, const Channel &channel,
     }
 
     submenu->addSeparator();
-    QAction *manage =
-        submenu->addAction(QStringLiteral("Manage groups…"));
+    QAction *manage = submenu->addAction(QStringLiteral("Manage groups…"));
     QAction::connect(manage, &QAction::triggered, parentForDialog,
                      [parentForDialog] {
                          HighlightGroupDialog dialog(parentForDialog);

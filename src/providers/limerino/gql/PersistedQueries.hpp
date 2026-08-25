@@ -308,7 +308,8 @@ query TCN_ViewerCardModLogsMessagesBySender($channelID: ID!, $senderID: ID!, $cu
 // Same query without the message `id` field selection (batch-11 requirement:
 // /logsextended omits ids unless the -id flag is passed). ONLY the `id` line
 // differs from the query above.
-inline const QString VIEWER_CARD_MODLOG_MESSAGES_NOID_QUERY = QStringLiteral(R"GQL(
+inline const QString VIEWER_CARD_MODLOG_MESSAGES_NOID_QUERY =
+    QStringLiteral(R"GQL(
 query TCN_ViewerCardModLogsMessagesBySender($channelID: ID!, $senderID: ID!, $cursor: Cursor) {
     viewerCardModLogs(channelID: $channelID, targetID: $senderID) {
         messages(first: 1000, after: $cursor) {

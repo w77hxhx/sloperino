@@ -10,7 +10,6 @@
 #include "widgets/BasePopup.hpp"
 
 #include <pajlada/signals/signalholder.hpp>
-
 #include <QJsonObject>
 
 class QComboBox;

@@ -26,8 +26,8 @@
 #include <QMessageBox>
 #include <QPointer>
 #include <QPushButton>
-#include <QTabWidget>
 #include <QTableWidget>
+#include <QTabWidget>
 #include <QVBoxLayout>
 
 namespace chatterino::limerino {
@@ -157,7 +157,8 @@ void LimerinoCrossbanDialog::buildUi()
         auto *banSel = new QPushButton(QStringLiteral("Ban selected"), page);
         auto *toSel =
             new QPushButton(QStringLiteral("Timeout selected..."), page);
-        auto *unbanSel = new QPushButton(QStringLiteral("Unban selected"), page);
+        auto *unbanSel =
+            new QPushButton(QStringLiteral("Unban selected"), page);
         bulk->addWidget(banSel);
         bulk->addWidget(toSel);
         bulk->addWidget(unbanSel);
@@ -188,7 +189,8 @@ void LimerinoCrossbanDialog::buildUi()
         left->addWidget(this->presetList_, 1);
         auto *leftBtns = new QHBoxLayout;
         auto *addP = new QPushButton(QStringLiteral("Add"), page);
-        this->deletePresetBtn_ = new QPushButton(QStringLiteral("Delete"), page);
+        this->deletePresetBtn_ =
+            new QPushButton(QStringLiteral("Delete"), page);
         leftBtns->addWidget(addP);
         leftBtns->addWidget(this->deletePresetBtn_);
         left->addLayout(leftBtns);
@@ -205,7 +207,8 @@ void LimerinoCrossbanDialog::buildUi()
 
         auto *right = new QVBoxLayout;
         this->presetNameEdit_ = new QLineEdit(page);
-        this->presetNameEdit_->setPlaceholderText(QStringLiteral("Preset name"));
+        this->presetNameEdit_->setPlaceholderText(
+            QStringLiteral("Preset name"));
         right->addWidget(this->presetNameEdit_);
 
         this->dynamicHintLabel_ = new QLabel(
@@ -264,16 +267,15 @@ void LimerinoCrossbanDialog::rebuildPresetCombo()
     this->presetCombo_->clear();
     if (this->presets_.isEmpty())
     {
-        this->presetCombo_->addItem(QStringLiteral("(no presets — edit Presets tab)"),
-                                    QVariant());
+        this->presetCombo_->addItem(
+            QStringLiteral("(no presets — edit Presets tab)"), QVariant());
         return;
     }
     for (const auto &p : this->presets_)
     {
-        const int count =
-            p.useAllModeratedChannels
-                ? collectAllModeratedChannels().size()
-                : p.channels.size();
+        const int count = p.useAllModeratedChannels
+                              ? collectAllModeratedChannels().size()
+                              : p.channels.size();
         this->presetCombo_->addItem(
             QStringLiteral("%1 (%2)").arg(p.name).arg(count),
             p.id.toString(QUuid::WithoutBraces));
@@ -287,8 +289,8 @@ void LimerinoCrossbanDialog::loadSelectedPresetIntoTable()
 
     if (this->presets_.isEmpty())
     {
-        this->statusLabel_->setText(
-            QStringLiteral("No presets yet. Open the Presets tab and add one."));
+        this->statusLabel_->setText(QStringLiteral(
+            "No presets yet. Open the Presets tab and add one."));
         return;
     }
 
@@ -339,8 +341,8 @@ void LimerinoCrossbanDialog::loadSelectedPresetIntoTable()
                 ? (ch.login.isEmpty() ? ch.id : ch.login)
                 : QStringLiteral("%1 (%2)").arg(ch.displayName, ch.login);
         this->table_->setItem(i, COL_CHANNEL, new QTableWidgetItem(label));
-        this->table_->setItem(i, COL_STATUS,
-                              new QTableWidgetItem(QStringLiteral("Loading...")));
+        this->table_->setItem(
+            i, COL_STATUS, new QTableWidgetItem(QStringLiteral("Loading...")));
         this->table_->setItem(i, COL_DETAIL, new QTableWidgetItem(QString()));
 
         auto *actions = new QWidget(this->table_);
@@ -354,14 +356,18 @@ void LimerinoCrossbanDialog::loadSelectedPresetIntoTable()
         al->addWidget(to);
         al->addWidget(unban);
         al->addWidget(comments);
-        QObject::connect(ban, &QPushButton::clicked, this,
-                         [this, i] { this->onRowBan(i); });
-        QObject::connect(to, &QPushButton::clicked, this,
-                         [this, i] { this->onRowTimeout(i); });
-        QObject::connect(unban, &QPushButton::clicked, this,
-                         [this, i] { this->onRowUnban(i); });
-        QObject::connect(comments, &QPushButton::clicked, this,
-                         [this, i] { this->onRowComments(i); });
+        QObject::connect(ban, &QPushButton::clicked, this, [this, i] {
+            this->onRowBan(i);
+        });
+        QObject::connect(to, &QPushButton::clicked, this, [this, i] {
+            this->onRowTimeout(i);
+        });
+        QObject::connect(unban, &QPushButton::clicked, this, [this, i] {
+            this->onRowUnban(i);
+        });
+        QObject::connect(comments, &QPushButton::clicked, this, [this, i] {
+            this->onRowComments(i);
+        });
         this->table_->setCellWidget(i, COL_ACTIONS, actions);
     }
 
@@ -388,8 +394,8 @@ void LimerinoCrossbanDialog::refreshRowStrike(int row)
     this->updateRowUi(row);
 
     QString err;
-    auto token = LimerinoAuth::resolveModerationToken(
-        rs.channel.id, rs.channel.login, &err);
+    auto token = LimerinoAuth::resolveModerationToken(rs.channel.id,
+                                                      rs.channel.login, &err);
     if (!token.hasToken())
     {
         rs.loading = false;
@@ -427,8 +433,7 @@ void LimerinoCrossbanDialog::refreshRowStrike(int row)
 
 void LimerinoCrossbanDialog::updateRowUi(int row)
 {
-    if (row < 0 || row >= this->rows_.size() ||
-        row >= this->table_->rowCount())
+    if (row < 0 || row >= this->rows_.size() || row >= this->table_->rowCount())
     {
         return;
     }
@@ -476,8 +481,8 @@ void LimerinoCrossbanDialog::onTimeoutSelected()
     bool ok = false;
     const int secs = QInputDialog::getInt(
         this, QStringLiteral("Timeout"),
-        QStringLiteral("Duration (seconds) for all selected:"), 600, 1,
-        1209600, 1, &ok);
+        QStringLiteral("Duration (seconds) for all selected:"), 600, 1, 1209600,
+        1, &ok);
     if (!ok)
     {
         return;
@@ -498,9 +503,9 @@ void LimerinoCrossbanDialog::onRowBan(int row)
 void LimerinoCrossbanDialog::onRowTimeout(int row)
 {
     bool ok = false;
-    const int secs = QInputDialog::getInt(
-        this, QStringLiteral("Timeout"),
-        QStringLiteral("Duration (seconds):"), 600, 1, 1209600, 1, &ok);
+    const int secs = QInputDialog::getInt(this, QStringLiteral("Timeout"),
+                                          QStringLiteral("Duration (seconds):"),
+                                          600, 1, 1209600, 1, &ok);
     if (!ok)
     {
         return;
@@ -549,8 +554,7 @@ void LimerinoCrossbanDialog::applyAction(const QVector<int> &rows, bool timeout,
         this->rows_[row].loading = true;
         this->updateRowUi(row);
 
-        const QString bucket =
-            QStringLiteral("crossban:%1").arg(ch.id);
+        const QString bucket = QStringLiteral("crossban:%1").arg(ch.id);
         LimerinoApi::banUser(
             ch.id, moderatorID, this->targetUserId_,
             timeout ? durationSeconds : std::nullopt, reason, bucket,
@@ -580,7 +584,8 @@ void LimerinoCrossbanDialog::applyUnban(const QVector<int> &rows)
     {
         QMessageBox::warning(
             this, QStringLiteral("Crossban"),
-            QStringLiteral("Sign in with your primary Twitch account to unban."));
+            QStringLiteral(
+                "Sign in with your primary Twitch account to unban."));
         return;
     }
     const QPointer<LimerinoCrossbanDialog> guard(this);
@@ -623,8 +628,7 @@ void LimerinoCrossbanDialog::onRowComments(int row)
     }
     const auto ch = this->rows_[row].channel;
     QString err;
-    auto token =
-        LimerinoAuth::resolveModerationToken(ch.id, ch.login, &err);
+    auto token = LimerinoAuth::resolveModerationToken(ch.id, ch.login, &err);
     if (!token.hasToken())
     {
         QMessageBox::warning(this, QStringLiteral("Notes"),
@@ -634,8 +638,8 @@ void LimerinoCrossbanDialog::onRowComments(int row)
 
     auto *dlg = new BasePopup({BaseWindow::Flags::Dialog}, this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
-    dlg->setWindowTitle(QStringLiteral("Mod notes - #%1").arg(
-        ch.login.isEmpty() ? ch.id : ch.login));
+    dlg->setWindowTitle(QStringLiteral("Mod notes - #%1")
+                            .arg(ch.login.isEmpty() ? ch.id : ch.login));
     dlg->resize(420, 360);
     auto *lay = new QVBoxLayout(dlg);
     auto *list = new QListWidget(dlg);
@@ -735,9 +739,9 @@ void LimerinoCrossbanDialog::rebuildPresetList()
     this->presetList_->clear();
     for (const auto &p : this->presets_)
     {
-        const int count =
-            p.useAllModeratedChannels ? collectAllModeratedChannels().size()
-                                      : p.channels.size();
+        const int count = p.useAllModeratedChannels
+                              ? collectAllModeratedChannels().size()
+                              : p.channels.size();
         auto *item = new QListWidgetItem(
             QStringLiteral("%1 (%2)").arg(p.name).arg(count),
             this->presetList_);
@@ -884,8 +888,7 @@ void LimerinoCrossbanDialog::onAddPresetChannel()
     {
         for (const auto &c : account.moderatedChannels)
         {
-            if (c.login.compare(raw, Qt::CaseInsensitive) == 0 ||
-                c.id == raw)
+            if (c.login.compare(raw, Qt::CaseInsensitive) == 0 || c.id == raw)
             {
                 found = CrossbanChannel{c.id, c.login, c.displayName};
                 break;
@@ -934,7 +937,8 @@ void LimerinoCrossbanDialog::fillModeratedIntoInputCompleter()
     {
         for (const auto &c : account.moderatedChannels)
         {
-            if (!c.login.isEmpty() && !logins.contains(c.login, Qt::CaseInsensitive))
+            if (!c.login.isEmpty() &&
+                !logins.contains(c.login, Qt::CaseInsensitive))
             {
                 logins.append(c.login);
             }

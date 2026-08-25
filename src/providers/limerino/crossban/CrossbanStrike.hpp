@@ -19,7 +19,7 @@ enum class CrossbanStrikeKind {
 struct CrossbanStrike {
     CrossbanStrikeKind kind = CrossbanStrikeKind::Clean;
     QString reason;
-    QString actorLogin;       // bannedBy / timedOutBy login
+    QString actorLogin;  // bannedBy / timedOutBy login
     QString actorDisplayName;
     QString createdAt;        // ISO, may be empty
     QString expiresAt;        // ISO; timeouts only

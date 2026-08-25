@@ -93,13 +93,13 @@ void createModComment(const QString &channelId, const QString &targetId,
         [onOk, onErr](const QJsonObject &data) {
             const auto payload =
                 data[QStringLiteral("createModeratorComment")].toObject();
-            const auto comment =
-                payload[QStringLiteral("comment")].toObject();
+            const auto comment = payload[QStringLiteral("comment")].toObject();
             if (comment.isEmpty())
             {
                 if (onErr)
                 {
-                    onErr(QStringLiteral("createModComment returned no comment"));
+                    onErr(
+                        QStringLiteral("createModComment returned no comment"));
                 }
                 return;
             }

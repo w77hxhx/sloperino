@@ -12,7 +12,8 @@
 namespace chatterino::limerino {
 
 // --- user topics (subscribe with "<name>.<userId>", client.js L154, L163) ---
-inline const QString TOPIC_CHATROOMS_USER_V1 = QStringLiteral("chatrooms-user-v1");
+inline const QString TOPIC_CHATROOMS_USER_V1 =
+    QStringLiteral("chatrooms-user-v1");
 inline const QString TOPIC_COMMUNITY_POINTS_USER_V1 =
     QStringLiteral("community-points-user-v1");
 inline const QString TOPIC_PREDICTIONS_USER_V1 =

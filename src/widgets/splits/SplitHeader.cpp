@@ -16,6 +16,7 @@
 #include "controllers/hotkeys/HotkeyCategory.hpp"
 #include "controllers/hotkeys/HotkeyController.hpp"
 #include "controllers/notifications/NotificationController.hpp"
+#include "limerino/PubSubEventsChannel.hpp"
 #include "providers/kick/KickChannel.hpp"
 #include "providers/limerino/commands/Follows.hpp"
 #include "providers/limerino/highlights/HighlightGroupMenu.hpp"
@@ -26,7 +27,6 @@
 #include "providers/twitch/TwitchChannel.hpp"
 #include "providers/twitch/TwitchIrcServer.hpp"
 #include "providers/youtube/YouTubeChannel.hpp"
-#include "limerino/PubSubEventsChannel.hpp"
 #include "singletons/Settings.hpp"
 #include "singletons/StreamerMode.hpp"
 #include "singletons/Theme.hpp"
@@ -776,31 +776,27 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
     QObject::connect(viewFollowing, &QAction::triggered, this, [this] {
         LimerinoCommands::openFollowingListFor(this->split_);
     });
-    QObject::connect(menu.get(), &QMenu::aboutToShow, this,
-                     [viewFollowers, viewFollowing, this] {
-                         const auto selected =
-                             this->split_->getSelectedChannel();
-                         const auto *twitch =
-                             dynamic_cast<TwitchChannel *>(selected.get());
-                         bool show = false;
-                         if (twitch != nullptr)
-                         {
-                             const auto self =
-                                 getApp()->getAccounts()->twitch.getCurrent();
-                             const bool own =
-                                 self && !self->isAnon() &&
-                                 self->getUserName().compare(
-                                     twitch->getName(),
-                                     Qt::CaseInsensitive) == 0;
-                             QString authErr;
-                             const bool hasAuth =
-                                 LimerinoAuth::resolveReadToken(&authErr)
-                                     .hasToken();
-                             show = own && hasAuth;
-                         }
-                         viewFollowers->setVisible(show);
-                         viewFollowing->setVisible(show);
-                     });
+    QObject::connect(
+        menu.get(), &QMenu::aboutToShow, this,
+        [viewFollowers, viewFollowing, this] {
+            const auto selected = this->split_->getSelectedChannel();
+            const auto *twitch = dynamic_cast<TwitchChannel *>(selected.get());
+            bool show = false;
+            if (twitch != nullptr)
+            {
+                const auto self = getApp()->getAccounts()->twitch.getCurrent();
+                const bool own =
+                    self && !self->isAnon() &&
+                    self->getUserName().compare(twitch->getName(),
+                                                Qt::CaseInsensitive) == 0;
+                QString authErr;
+                const bool hasAuth =
+                    LimerinoAuth::resolveReadToken(&authErr).hasToken();
+                show = own && hasAuth;
+            }
+            viewFollowers->setVisible(show);
+            viewFollowing->setVisible(show);
+        });
     menu->addSeparator();
 
     // Limerino fork hook: show which highlight groups apply in this channel.
@@ -814,13 +810,12 @@ std::unique_ptr<QMenu> SplitHeader::createMainMenu()
     if (selected && selected->hasModRights() &&
         selected->isTwitchOrKickChannel())
     {
-        menu->addAction(QStringLiteral("Nuke messages..."), this,
-                        [this, selected] {
-                            auto *dialog =
-                                new limerino::LimerinoNukeDialog(this->split_,
-                                                                 selected);
-                            dialog->show();
-                        });
+        menu->addAction(
+            QStringLiteral("Nuke messages..."), this, [this, selected] {
+                auto *dialog =
+                    new limerino::LimerinoNukeDialog(this->split_, selected);
+                dialog->show();
+            });
         menu->addSeparator();
     }
 

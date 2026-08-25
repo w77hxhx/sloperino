@@ -38,13 +38,13 @@ namespace chatterino::limerino {
 struct AutoActionContext {
     // All of these may be empty. The caller knows what a given channel
     // actually supports and populates accordingly.
-    QString msgId;            // "" = action skipped when template uses {msg.id}
-    QString senderLogin;      // lowercase login
+    QString msgId;        // "" = action skipped when template uses {msg.id}
+    QString senderLogin;  // lowercase login
     QString senderDisplayName;
     QString senderId;
-    QString channelName;      // lowercase login
-    QString channelId;        // "" when unavailable (e.g. special channels)
-    QString platform;         // "twitch" | "kick" | other
+    QString channelName;  // lowercase login
+    QString channelId;    // "" when unavailable (e.g. special channels)
+    QString platform;     // "twitch" | "kick" | other
 };
 
 /// Expand `templ` against `ctx`.

@@ -13,10 +13,10 @@
 #include "providers/twitch/api/Helix.hpp"
 #include "providers/twitch/TwitchChannel.hpp"
 #include "singletons/WindowManager.hpp"
-#include "widgets/Notebook.hpp"
-#include "widgets/Window.hpp"
 #include "widgets/dialogs/limerino/LimerinoPinView.hpp"
+#include "widgets/Notebook.hpp"
 #include "widgets/splits/Split.hpp"
+#include "widgets/Window.hpp"
 
 #include <QJsonArray>
 #include <QJsonObject>
@@ -66,7 +66,8 @@ void fetchPinnedChat(
             }
             if (onFound)
             {
-                onFound(edges.first().toObject()[QStringLiteral("node")]
+                onFound(edges.first()
+                            .toObject()[QStringLiteral("node")]
                             .toObject());
             }
         },
@@ -97,33 +98,33 @@ QString pinMessage(const CommandContext &ctx)
     }
 
     QString err;
-    auto token = LimerinoAuth::resolveModerationToken(
-        tchan->roomId(), tchan->getName(), &err);
+    auto token = LimerinoAuth::resolveModerationToken(tchan->roomId(),
+                                                      tchan->getName(), &err);
     if (!token.hasToken())
     {
         say(ctx.channel,
-            err.isEmpty()
-                ? LimerinoAuth::errors::tokenRequiredMessage(
-                      QStringLiteral("pin messages in this channel"))
-                : err);
+            err.isEmpty() ? LimerinoAuth::errors::tokenRequiredMessage(
+                                QStringLiteral("pin messages in this channel"))
+                          : err);
         return {};
     }
 
     gql::executePersisted(
         gql::PQ_PIN_CHAT_MESSAGE,
-        QJsonObject{{QStringLiteral("input"),
-                     QJsonObject{{QStringLiteral("channelID"), tchan->roomId()},
-                                 {QStringLiteral("messageID"), messageId},
-                                 {QStringLiteral("type"),
-                                  QStringLiteral("MOD")}}}},
+        QJsonObject{
+            {QStringLiteral("input"),
+             QJsonObject{{QStringLiteral("channelID"), tchan->roomId()},
+                         {QStringLiteral("messageID"), messageId},
+                         {QStringLiteral("type"), QStringLiteral("MOD")}}}},
         token.token,
-        [                        weak = std::weak_ptr(channel)](const QJsonObject &data) {
+        [weak = std::weak_ptr(channel)](const QJsonObject &data) {
             if (auto chan = weak.lock())
             {
-                chan->addSystemMessage(QStringLiteral("Message pinned successfully!"));
+                chan->addSystemMessage(
+                    QStringLiteral("Message pinned successfully!"));
             }
         },
-        [                        weak = std::weak_ptr(channel)](const gql::GqlError &e) {
+        [weak = std::weak_ptr(channel)](const gql::GqlError &e) {
             if (auto chan = weak.lock())
             {
                 chan->addSystemMessage(
@@ -140,7 +141,8 @@ QString sendPinnedMessage(const CommandContext &ctx)
     const ChannelPtr channel = ctx.channel;
     if (tchan == nullptr)
     {
-        return QStringLiteral("/sendpinnedmessage: only available in Twitch channels");
+        return QStringLiteral(
+            "/sendpinnedmessage: only available in Twitch channels");
     }
 
     const QString text = ctx.words.mid(1).join(QStringLiteral(" "));
@@ -151,8 +153,8 @@ QString sendPinnedMessage(const CommandContext &ctx)
     }
 
     QString err;
-    auto token = LimerinoAuth::resolveModerationToken(
-        tchan->roomId(), tchan->getName(), &err);
+    auto token = LimerinoAuth::resolveModerationToken(tchan->roomId(),
+                                                      tchan->getName(), &err);
     if (!token.hasToken())
     {
         say(ctx.channel,
@@ -169,13 +171,14 @@ QString sendPinnedMessage(const CommandContext &ctx)
                      QJsonObject{{QStringLiteral("channelID"), tchan->roomId()},
                                  {QStringLiteral("messageText"), text}}}},
         token.token,
-        [                        weak = std::weak_ptr(channel)](const QJsonObject &data) {
+        [weak = std::weak_ptr(channel)](const QJsonObject &data) {
             if (auto chan = weak.lock())
             {
-                chan->addSystemMessage(QStringLiteral("Sent pinned message successfully!"));
+                chan->addSystemMessage(
+                    QStringLiteral("Sent pinned message successfully!"));
             }
         },
-        [                        weak = std::weak_ptr(channel)](const gql::GqlError &e) {
+        [weak = std::weak_ptr(channel)](const gql::GqlError &e) {
             if (auto chan = weak.lock())
             {
                 chan->addSystemMessage(
@@ -196,8 +199,8 @@ QString unpinMessage(const CommandContext &ctx)
     }
 
     QString err;
-    auto token = LimerinoAuth::resolveModerationToken(
-        tchan->roomId(), tchan->getName(), &err);
+    auto token = LimerinoAuth::resolveModerationToken(tchan->roomId(),
+                                                      tchan->getName(), &err);
     if (!token.hasToken())
     {
         say(ctx.channel,
@@ -210,7 +213,7 @@ QString unpinMessage(const CommandContext &ctx)
 
     fetchPinnedChat(
         token.token, tchan->roomId(),
-        [                        weak = std::weak_ptr(channel), token = token.token,
+        [weak = std::weak_ptr(channel), token = token.token,
          channelId = tchan->roomId()](const QJsonObject &node) {
             const QString id = node[QStringLiteral("id")].toString();
             auto chan = weak.lock();
@@ -236,12 +239,13 @@ QString unpinMessage(const CommandContext &ctx)
                     if (auto ch = weak.lock())
                     {
                         ch->addSystemMessage(
-                            QStringLiteral("Failed to unpin message! Status: %1")
+                            QStringLiteral(
+                                "Failed to unpin message! Status: %1")
                                 .arg(e.message));
                     }
                 });
         },
-        [                        weak = std::weak_ptr(channel)](const QString &e) {
+        [weak = std::weak_ptr(channel)](const QString &e) {
             if (auto chan = weak.lock())
             {
                 chan->addSystemMessage(e);
@@ -263,10 +267,10 @@ QString viewPin(const CommandContext &ctx)
     auto token = LimerinoAuth::resolveReadToken(&err);
     if (!token.hasToken())
     {
-        say(ctx.channel,
-            err.isEmpty() ? LimerinoAuth::errors::tokenRequiredMessage(
-                                QStringLiteral("view the pinned message"))
-                          : err);
+        say(ctx.channel, err.isEmpty()
+                             ? LimerinoAuth::errors::tokenRequiredMessage(
+                                   QStringLiteral("view the pinned message"))
+                             : err);
         return {};
     }
 
@@ -281,14 +285,16 @@ QString viewPin(const CommandContext &ctx)
             const QJsonObject pinned =
                 node[QStringLiteral("pinnedMessage")].toObject();
             const QString sender =
-                pinned[QStringLiteral("sender")].toObject()[
-                    QStringLiteral("displayName")].toString();
+                pinned[QStringLiteral("sender")]
+                    .toObject()[QStringLiteral("displayName")]
+                    .toString();
             const QString text = pinned[QStringLiteral("content")]
                                      .toObject()[QStringLiteral("text")]
                                      .toString();
             const QString pinnedBy =
-                node[QStringLiteral("pinnedBy")].toObject()[
-                    QStringLiteral("displayName")].toString();
+                node[QStringLiteral("pinnedBy")]
+                    .toObject()[QStringLiteral("displayName")]
+                    .toString();
 
             // Pin time + pinner from the upstream Helix state when it
             // corresponds to the same message (its pinned_at is the only
@@ -322,12 +328,12 @@ QString viewPin(const CommandContext &ctx)
             // (Re)mount or update the banner in the current selected split.
             static QPointer<limerino::LimerinoPinView> active;
             static QPointer<Split> activeSplit;
-            auto *page = getApp()->getWindows()
+            auto *page = getApp()
+                             ->getWindows()
                              ->getMainWindow()
                              .getNotebook()
                              .getSelectedPage();
-            auto *split = page != nullptr ? page->getSelectedSplit()
-                                          : nullptr;
+            auto *split = page != nullptr ? page->getSelectedSplit() : nullptr;
             if (split == nullptr)
             {
                 return;
@@ -354,7 +360,7 @@ QString viewPin(const CommandContext &ctx)
                 active->setPlainMessage(sender, text, shownBy, pinnedAt);
             }
         },
-        [                        weak = std::weak_ptr(channel)](const QString &e) {
+        [weak = std::weak_ptr(channel)](const QString &e) {
             if (auto chan = weak.lock())
             {
                 chan->addSystemMessage(e);

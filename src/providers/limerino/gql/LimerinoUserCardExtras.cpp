@@ -3,8 +3,8 @@
 #include "providers/limerino/gql/LimerinoUserCardExtras.hpp"
 
 #include "common/QLogging.hpp"
-#include "providers/limerino/LimerinoAuth.hpp"
 #include "providers/limerino/gql/LimerinoGql.hpp"
+#include "providers/limerino/LimerinoAuth.hpp"
 
 #include <QDateTime>
 #include <QHash>
@@ -124,11 +124,10 @@ LimerinoUserCardExtras parseUserCardExtras(const QJsonObject &userObj,
             }
             det.thirdPartySKU =
                 sub.value(QStringLiteral("thirdPartySKU")).toString();
-            det.tenureMonths =
-                rel.value(QStringLiteral("subscriptionTenure"))
-                    .toObject()
-                    .value(QStringLiteral("months"))
-                    .toInt();
+            det.tenureMonths = rel.value(QStringLiteral("subscriptionTenure"))
+                                   .toObject()
+                                   .value(QStringLiteral("months"))
+                                   .toInt();
             out.subscription = det;
         }
     }
@@ -165,9 +164,8 @@ void fetchUserCardExtras(
     auto token = LimerinoAuth::resolveReadToken(&resolveErr);
     if (!token.hasToken())
     {
-        qCDebug(chatterinoLiveupdates)
-            << "UserCardExtras: no token for" << targetUserId
-            << "-" << resolveErr;
+        qCDebug(chatterinoLiveupdates) << "UserCardExtras: no token for"
+                                       << targetUserId << "-" << resolveErr;
         if (cb)
         {
             cb(std::nullopt);
@@ -204,8 +202,8 @@ void fetchUserCardExtras(
             const bool primaryTeamFailed =
                 errorPathContains(errors, QLatin1String("primaryTeam"));
 
-            auto extras = parseUserCardExtras(user, settingsFailed,
-                                              relationshipFailed);
+            auto extras =
+                parseUserCardExtras(user, settingsFailed, relationshipFailed);
             extras.primaryTeamFailed = primaryTeamFailed;
             if (primaryTeamFailed)
             {
@@ -216,10 +214,10 @@ void fetchUserCardExtras(
             // must not stick for the 5-minute TTL.
             if (!extras.hasFieldFailure())
             {
-                extrasCache().insert(targetUserId,
-                                     CacheEntry{channelId,
-                                                QDateTime::currentDateTimeUtc(),
-                                                extras});
+                extrasCache().insert(
+                    targetUserId,
+                    CacheEntry{channelId, QDateTime::currentDateTimeUtc(),
+                               extras});
             }
 
             if (cb)

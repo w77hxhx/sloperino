@@ -78,8 +78,7 @@ QString pubSubEventIdentity(const PubSubEvent &event)
     if (type.startsWith(QLatin1String("POLL_")))
     {
         const QJsonObject poll = pollObject(payload);
-        const QString pollId =
-            poll.value(QStringLiteral("poll_id")).toString();
+        const QString pollId = poll.value(QStringLiteral("poll_id")).toString();
         const QString status = poll.value(QStringLiteral("status")).toString();
         if (!pollId.isEmpty())
         {
@@ -126,9 +125,10 @@ bool PubSubEventDedupe::isDuplicate(const QString &identity,
     const auto now = std::chrono::steady_clock::now();
     this->pruneExpired(now);
 
-    const auto it = std::find_if(
-        this->entries_.begin(), this->entries_.end(),
-        [&](const Entry &e) { return e.identity == identity; });
+    const auto it = std::find_if(this->entries_.begin(), this->entries_.end(),
+                                 [&](const Entry &e) {
+                                     return e.identity == identity;
+                                 });
     if (it != this->entries_.end())
     {
         this->entries_.erase(it);
@@ -158,7 +158,9 @@ void PubSubEventDedupe::pruneExpired(std::chrono::steady_clock::time_point now)
 {
     this->entries_.erase(
         std::remove_if(this->entries_.begin(), this->entries_.end(),
-                       [&](const Entry &e) { return e.expires <= now; }),
+                       [&](const Entry &e) {
+                           return e.expires <= now;
+                       }),
         this->entries_.end());
 }
 

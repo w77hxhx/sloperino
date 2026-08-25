@@ -281,10 +281,10 @@ void rebuildMessageHighlights(Settings &settings,
         auto highlightColor =
             ColorProvider::instance().color(ColorType::AutomodHighlight);
 
-        checks.emplace_back(globalCheck(HighlightCheck{
-            [=](const auto &, const auto &, const auto &,
-                const auto &, const auto &flags,
-                const auto) -> std::optional<HighlightResult> {
+        checks.emplace_back(globalCheck(
+            HighlightCheck{[=](const auto &, const auto &, const auto &,
+                               const auto &, const auto &flags,
+                               const auto) -> std::optional<HighlightResult> {
                 if (!flags.has(MessageFlag::AutoModOffendingMessage))
                 {
                     return std::nullopt;
@@ -494,8 +494,7 @@ HighlightController::HighlightController(Settings &settings,
         });
 
     this->signalHolder_.managedConnect(
-        getSettings()->highlightGroups.delayedItemsChanged,
-        [this, &settings] {
+        getSettings()->highlightGroups.delayedItemsChanged, [this, &settings] {
             qCDebug(chatterinoHighlights)
                 << "Rebuild checks because highlight groups changed";
             this->rebuildChecks(settings);

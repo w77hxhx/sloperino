@@ -27,7 +27,8 @@ QByteArray makeHermesSubscribeMessage(const QString &id, const QString &topic);
 
 /// {"type":"unsubscribe",id,timestamp,unsubscribe:{id,type:"pubsub",pubsub:{topic}}}
 /// (L340-343)
-QByteArray makeHermesUnsubscribeMessage(const QString &id, const QString &topic);
+QByteArray makeHermesUnsubscribeMessage(const QString &id,
+                                        const QString &topic);
 
 struct HermesFrame {
     enum class Type {

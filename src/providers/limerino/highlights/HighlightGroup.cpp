@@ -107,8 +107,8 @@ rapidjson::Value Serialize<chatterino::HighlightGroup>::get(
 {
     rapidjson::Value ret(rapidjson::kObjectType);
 
-    chatterino::rj::set(
-        ret, "id", value.id().toString(QUuid::WithoutBraces), a);
+    chatterino::rj::set(ret, "id", value.id().toString(QUuid::WithoutBraces),
+                        a);
     chatterino::rj::set(ret, "name", value.name(), a);
 
     QString scopeStr;
@@ -131,9 +131,8 @@ rapidjson::Value Serialize<chatterino::HighlightGroup>::get(
     {
         rapidjson::Value v;
         QByteArray utf8 = channel.toUtf8();
-        v.SetString(utf8.constData(), static_cast<rapidjson::SizeType>(
-                                         utf8.size()),
-                    a);
+        v.SetString(utf8.constData(),
+                    static_cast<rapidjson::SizeType>(utf8.size()), a);
         channelsArr.PushBack(v, a);
     }
     ret.AddMember("channels", channelsArr, a);
@@ -148,8 +147,10 @@ chatterino::HighlightGroup Deserialize<chatterino::HighlightGroup>::get(
     {
         PAJLADA_REPORT_ERROR(error)
         // Fall back to a Default-scoped group on parse failure.
-        return {chatterino::HighlightGroup::DEFAULT_ID, QString(),
-                chatterino::HighlightGroup::Scope::AllExcept, {}};
+        return {chatterino::HighlightGroup::DEFAULT_ID,
+                QString(),
+                chatterino::HighlightGroup::Scope::AllExcept,
+                {}};
     }
 
     QString idStr;

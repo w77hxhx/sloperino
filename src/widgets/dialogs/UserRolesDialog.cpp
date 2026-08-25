@@ -503,8 +503,8 @@ UserRolesDialog::UserRolesDialog(const QString &targetLogin,
     roleRow->setSpacing(6);
     roleRow->setContentsMargins(0, 0, 0, 0);
 
-    auto createRoleTab = [this, roleRow](const QString &roleKey,
-                                         const QString &label) {
+    auto createRoleTab = [this, roleRow, &createTab](const QString &roleKey,
+                                                     const QString &label) {
         auto *tab = createTab(label);
         QObject::connect(tab, &QPushButton::clicked, this, [this, roleKey] {
             this->setRole(roleKey);

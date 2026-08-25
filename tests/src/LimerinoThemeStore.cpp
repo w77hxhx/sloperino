@@ -22,7 +22,8 @@ LimerinoThemeSeed sampleSeed()
 
 TEST(LimerinoThemeStore, SeedRoundTrip)
 {
-    const auto json = serializeSeedFile(QStringLiteral("My theme"), sampleSeed());
+    const auto json =
+        serializeSeedFile(QStringLiteral("My theme"), sampleSeed());
     ASSERT_TRUE(isSeedFile(json));
     const auto parsed = parseSeedFile(json, nullptr);
     ASSERT_TRUE(parsed.has_value());

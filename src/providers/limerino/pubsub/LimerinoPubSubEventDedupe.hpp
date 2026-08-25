@@ -37,8 +37,7 @@ public:
 
     /// Returns true if this identity was seen inside its window (caller should
     /// drop). Inserts/refreshes otherwise.
-    bool isDuplicate(const QString &identity,
-                     std::chrono::milliseconds window);
+    bool isDuplicate(const QString &identity, std::chrono::milliseconds window);
 
     void clear();
 

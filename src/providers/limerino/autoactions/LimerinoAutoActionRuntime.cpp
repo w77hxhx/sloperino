@@ -2,23 +2,21 @@
 
 #include "providers/limerino/autoactions/LimerinoAutoActionRuntime.hpp"
 
+#include "Application.hpp"
 #include "common/Channel.hpp"
+#include "common/QLogging.hpp"
+#include "controllers/accounts/AccountController.hpp"
+#include "controllers/commands/CommandController.hpp"
 #include "messages/Message.hpp"
+#include "providers/kick/KickAccount.hpp"
+#include "providers/kick/KickAccountManager.hpp"
 #include "providers/kick/KickChannel.hpp"
 #include "providers/limerino/autoactions/AutoActionPlaceholders.hpp"
 #include "providers/limerino/autoactions/LimerinoAutoAction.hpp"
 #include "providers/limerino/autoactions/LimerinoAutoActionController.hpp"
-#include "providers/twitch/TwitchChannel.hpp"
-
-#include "Application.hpp"
-#include "controllers/accounts/AccountController.hpp"
-#include "controllers/commands/CommandController.hpp"
-#include "providers/kick/KickAccount.hpp"
-#include "providers/kick/KickAccountManager.hpp"
 #include "providers/twitch/TwitchAccount.hpp"
 #include "providers/twitch/TwitchAccountManager.hpp"
-
-#include "common/QLogging.hpp"
+#include "providers/twitch/TwitchChannel.hpp"
 
 #include <QDateTime>
 #include <QHash>
@@ -91,7 +89,10 @@ void evaluateAutoActions(const MessagePtr &message, Channel &channel)
     const QString selfLogin =
         channel.isKickChannel()
             ? getApp()->getAccounts()->kick.current()->username().toLower()
-            : getApp()->getAccounts()->twitch.getCurrent()->getUserName()
+            : getApp()
+                  ->getAccounts()
+                  ->twitch.getCurrent()
+                  ->getUserName()
                   .toLower();
     if (senderLower == selfLogin)
     {
@@ -112,8 +113,8 @@ void evaluateAutoActions(const MessagePtr &message, Channel &channel)
         return;
     }
 
-    const QString channelKey = platform + QStringLiteral(":") +
-                               channel.getName().toLower();
+    const QString channelKey =
+        platform + QStringLiteral(":") + channel.getName().toLower();
     const auto rules = controller->resolve(channelKey);
     if (rules->empty())
     {
@@ -153,8 +154,8 @@ void evaluateAutoActions(const MessagePtr &message, Channel &channel)
         AutoActionContext ctx;
         ctx.msgId = message->id;
         ctx.senderLogin = senderLower;
-        ctx.senderDisplayName = message->displayName.isEmpty() ? senderLower
-                                                               : message->displayName;
+        ctx.senderDisplayName =
+            message->displayName.isEmpty() ? senderLower : message->displayName;
         ctx.senderId = message->userID;
         ctx.channelName = channel.getName();
         ctx.channelId = channelIdSafe(channel);
@@ -163,17 +164,17 @@ void evaluateAutoActions(const MessagePtr &message, Channel &channel)
         const auto command = expandAutoAction(rule.action, ctx);
         if (!command.has_value() || command->isEmpty())
         {
-            qCWarning(chatterinoMessage)
-                << "Auto-action" << rule.name << "skipped: placeholder value"
-                   "unavailable";
+            qCWarning(chatterinoMessage) << "Auto-action" << rule.name
+                                         << "skipped: placeholder value"
+                                            "unavailable";
             continue;
         }
 
         gCooldowns.lastFired[rule.id.toString()] = now;
 
         qCDebug(chatterinoMessage)
-            << "Auto-action fire:" << rule.name << "on message"
-            << message->id << "->" << *command;
+            << "Auto-action fire:" << rule.name << "on message" << message->id
+            << "->" << *command;
 
         // execCommand does the whole dispatch: /ban lands a Helix call, user
         // commands resolve, and any non-command text comes back to be echoed.

@@ -69,8 +69,7 @@ QString sharedPredictionEventText(const QJsonObject &data, const QString &type,
         }
         opts += outcomes.at(i).toObject()[QStringLiteral("title")].toString();
     }
-    const QString who =
-        forUserTopic ? QStringLiteral("your ") : QString();
+    const QString who = forUserTopic ? QStringLiteral("your ") : QString();
     if (type == QLatin1String("event-created"))
     {
         return opts.isEmpty()
@@ -142,10 +141,9 @@ QString describePoll(const QJsonObject &payload)
         choicesText += QStringLiteral("%1. %2").arg(i + 1).arg(cTitle);
         if (includeCounts)
         {
-            const int votes =
-                choice[QStringLiteral("votes")].toObject()
-                    [QStringLiteral("total")]
-                        .toInt();
+            const int votes = choice[QStringLiteral("votes")]
+                                  .toObject()[QStringLiteral("total")]
+                                  .toInt();
             choicesText += QStringLiteral(" (%1)").arg(votes);
         }
     }
@@ -195,7 +193,8 @@ bool handleRaid(const QString & /*topic*/, const QJsonObject &payload,
     QJsonObject raid = payload[QStringLiteral("raid")].toObject();
     if (raid.isEmpty())
     {
-        raid = payload[QStringLiteral("data")].toObject()[QStringLiteral("raid")]
+        raid = payload[QStringLiteral("data")]
+                   .toObject()[QStringLiteral("raid")]
                    .toObject();
     }
     if (raid.isEmpty())

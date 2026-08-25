@@ -32,8 +32,7 @@ TEST(LimerinoChatColor, HexRoundTripRgbAndArgb)
     ASSERT_TRUE(withAlpha.isValid());
     EXPECT_EQ(withAlpha.alpha(), 0x80);
     EXPECT_EQ(withAlpha.red(), 0xff);
-    EXPECT_EQ(chatColorHexForDisplay(withAlpha),
-              QStringLiteral("#80ff0000"));
+    EXPECT_EQ(chatColorHexForDisplay(withAlpha), QStringLiteral("#80ff0000"));
     EXPECT_EQ(normalizeChatColorValue(QStringLiteral("#80FF0000")),
               QStringLiteral("#80ff0000"));
 }
@@ -46,7 +45,8 @@ TEST(LimerinoChatColor, RecentsCapAndDedupe)
     list = pushChatColorRecent(list, QStringLiteral("#0000ff"));
     list = pushChatColorRecent(list, QStringLiteral("#ffff00"));
     list = pushChatColorRecent(list, QStringLiteral("#ff00ff"));
-    list = pushChatColorRecent(list, QStringLiteral("#00ffff"));  // 6th -> drop oldest
+    list = pushChatColorRecent(
+        list, QStringLiteral("#00ffff"));  // 6th -> drop oldest
 
     ASSERT_EQ(list.size(), kChatColorRecentsLimit);
     EXPECT_EQ(list.front(), QStringLiteral("#00ffff"));
@@ -62,7 +62,8 @@ TEST(LimerinoChatColor, RecentsCapAndDedupe)
 TEST(LimerinoChatColor, InvalidRejected)
 {
     EXPECT_FALSE(parseChatColor(QStringLiteral("not-a-colour")).isValid());
-    EXPECT_TRUE(normalizeChatColorValue(QStringLiteral("not-a-colour")).isEmpty());
+    EXPECT_TRUE(
+        normalizeChatColorValue(QStringLiteral("not-a-colour")).isEmpty());
     QStringList list{QStringLiteral("#ffffff")};
     list = pushChatColorRecent(list, QStringLiteral("bogus"));
     EXPECT_EQ(list, (QStringList{QStringLiteral("#ffffff")}));

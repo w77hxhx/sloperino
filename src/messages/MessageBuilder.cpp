@@ -35,8 +35,8 @@
 #include "providers/ffzap/FfzApBadges.hpp"
 #include "providers/folhinha/FolhinhaBadges.hpp"
 #include "providers/homies/HomiesBadges.hpp"
-#include "providers/links/LinkResolver.hpp"
 #include "providers/limerino/highlights/HighlightGroupChannelKey.hpp"
+#include "providers/links/LinkResolver.hpp"
 #include "providers/moltorino/MoltorinoSupporterBadges.hpp"
 #include "providers/repetitions/RepeatedMessageDetector.hpp"
 #include "providers/seventv/SeventvBadges.hpp"
@@ -2627,9 +2627,9 @@ HighlightAlert MessageBuilder::parseHighlights(Communi::TagsRef tags,
     auto badges = parseBadgeTag(tags);
     // Limerino: thread the channel key so per-channel highlight groups apply.
     const auto channelKey = limerino::highlightChannelKey(
-        this->message().platform,
-        this->message().channelName.isEmpty() ? QString()
-                                              : this->message().channelName);
+        this->message().platform, this->message().channelName.isEmpty()
+                                      ? QString()
+                                      : this->message().channelName);
     auto [highlighted, highlightResult] = getApp()->getHighlights()->check(
         args, badges, this->message().loginName, originalMessage,
         this->message().flags, this->message().platform, channelKey);

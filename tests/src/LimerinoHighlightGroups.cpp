@@ -12,12 +12,11 @@
 // No Qt GUI, no network.
 
 #include "controllers/highlights/HighlightController.hpp"
-
 #include "controllers/highlights/HighlightPhrase.hpp"
-#include "providers/limerino/highlights/HighlightGroup.hpp"
 #include "mocks/BaseApplication.hpp"
 #include "mocks/Helix.hpp"
 #include "mocks/UserData.hpp"
+#include "providers/limerino/highlights/HighlightGroup.hpp"
 #include "providers/twitch/api/Helix.hpp"
 #include "Test.hpp"
 
@@ -223,18 +222,16 @@ TEST_F(HighlightGroupsTest, GroupedUserHighlightFiresInMatchingChannel)
 
     // The "forsen" user-highlight is group 22222222 (Only: kick:forsen).
     {
-        auto [matched, result] = hl->check(MessageParseArgs{}, {}, "forsen",
-                                           "hello", {},
-                                           MessagePlatform::AnyOrTwitch,
-                                           "kick:forsen");
+        auto [matched, result] =
+            hl->check(MessageParseArgs{}, {}, "forsen", "hello", {},
+                      MessagePlatform::AnyOrTwitch, "kick:forsen");
         EXPECT_TRUE(matched);
         EXPECT_EQ(*result.color, QColor("#7f0000ff"));
     }
     {
-        auto [matched, result] = hl->check(MessageParseArgs{}, {}, "forsen",
-                                           "hello", {},
-                                           MessagePlatform::AnyOrTwitch,
-                                           "twitch:forsen");
+        auto [matched, result] =
+            hl->check(MessageParseArgs{}, {}, "forsen", "hello", {},
+                      MessagePlatform::AnyOrTwitch, "twitch:forsen");
         EXPECT_FALSE(matched);
     }
 }
@@ -265,8 +262,8 @@ TEST_F(HighlightGroupsTest, LegacyOverloadStillFiresEverywhere)
     // The old 6-arg check() resolves to "all AllExcept {} groups" -- i.e.
     // Default. Both "elsewhere" (Default) and "home" (Only: twitch:forsen)
     // should be hidden here because "home" is NOT AllExcept {}.
-    auto [matched1, result1] = hl->check(MessageParseArgs{}, {}, "someone",
-                                         "elsewhere", {});
+    auto [matched1, result1] =
+        hl->check(MessageParseArgs{}, {}, "someone", "elsewhere", {});
     EXPECT_TRUE(matched1);
 
     auto [matched2, result2] =
@@ -286,14 +283,14 @@ TEST_F(HighlightGroupsTest, MentionsChannelKeepsOriginChannelState)
     // We model this at the resolver level: checking the same message under
     // the two keys must disagree, proving evaluation is the caller's
     // responsibility.
-    auto [originMatched, _o] = hl->check(MessageParseArgs{}, {}, "someone",
-                                         "home", {}, MessagePlatform::AnyOrTwitch,
-                                         "twitch:forsen");
+    auto [originMatched, _o] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, "twitch:forsen");
     ASSERT_TRUE(originMatched);
 
-    auto [mentionsMatched, _m] = hl->check(MessageParseArgs{}, {}, "someone",
-                                           "home", {}, MessagePlatform::AnyOrTwitch,
-                                           "special:mentions");
+    auto [mentionsMatched, _m] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, "special:mentions");
     EXPECT_FALSE(mentionsMatched);
 }
 
@@ -323,10 +320,9 @@ TEST_F(HighlightGroupsTest, ChannelWithNoGroupsStillGetsGlobal)
     auto *hl = this->app->getHighlights();
 
     // A channel that only matches the Default group still gets it.
-    auto [matched, result] = hl->check(MessageParseArgs{}, {}, "someone",
-                                       "elsewhere", {},
-                                       MessagePlatform::AnyOrTwitch,
-                                       "twitch:somechannel");
+    auto [matched, result] =
+        hl->check(MessageParseArgs{}, {}, "someone", "elsewhere", {},
+                  MessagePlatform::AnyOrTwitch, "twitch:somechannel");
     EXPECT_TRUE(matched);
 }
 
@@ -370,14 +366,14 @@ TEST_F(HighlightGroupsTest, MentionsChannelDoesNotReevaluateOriginGroups)
     auto originKey = QStringLiteral("twitch:forsen");
     auto mentionsKey = QStringLiteral("special:mentions");
 
-    auto [originMatched, originResult] = hl->check(
-        MessageParseArgs{}, {}, "someone", "home", {},
-        MessagePlatform::AnyOrTwitch, originKey);
+    auto [originMatched, originResult] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, originKey);
     EXPECT_TRUE(originMatched);
 
-    auto [mentionsMatched, mentionsResult] = hl->check(
-        MessageParseArgs{}, {}, "someone", "home", {},
-        MessagePlatform::AnyOrTwitch, mentionsKey);
+    auto [mentionsMatched, mentionsResult] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, mentionsKey);
     EXPECT_FALSE(mentionsMatched);  // group 11111111 is Only: twitch:forsen
 }
 
@@ -393,9 +389,8 @@ TEST_F(HighlightGroupsTest, WhisperHighlightFiresRegardlessOfGroups)
     for (const auto *key : {"twitch:forsen", "twitch:xqc", "special:whispers",
                             "special:mentions"})
     {
-        auto [matched, result] =
-            hl->check(args, {}, "someone", "hi", {},
-                      MessagePlatform::AnyOrTwitch, key);
+        auto [matched, result] = hl->check(args, {}, "someone", "hi", {},
+                                           MessagePlatform::AnyOrTwitch, key);
         EXPECT_TRUE(matched) << "whisper highlight expected in " << key;
     }
 }
@@ -409,12 +404,11 @@ TEST_F(HighlightGroupsTest, SelfHighlightFiresInEveryChannel)
     for (const auto *key : {"twitch:forsen", "twitch:xqc", "kick:someone",
                             "special:mentions", "special:whispers"})
     {
-        auto [matched, result] = hl->check(
-            MessageParseArgs{}, {},
-            "someone",                          // sender name (not self)
-            "testaccount_420 hello",            // contains the user's name
-            {},
-            MessagePlatform::AnyOrTwitch, key);
+        auto [matched, result] =
+            hl->check(MessageParseArgs{}, {},
+                      "someone",                // sender name (not self)
+                      "testaccount_420 hello",  // contains the user's name
+                      {}, MessagePlatform::AnyOrTwitch, key);
         EXPECT_TRUE(matched) << "self highlight expected in " << key;
     }
 }
@@ -459,17 +453,15 @@ TEST_F(HighlightGroupsTest, CacheInvalidatesWhenGroupsChange)
 
     // Post-change the cache must reflect the new scope without a restart.
     {
-        auto [matched, _result] = hl->check(MessageParseArgs{}, {}, "someone",
-                                            "home", {},
-                                            MessagePlatform::AnyOrTwitch,
-                                            "twitch:xqc");
+        auto [matched, _result] =
+            hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                      MessagePlatform::AnyOrTwitch, "twitch:xqc");
         EXPECT_TRUE(matched) << "group should apply to xqc after rescope";
     }
     {
-        auto [matched, _result] = hl->check(MessageParseArgs{}, {}, "someone",
-                                            "home", {},
-                                            MessagePlatform::AnyOrTwitch,
-                                            "twitch:forsen");
+        auto [matched, _result] =
+            hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                      MessagePlatform::AnyOrTwitch, "twitch:forsen");
         EXPECT_FALSE(matched)
             << "group must no longer apply to forsen after rescope";
     }
@@ -480,9 +472,9 @@ TEST_F(HighlightGroupsTest, GroupDeletionStopsScopingImmediately)
     auto *hl = this->app->getHighlights();
 
     // Baseline: 'home' fires in twitch:forsen (its group's Only-list).
-    auto [before, _b] = hl->check(MessageParseArgs{}, {}, "someone", "home",
-                                  {}, MessagePlatform::AnyOrTwitch,
-                                  "twitch:forsen");
+    auto [before, _b] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, "twitch:forsen");
     ASSERT_TRUE(before);
 
     // Delete the Only-group that scopes 'home'.
@@ -495,23 +487,20 @@ TEST_F(HighlightGroupsTest, GroupDeletionStopsScopingImmediately)
 
     // The highlight still exists in highlightedMessages (with a now-orphaned
     // groupId). A group that doesn't exist can't match any channel.
-    auto [matchedForsen, _r1] = hl->check(MessageParseArgs{}, {}, "someone",
-                                          "home", {},
-                                          MessagePlatform::AnyOrTwitch,
-                                          "twitch:forsen");
+    auto [matchedForsen, _r1] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, "twitch:forsen");
     EXPECT_FALSE(matchedForsen);
 
-    auto [matchedXqc, _r2] = hl->check(MessageParseArgs{}, {}, "someone",
-                                       "home", {},
-                                       MessagePlatform::AnyOrTwitch,
-                                       "twitch:xqc");
+    auto [matchedXqc, _r2] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, "twitch:xqc");
     EXPECT_FALSE(matchedXqc);
 
     // Default children are unaffected.
-    auto [matchedElsewhere, _r3] = hl->check(MessageParseArgs{}, {}, "someone",
-                                             "elsewhere", {},
-                                             MessagePlatform::AnyOrTwitch,
-                                             "twitch:xqc");
+    auto [matchedElsewhere, _r3] =
+        hl->check(MessageParseArgs{}, {}, "someone", "elsewhere", {},
+                  MessagePlatform::AnyOrTwitch, "twitch:xqc");
     EXPECT_TRUE(matchedElsewhere);
 }
 
@@ -520,9 +509,9 @@ TEST_F(HighlightGroupsTest, AddingGroupInvalidatesCache)
     auto *hl = this->app->getHighlights();
 
     // Prime cache for twitch:xqc and confirm 'home' doesn't fire there.
-    auto [preMatched, _r0] = hl->check(MessageParseArgs{}, {}, "someone",
-                                       "home", {}, MessagePlatform::AnyOrTwitch,
-                                       "twitch:xqc");
+    auto [preMatched, _r0] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, "twitch:xqc");
     EXPECT_FALSE(preMatched);
 
     // Now mutate the existing Home group to also include xqc by replacing it
@@ -553,10 +542,8 @@ TEST_F(HighlightGroupsTest, AddingGroupInvalidatesCache)
 
     settleGroups();
 
-    auto [postMatched, _r1] = hl->check(MessageParseArgs{}, {}, "someone",
-                                        "home", {},
-                                        MessagePlatform::AnyOrTwitch,
-                                        "twitch:xqc");
+    auto [postMatched, _r1] =
+        hl->check(MessageParseArgs{}, {}, "someone", "home", {},
+                  MessagePlatform::AnyOrTwitch, "twitch:xqc");
     EXPECT_TRUE(postMatched);
 }
-

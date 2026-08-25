@@ -36,7 +36,8 @@ LimerinoColorField::LimerinoColorField(QWidget *parent)
                      &LimerinoColorField::openPicker);
 
     this->hex_ = new QLineEdit(this);
-    this->hex_->setPlaceholderText(QStringLiteral("#RGB / #RRGGBB / #AARRGGBB"));
+    this->hex_->setPlaceholderText(
+        QStringLiteral("#RGB / #RRGGBB / #AARRGGBB"));
     this->hex_->setMaximumWidth(140);
     QObject::connect(this->hex_, &QLineEdit::textEdited, this,
                      &LimerinoColorField::onHexEdited);

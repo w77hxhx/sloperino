@@ -5,14 +5,14 @@
 #include "Application.hpp"
 #include "common/Channel.hpp"
 #include "common/QLogging.hpp"
-#include "messages/MessageBuilder.hpp"
-#include "messages/MessageElement.hpp"
 #include "messages/Link.hpp"
+#include "messages/MessageBuilder.hpp"
 #include "messages/MessageColor.hpp"
-#include "providers/limerino/LimerinoAuth.hpp"
+#include "messages/MessageElement.hpp"
 #include "providers/limerino/commands/Identity.hpp"
 #include "providers/limerino/gql/LimerinoGql.hpp"
 #include "providers/limerino/gql/PersistedQueries.hpp"
+#include "providers/limerino/LimerinoAuth.hpp"
 #include "providers/limerino/pubsub/LimerinoChannelNameResolver.hpp"
 #include "providers/limerino/pubsub/LimerinoPubSubController.hpp"
 #include "providers/limerino/pubsub/LimerinoPubSubTopics.hpp"
@@ -51,7 +51,8 @@ bool warnRecentlyIn(const QString &channelId)
     auto &map = warnCooldowns();
     const auto now = QDateTime::currentMSecsSinceEpoch();
     auto it = map.find(channelId);
-    if (it != map.end() && now - it->second.issuedAtMs < USER_MOD_ACTION_COOLDOWN_MS)
+    if (it != map.end() &&
+        now - it->second.issuedAtMs < USER_MOD_ACTION_COOLDOWN_MS)
     {
         return true;
     }
@@ -117,8 +118,7 @@ bool isAllowedUserModAction(QStringView action)
     return false;
 }
 
-bool handleUserModerationAction(const QJsonObject &data,
-                                PubSubEvent &event)
+bool handleUserModerationAction(const QJsonObject &data, PubSubEvent &event)
 {
     const QString action = data[QStringLiteral("action")].toString();
     const QString channelId = data[QStringLiteral("channel_id")].toString();
@@ -172,7 +172,8 @@ bool handleUserModerationAction(const QJsonObject &data,
     {
         // Surface in the channel (decision P2-Q2), then auto-acknowledge if
         // the user enabled it (decision P2-Q1; reference events.js L60).
-        auto channelPtr = getApp()->getTwitch()->getChannelOrEmptyByID(channelId);
+        auto channelPtr =
+            getApp()->getTwitch()->getChannelOrEmptyByID(channelId);
         if (!channelPtr->isEmpty())
         {
             auto *tchan = dynamic_cast<TwitchChannel *>(channelPtr.get());
@@ -186,10 +187,9 @@ bool handleUserModerationAction(const QJsonObject &data,
                 b.emplace<TextElement>(QStringLiteral(" "),
                                        MessageElementFlag::Text,
                                        MessageColor::System);
-                b.emplace<TextElement>(QStringLiteral("[acknowledge]"),
-                                       MessageElementFlag::Text,
-                                       MessageColor(QColor(0, 200, 0)),
-                                       FontStyle::ChatMediumBold)
+                b.emplace<TextElement>(
+                     QStringLiteral("[acknowledge]"), MessageElementFlag::Text,
+                     MessageColor(QColor(0, 200, 0)), FontStyle::ChatMediumBold)
                     ->setLink({Link::ChatWarnAcknowledge, channelId});
                 tchan->addMessage(b.release(), MessageContext::Original);
             }
@@ -224,11 +224,11 @@ bool handleAliasRestrictionUpdate(const QJsonObject &data, PubSubEvent &event)
     event.displayChannelId = channelId;
     const bool restricted =
         data.value(QStringLiteral("user_is_restricted")).toBool();
-    event.displayText =
-        restricted ? QStringLiteral("Alias restriction enabled in %1")
-                         .arg(describeChannel(channelId))
-                   : QStringLiteral("Alias restriction disabled in %1")
-                         .arg(describeChannel(channelId));
+    event.displayText = restricted
+                            ? QStringLiteral("Alias restriction enabled in %1")
+                                  .arg(describeChannel(channelId))
+                            : QStringLiteral("Alias restriction disabled in %1")
+                                  .arg(describeChannel(channelId));
     return true;
 }
 
@@ -246,8 +246,8 @@ bool handlePointsSpent(const QJsonObject &payload, PubSubEvent &event)
     const QJsonObject data = payload[QStringLiteral("data")].toObject();
     const QJsonObject balance = data[QStringLiteral("balance")].toObject();
     const int newBalance = balance[QStringLiteral("balance")].toInt();
-    event.displayText = QStringLiteral("channel points balance is now %1")
-                            .arg(newBalance);
+    event.displayText =
+        QStringLiteral("channel points balance is now %1").arg(newBalance);
     return true;
 }
 
@@ -313,7 +313,7 @@ bool unhandledPredictionUserNotification(const QString &type)
     {
         loggedOnce.insert(type);
         qCDebug(chatterinoLiveupdates) << "Hermes predictions-user-v1:"
-                                           " unhandled notification type"
+                                          " unhandled notification type"
                                        << type;
     }
     return false;
@@ -323,7 +323,8 @@ bool handlePredictionResult(const QJsonObject &data, PubSubEvent &event)
 {
     // prediction-result handler (prediction.js L443-450):
     //   const { event_id: predictionId, points, result } = msg.data.prediction;
-    const QJsonObject prediction = data[QStringLiteral("prediction")].toObject();
+    const QJsonObject prediction =
+        data[QStringLiteral("prediction")].toObject();
     const QJsonObject result = prediction[QStringLiteral("result")].toObject();
     const QString resultType = result[QStringLiteral("type")].toString();
     const int points = prediction[QStringLiteral("points")].toInt();
@@ -340,9 +341,9 @@ bool handlePredictionResult(const QJsonObject &data, PubSubEvent &event)
     }
     else if (resultType == QLatin1String("REFUND"))
     {
-        event.displayText = QStringLiteral(
-            "your prediction was cancelled; %1 points refunded")
-                                .arg(points);
+        event.displayText =
+            QStringLiteral("your prediction was cancelled; %1 points refunded")
+                .arg(points);
     }
     else
     {
@@ -371,7 +372,8 @@ void ensureHermesUserTopics()
     c->ensureTopic(QStringLiteral("predictions-user-v1.%1").arg(uid),
                    PubSubTopicAuth::User);
     // P3: decided to include the follows topic (reference USER_SUBS, L110).
-    c->ensureTopic(QStringLiteral("follows.%1").arg(uid), PubSubTopicAuth::User);
+    c->ensureTopic(QStringLiteral("follows.%1").arg(uid),
+                   PubSubTopicAuth::User);
 }
 
 void acknowledgeWarningManually(const QString &channelId)
@@ -396,14 +398,14 @@ void installHermesUserTopicHandlers(LimerinoPubSubController &controller)
         QStringLiteral("chatrooms-user-v1."),
         [](const QString & /*topic*/, const QJsonObject &payload,
            PubSubEvent &event) {
-            const QString type =
-                payload[QStringLiteral("type")].toString();
+            const QString type = payload[QStringLiteral("type")].toString();
             if (type == QLatin1String("user_moderation_action"))
             {
                 return handleUserModerationAction(
                     payload[QStringLiteral("data")].toObject(), event);
             }
-            if (type == QLatin1String("channel_banned_alias_restriction_update"))
+            if (type ==
+                QLatin1String("channel_banned_alias_restriction_update"))
             {
                 return handleAliasRestrictionUpdate(
                     payload[QStringLiteral("data")].toObject(), event);
@@ -436,10 +438,8 @@ void installHermesUserTopicHandlers(LimerinoPubSubController &controller)
         QStringLiteral("predictions-user-v1."),
         [](const QString & /*topic*/, const QJsonObject &payload,
            PubSubEvent &event) {
-            const QString type =
-                payload[QStringLiteral("type")].toString();
-            const QJsonObject data =
-                payload[QStringLiteral("data")].toObject();
+            const QString type = payload[QStringLiteral("type")].toString();
+            const QJsonObject data = payload[QStringLiteral("data")].toObject();
             if (type == QLatin1String("event-created") ||
                 type == QLatin1String("event-updated"))
             {
@@ -468,21 +468,21 @@ void installHermesUserTopicHandlers(LimerinoPubSubController &controller)
                 const QString name =
                     payload[QStringLiteral("target_display_name")].toString();
                 event.displayText =
-                    QStringLiteral("%1 followed").arg(
-                        name.isEmpty()
-                            ? payload[QStringLiteral("target_username")]
-                                  .toString()
-                            : name);
+                    QStringLiteral("%1 followed")
+                        .arg(name.isEmpty()
+                                 ? payload[QStringLiteral("target_username")]
+                                       .toString()
+                                 : name);
                 return true;
             }
             if (type == QLatin1String("user-unfollowed"))
             {
                 // unfollowed shape omits the display name (client.js L49-69):
                 // use the raw user id.
-                event.displayText = QStringLiteral("user unfollowed (%1)")
-                                        .arg(payload[QStringLiteral(
-                                                          "target_user_id")]
-                                                 .toString());
+                event.displayText =
+                    QStringLiteral("user unfollowed (%1)")
+                        .arg(payload[QStringLiteral("target_user_id")]
+                                 .toString());
                 return true;
             }
             return false;

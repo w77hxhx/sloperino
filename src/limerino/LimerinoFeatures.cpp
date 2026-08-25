@@ -19,15 +19,17 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("Setup"),
             QStringLiteral("Second Twitch authorization used only by Limerino "
                            "features (moderation, rewards, chat settings)"),
-            QStringLiteral("Limerino features talk to Twitch with a second, "
-                           "elevated authorization, stored separately from your "
-                           "main account. Sign in once with the device flow: a "
-                           "code is shown, you confirm it on twitch.tv, and the "
-                           "dialog reports the account name, when it was "
-                           "generated, and its status."),
+            QStringLiteral(
+                "Limerino features talk to Twitch with a second, "
+                "elevated authorization, stored separately from your "
+                "main account. Sign in once with the device flow: a "
+                "code is shown, you confirm it on twitch.tv, and the "
+                "dialog reports the account name, when it was "
+                "generated, and its status."),
             FeatureStatus::Implemented,
             {{AccessKind::Dialog,
-              QStringLiteral("Settings > Limerino > Manage extra-features login...")}},
+              QStringLiteral(
+                  "Settings > Limerino > Manage extra-features login...")}},
             {},
             {},
             QStringLiteral("Limerino"),
@@ -39,17 +41,18 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("Dedicated /events channel showing live moderation, "
                            "prediction, points, poll and raid events for your "
                            "extra-features account"),
-            QStringLiteral("Opens like /mentions or /whispers: pick \"Events\" "
-                           "in the new-split dialog. Events render as proper "
-                           "messages with a coloured category chip; the chip "
-                           "tooltip holds the raw event. Right-click an event "
-                           "to copy the pretty-printed raw payload. Channel "
-                           "ids in moderation lines resolve to logins. Identical "
-                           "wire events are deduplicated (toggle under Settings "
-                           "> Limerino). Filter which event types appear via "
-                           "the split's three-dots menu. Tokens are checked "
-                           "once at startup and whenever the Limerino settings "
-                           "page is opened."),
+            QStringLiteral(
+                "Opens like /mentions or /whispers: pick \"Events\" "
+                "in the new-split dialog. Events render as proper "
+                "messages with a coloured category chip; the chip "
+                "tooltip holds the raw event. Right-click an event "
+                "to copy the pretty-printed raw payload. Channel "
+                "ids in moderation lines resolve to logins. Identical "
+                "wire events are deduplicated (toggle under Settings "
+                "> Limerino). Filter which event types appear via "
+                "the split's three-dots menu. Tokens are checked "
+                "once at startup and whenever the Limerino settings "
+                "page is opened."),
             FeatureStatus::Implemented,
             {
                 {AccessKind::Dialog,
@@ -60,7 +63,8 @@ QList<LimerinoFeature> buildCatalog()
                  QStringLiteral("Settings > Limerino > Deduplicate identical "
                                 "events in /events")},
                 {AccessKind::ContextMenu,
-                 QStringLiteral("/events split > three-dots menu > Filter events...")},
+                 QStringLiteral(
+                     "/events split > three-dots menu > Filter events...")},
                 {AccessKind::ContextMenu,
                  QStringLiteral("/events message > Copy raw event")},
                 {AccessKind::Automatic,
@@ -74,18 +78,20 @@ QList<LimerinoFeature> buildCatalog()
         // ------------------------------------------------- Chat features --
         {
             QStringLiteral("limerino-actions"),
-            QStringLiteral("Limerino Actions: predictions, polls, rewards, appearance"),
+            QStringLiteral(
+                "Limerino Actions: predictions, polls, rewards, appearance"),
             QStringLiteral("Chat features"),
             QStringLiteral("Window for creating live predictions and polls, "
                            "redeeming channel point rewards, and setting your "
                            "global badge + chat color"),
-            QStringLiteral("Open it from the channel-points icon in the split "
-                           "header. Predictions: create with drafts (last 5 "
-                           "kept), make/lock/pay out/cancel with confirmations, "
-                           "past history, live refresh. Polls: 2-5 options with "
-                           "Twitch limits. Rewards: browse and redeem custom "
-                           "rewards with your live points balance. Appearance: "
-                           "pick a global badge and your chat color."),
+            QStringLiteral(
+                "Open it from the channel-points icon in the split "
+                "header. Predictions: create with drafts (last 5 "
+                "kept), make/lock/pay out/cancel with confirmations, "
+                "past history, live refresh. Polls: 2-5 options with "
+                "Twitch limits. Rewards: browse and redeem custom "
+                "rewards with your live points balance. Appearance: "
+                "pick a global badge and your chat color."),
             FeatureStatus::Implemented,
             {
                 {AccessKind::ToolbarButton,
@@ -100,12 +106,14 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("Name history"),
             QStringLiteral("Chat features"),
             QStringLiteral("Show a user's past usernames"),
-            QStringLiteral("Looks up previous usernames via the logs.zonian.dev "
-                           "service. Runs as a chat command or as a button on any "
-                           "usercard; the dialog lists the names."),
+            QStringLiteral(
+                "Looks up previous usernames via the logs.zonian.dev "
+                "service. Runs as a chat command or as a button on any "
+                "usercard; the dialog lists the names."),
             FeatureStatus::Implemented,
             {
-                {AccessKind::Command, QStringLiteral("/namehistory <user|id:...>")},
+                {AccessKind::Command,
+                 QStringLiteral("/namehistory <user|id:...>")},
                 {AccessKind::Dialog,
                  QStringLiteral("usercard > \"Name history\" button")},
             },
@@ -134,9 +142,10 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("Follow channel"),
             QStringLiteral("Chat features"),
             QStringLiteral("Follow a channel"),
-            QStringLiteral("Follows the given channel (or this one by default). "
-                           "Replaces the stock /follow and is also in the "
-                           "split's three-dots menu."),
+            QStringLiteral(
+                "Follows the given channel (or this one by default). "
+                "Replaces the stock /follow and is also in the "
+                "split's three-dots menu."),
             FeatureStatus::Implemented,
             {
                 {AccessKind::Command,
@@ -152,13 +161,15 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("followers-following"),
             QStringLiteral("Followers / following windows"),
             QStringLiteral("Chat features"),
-            QStringLiteral("Browse your own channel's followers or following list"),
-            QStringLiteral("The followers window is searchable, shows since-when "
-                           "dates, and can block from a context menu; the "
-                           "following window shows live dots, notifications, and "
-                           "opens chats from a context menu. Both entries appear "
-                           "in the split three-dots menu only on your own Twitch "
-                           "channel when extra-features auth is available."),
+            QStringLiteral(
+                "Browse your own channel's followers or following list"),
+            QStringLiteral(
+                "The followers window is searchable, shows since-when "
+                "dates, and can block from a context menu; the "
+                "following window shows live dots, notifications, and "
+                "opens chats from a context menu. Both entries appear "
+                "in the split three-dots menu only on your own Twitch "
+                "channel when extra-features auth is available."),
             FeatureStatus::Implemented,
             {
                 {AccessKind::ContextMenu,
@@ -180,14 +191,16 @@ QList<LimerinoFeature> buildCatalog()
                            "chat, tinted with the Highlights color."),
             FeatureStatus::Implemented,
             {
-                {AccessKind::Command, QStringLiteral("/pinmessage <message id>")},
-                {AccessKind::Command, QStringLiteral("/sendpinnedmessage <text>")},
+                {AccessKind::Command,
+                 QStringLiteral("/pinmessage <message id>")},
+                {AccessKind::Command,
+                 QStringLiteral("/sendpinnedmessage <text>")},
                 {AccessKind::Command, QStringLiteral("/unpin")},
                 {AccessKind::Command, QStringLiteral("/viewpin")},
             },
-            {QStringLiteral("/pinmessage"), QStringLiteral("/sendpinnedmessage"),
-             QStringLiteral("/viewpin"), QStringLiteral("/getpin"),
-             QStringLiteral("/unpin")},
+            {QStringLiteral("/pinmessage"),
+             QStringLiteral("/sendpinnedmessage"), QStringLiteral("/viewpin"),
+             QStringLiteral("/getpin"), QStringLiteral("/unpin")},
             {QStringLiteral("Requires Limerino auth")},
             QString(),
         },
@@ -214,7 +227,8 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("Sends bits with an optional message."),
             FeatureStatus::Implemented,
             {
-                {AccessKind::Command, QStringLiteral("/cheer <bits> [message]")},
+                {AccessKind::Command,
+                 QStringLiteral("/cheer <bits> [message]")},
             },
             {QStringLiteral("/cheer")},
             {QStringLiteral("Requires Limerino auth")},
@@ -239,9 +253,10 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("Extended chat logs"),
             QStringLiteral("Chat features"),
             QStringLiteral("Fetch a user's chat log to a paste"),
-            QStringLiteral("Fetches the full log for a user into a paste on the "
-                           "configured paste host. -id keeps message ids; "
-                           "without it the id field is dropped from the query."),
+            QStringLiteral(
+                "Fetches the full log for a user into a paste on the "
+                "configured paste host. -id keeps message ids; "
+                "without it the id field is dropped from the query."),
             FeatureStatus::Implemented,
             {
                 {AccessKind::Command,
@@ -304,8 +319,9 @@ QList<LimerinoFeature> buildCatalog()
                 {AccessKind::ContextMenu,
                  QStringLiteral("[acknowledge] link on warning messages")},
                 {AccessKind::SettingsToggle,
-                 QStringLiteral("Settings > Limerino > Automatically acknowledge "
-                                "chat warnings")},
+                 QStringLiteral(
+                     "Settings > Limerino > Automatically acknowledge "
+                     "chat warnings")},
             },
             {QStringLiteral("/acknowledgewarning")},
             {QStringLiteral("Requires Limerino auth")},
@@ -364,13 +380,15 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("highlight-groups"),
             QStringLiteral("Highlight groups"),
             QStringLiteral("Highlights"),
-            QStringLiteral("Attach highlights to channel groups and switch them "
-                           "per channel"),
-            QStringLiteral("Every phrase, user and badge highlight belongs to a "
-                           "group; the group decides which channels it applies "
-                           "to (everywhere, all except, or only listed). Manage "
-                           "groups from Settings > Highlights; the split's "
-                           "three-dots menu shows which groups apply there."),
+            QStringLiteral(
+                "Attach highlights to channel groups and switch them "
+                "per channel"),
+            QStringLiteral(
+                "Every phrase, user and badge highlight belongs to a "
+                "group; the group decides which channels it applies "
+                "to (everywhere, all except, or only listed). Manage "
+                "groups from Settings > Highlights; the split's "
+                "three-dots menu shows which groups apply there."),
             FeatureStatus::Implemented,
             {
                 {AccessKind::SettingsToggle,
@@ -414,8 +432,9 @@ QList<LimerinoFeature> buildCatalog()
             FeatureStatus::Implemented,
             {
                 {AccessKind::ContextMenu,
-                 QStringLiteral("usercard avatar right-click > View user "
-                                "editors (7TV) / View editor-in-channels (7TV)")},
+                 QStringLiteral(
+                     "usercard avatar right-click > View user "
+                     "editors (7TV) / View editor-in-channels (7TV)")},
             },
             {},
             {},
@@ -427,7 +446,8 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("auto-actions"),
             QStringLiteral("Auto actions"),
             QStringLiteral("Automation"),
-            QStringLiteral("Rules that fire automatically on incoming messages"),
+            QStringLiteral(
+                "Rules that fire automatically on incoming messages"),
             QStringLiteral("Each rule matches message text and/or sender "
                            "(regex or plain, case-insensitive by default) and "
                            "sends an action with placeholders like "
@@ -439,7 +459,8 @@ QList<LimerinoFeature> buildCatalog()
                 {AccessKind::Dialog,
                  QStringLiteral("Settings > Auto Actions > Add rule...")},
                 {AccessKind::Automatic,
-                 QStringLiteral("rules fire on matching messages without input")},
+                 QStringLiteral(
+                     "rules fire on matching messages without input")},
             },
             {},
             {QStringLiteral("Requires Limerino auth for sending")},
@@ -452,16 +473,17 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("Theme creator"),
             QStringLiteral("Appearance"),
             QStringLiteral("Recolor a real Chatterino theme from four colors"),
-            QStringLiteral("Pick a base (Dark/Light/Black/White.json or a "
-                           "recent saved theme) and four seed colours. Matching "
-                           "RGB values in the base file are replaced; other "
-                           "leaves (links, system text, tab banding, …) stay "
-                           "as in that JSON. Live preview uses theme "
-                           "auto-reload. Apply installs Themes/<Name>.json, "
-                           "selects it, and adds it to Recents in the creator. "
-                           "Export a Limerino seed or a full themes.json. "
-                           "Font family/size/weight stay in Settings > "
-                           "Appearance, not in the theme."),
+            QStringLiteral(
+                "Pick a base (Dark/Light/Black/White.json or a "
+                "recent saved theme) and four seed colours. Matching "
+                "RGB values in the base file are replaced; other "
+                "leaves (links, system text, tab banding, …) stay "
+                "as in that JSON. Live preview uses theme "
+                "auto-reload. Apply installs Themes/<Name>.json, "
+                "selects it, and adds it to Recents in the creator. "
+                "Export a Limerino seed or a full themes.json. "
+                "Font family/size/weight stay in Settings > "
+                "Appearance, not in the theme."),
             FeatureStatus::Implemented,
             {
                 {AccessKind::Dialog,
@@ -478,20 +500,21 @@ QList<LimerinoFeature> buildCatalog()
             QStringLiteral("crossban"),
             QStringLiteral("Crossban"),
             QStringLiteral("Moderation"),
-            QStringLiteral("Ban, timeout, or unban a user across a channel preset"),
-            QStringLiteral("Opens from the usercard. Default preset is every "
-                           "channel you currently moderate (live from Limerino "
-                           "auth, not a snapshot). Custom presets can pin a "
-                           "fixed list, including channels you don't mod "
-                           "(those rows show an auth/mod error). Refresh live "
-                           "strike status per channel, act with a shared reason, "
-                           "and read or add mod notes. Ban/timeout/unban use the "
-                           "primary Twitch account (same as Nuke); status and "
-                           "notes use Limerino extra-features auth."),
+            QStringLiteral(
+                "Ban, timeout, or unban a user across a channel preset"),
+            QStringLiteral(
+                "Opens from the usercard. Default preset is every "
+                "channel you currently moderate (live from Limerino "
+                "auth, not a snapshot). Custom presets can pin a "
+                "fixed list, including channels you don't mod "
+                "(those rows show an auth/mod error). Refresh live "
+                "strike status per channel, act with a shared reason, "
+                "and read or add mod notes. Ban/timeout/unban use the "
+                "primary Twitch account (same as Nuke); status and "
+                "notes use Limerino extra-features auth."),
             FeatureStatus::Implemented,
             {
-                {AccessKind::Dialog,
-                 QStringLiteral("usercard > Crossban")},
+                {AccessKind::Dialog, QStringLiteral("usercard > Crossban")},
             },
             {},
             {QStringLiteral("Requires Limerino auth covering the channels; "

@@ -126,10 +126,9 @@ HighlightGroupDialog::HighlightGroupDialog(QWidget *parent)
         const auto items = this->channelList_->selectedItems();
         for (auto *item : items)
         {
-            this->currentChannels_.removeAll(item->data(kRoleGroupId)
-                                                 .toString());
-            delete this->channelList_->takeItem(
-                this->channelList_->row(item));
+            this->currentChannels_.removeAll(
+                item->data(kRoleGroupId).toString());
+            delete this->channelList_->takeItem(this->channelList_->row(item));
         }
         this->refreshScopePanel();
     });
@@ -143,10 +142,10 @@ HighlightGroupDialog::HighlightGroupDialog(QWidget *parent)
     right->addWidget(this->deleteHint_);
 
     // --- bottom dialog buttons
-    auto *buttons = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Apply |
-            QDialogButtonBox::Cancel,
-        this);
+    auto *buttons =
+        new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Apply |
+                                 QDialogButtonBox::Cancel,
+                             this);
     outer->addWidget(buttons);
 
     QObject::connect(buttons, &QDialogButtonBox::accepted, this, [this] {
@@ -157,8 +156,9 @@ HighlightGroupDialog::HighlightGroupDialog(QWidget *parent)
                      &QPushButton::clicked, this, [this] {
                          this->applyScopePanel();
                      });
-    QObject::connect(buttons, &QDialogButtonBox::rejected, this,
-                     [this] { this->reject(); });
+    QObject::connect(buttons, &QDialogButtonBox::rejected, this, [this] {
+        this->reject();
+    });
 
     this->rebuildGroupList();
 
@@ -245,10 +245,8 @@ void HighlightGroupDialog::rebuildGroupList(const QUuid &selectId)
     int row = 0;
     for (const auto &group : *items)
     {
-        auto *item = new QListWidgetItem(group.displayName(),
-                                         this->groupList_);
-        item->setData(kRoleGroupId,
-                      group.id().toString(QUuid::WithoutBraces));
+        auto *item = new QListWidgetItem(group.displayName(), this->groupList_);
+        item->setData(kRoleGroupId, group.id().toString(QUuid::WithoutBraces));
         if (group.isDefault())
         {
             auto font = item->font();
@@ -347,7 +345,7 @@ void HighlightGroupDialog::applyScopePanel()
         return;
     }
 
-    auto scope = this->radioOnly_->isChecked()      ? HighlightGroup::Scope::Only
+    auto scope = this->radioOnly_->isChecked() ? HighlightGroup::Scope::Only
                  : this->radioAllExcept_->isChecked()
                      ? HighlightGroup::Scope::AllExcept
                      : HighlightGroup::Scope::AllExcept;
@@ -416,13 +414,12 @@ void HighlightGroupDialog::onDeleteClicked()
     }
 
     const int members = this->countMembers(id);
-    const auto message = members > 0
-                             ? QStringLiteral(
-                                   "Delete this group? %1 highlight(s) will "
-                                   "be reassigned to the Default group.")
-                                   .arg(members)
-                             : QStringLiteral(
-                                   "Delete this group? It has no highlights.");
+    const auto message =
+        members > 0
+            ? QStringLiteral("Delete this group? %1 highlight(s) will "
+                             "be reassigned to the Default group.")
+                  .arg(members)
+            : QStringLiteral("Delete this group? It has no highlights.");
 
     if (QMessageBox::question(this, QStringLiteral("Delete group"), message) !=
         QMessageBox::Yes)
@@ -441,11 +438,11 @@ void HighlightGroupDialog::onDeleteClicked()
             {
                 continue;
             }
-            HighlightPhrase copy(
-                item.getPattern(), item.showInMentions(), item.hasAlert(),
-                item.hasSound(), item.isRegex(), item.isCaseSensitive(),
-                item.getSoundUrl().toString(), item.getColor(),
-                HighlightGroup::DEFAULT_ID);
+            HighlightPhrase copy(item.getPattern(), item.showInMentions(),
+                                 item.hasAlert(), item.hasSound(),
+                                 item.isRegex(), item.isCaseSensitive(),
+                                 item.getSoundUrl().toString(), item.getColor(),
+                                 HighlightGroup::DEFAULT_ID);
             vec.removeAt(i);
             vec.insert(copy, i);
         }
@@ -458,11 +455,10 @@ void HighlightGroupDialog::onDeleteClicked()
             {
                 continue;
             }
-            HighlightBadge copy(
-                item.badgeName(), item.displayName(), item.showInMentions(),
-                item.hasAlert(), item.hasSound(),
-                item.getSoundUrl().toString(), item.getColor(),
-                HighlightGroup::DEFAULT_ID);
+            HighlightBadge copy(item.badgeName(), item.displayName(),
+                                item.showInMentions(), item.hasAlert(),
+                                item.hasSound(), item.getSoundUrl().toString(),
+                                item.getColor(), HighlightGroup::DEFAULT_ID);
             vec.removeAt(i);
             vec.insert(copy, i);
         }

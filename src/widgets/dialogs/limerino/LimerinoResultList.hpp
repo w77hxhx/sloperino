@@ -6,9 +6,8 @@
 
 #pragma once
 
-#include <QWidget>
-
 #include <QSet>
+#include <QWidget>
 
 class QLabel;
 class QLineEdit;

@@ -12,11 +12,11 @@
 
 #pragma once
 
+#include "providers/limerino/gql/PersistedQueries.hpp"
+
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
-
-#include "providers/limerino/gql/PersistedQueries.hpp"
 
 #include <functional>
 
@@ -25,7 +25,7 @@ namespace chatterino::LimerinoAuth::gql {
 struct GqlError {
     bool httpFailed = false;
     int httpStatus = 0;
-    QString message;  // user-facing, token-free
+    QString message;        // user-facing, token-free
     QStringList rawErrors;  // errors[] text (redacted upstream)
 };
 

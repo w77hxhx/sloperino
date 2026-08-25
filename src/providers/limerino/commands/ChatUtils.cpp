@@ -61,21 +61,21 @@ QString resubNotification(const CommandContext &ctx)
     auto token = LimerinoAuth::resolveReadToken(&err);
     if (!token.hasToken())
     {
-        say(ctx.channel,
-            err.isEmpty() ? LimerinoAuth::errors::tokenRequiredMessage(
-                                QStringLiteral("share a resub notification"))
-                          : err);
+        say(ctx.channel, err.isEmpty()
+                             ? LimerinoAuth::errors::tokenRequiredMessage(
+                                   QStringLiteral("share a resub notification"))
+                             : err);
         return {};
     }
 
     const QString message = ctx.words.mid(1).join(QStringLiteral(" "));
     gql::executeInline(
         QStringLiteral("ShareResub"), gql::SHARE_RESUB_MUTATION,
-        QJsonObject{{QStringLiteral("input"),
-                     QJsonObject{{QStringLiteral("channelLogin"),
-                                  tchan->getName()},
-                                 {QStringLiteral("includeStreak"), true},
-                                 {QStringLiteral("message"), message}}}},
+        QJsonObject{
+            {QStringLiteral("input"),
+             QJsonObject{{QStringLiteral("channelLogin"), tchan->getName()},
+                         {QStringLiteral("includeStreak"), true},
+                         {QStringLiteral("message"), message}}}},
         token.token,
         [](const QJsonObject & /*data*/) {
             // Plugin prints nothing on success.
@@ -103,7 +103,8 @@ QString cheer(const CommandContext &ctx)
     const int amount = ctx.words.value(1).toInt(&ok);
     if (!ok || amount <= 0)
     {
-        say(ctx.channel, QStringLiteral("Please specify a valid cheer amount!"));
+        say(ctx.channel,
+            QStringLiteral("Please specify a valid cheer amount!"));
         return {};
     }
 
@@ -111,45 +112,44 @@ QString cheer(const CommandContext &ctx)
     auto token = LimerinoAuth::resolveReadToken(&err);
     if (!token.hasToken())
     {
-        say(ctx.channel,
-            err.isEmpty() ? LimerinoAuth::errors::tokenRequiredMessage(
-                                QStringLiteral("cheer"))
-                          : err);
+        say(ctx.channel, err.isEmpty()
+                             ? LimerinoAuth::errors::tokenRequiredMessage(
+                                   QStringLiteral("cheer"))
+                             : err);
         return {};
     }
 
     const QString message = ctx.words.mid(2).join(QStringLiteral(" "));
     gql::executePersisted(
         gql::PQ_SEND_CHEER,
-        QJsonObject{{QStringLiteral("input"),
-                     QJsonObject{{QStringLiteral("id"),
-                                  randomHex(8) + "-" + randomHex(4) + "-" +
-                                      randomHex(4) + "-" + randomHex(4) + "-" +
-                                      randomHex(12)},
-                                 {QStringLiteral("targetID"), tchan->roomId()},
-                                 {QStringLiteral("bits"), amount},
-                                 {QStringLiteral("content"),
-                                  QStringLiteral("Cheer%1 %2")
-                                      .arg(amount)
-                                      .arg(message)},
-                                 {QStringLiteral("isAutoModEnabled"), true},
-                                 {QStringLiteral("shouldCheerAnyway"), false},
-                                 {QStringLiteral("imageID"), QJsonValue{}},
-                                 {QStringLiteral("pinCheer"), false}}}},
+        QJsonObject{
+            {QStringLiteral("input"),
+             QJsonObject{
+                 {QStringLiteral("id"), randomHex(8) + "-" + randomHex(4) +
+                                            "-" + randomHex(4) + "-" +
+                                            randomHex(4) + "-" + randomHex(12)},
+                 {QStringLiteral("targetID"), tchan->roomId()},
+                 {QStringLiteral("bits"), amount},
+                 {QStringLiteral("content"),
+                  QStringLiteral("Cheer%1 %2").arg(amount).arg(message)},
+                 {QStringLiteral("isAutoModEnabled"), true},
+                 {QStringLiteral("shouldCheerAnyway"), false},
+                 {QStringLiteral("imageID"), QJsonValue{}},
+                 {QStringLiteral("pinCheer"), false}}}},
         token.token,
         [weak = std::weak_ptr(channel)](const QJsonObject &data) {
             const QJsonObject errr =
-                data[QStringLiteral("sendCheer")].toObject()[
-                    QStringLiteral("validationError")].toObject();
+                data[QStringLiteral("sendCheer")]
+                    .toObject()[QStringLiteral("validationError")]
+                    .toObject();
             if (auto chan = weak.lock())
             {
                 if (!errr.isEmpty())
                 {
-                    chan->addSystemMessage(QStringLiteral("Error: %1 - %2")
-                                               .arg(errr[QStringLiteral("code")]
-                                                        .toString(),
-                                                    errr[QStringLiteral("message")]
-                                                        .toString()));
+                    chan->addSystemMessage(
+                        QStringLiteral("Error: %1 - %2")
+                            .arg(errr[QStringLiteral("code")].toString(),
+                                 errr[QStringLiteral("message")].toString()));
                 }
                 // silent success (plugin: callback(nil))
             }
@@ -170,7 +170,8 @@ QString displayName(const CommandContext &ctx)
     const QString name = ctx.words.value(1);
     if (name.isEmpty())
     {
-        say(ctx.channel, QStringLiteral("Usage: /displayname <your_display_name>"));
+        say(ctx.channel,
+            QStringLiteral("Usage: /displayname <your_display_name>"));
         return {};
     }
 
@@ -194,11 +195,10 @@ QString displayName(const CommandContext &ctx)
         [weak = std::weak_ptr(channel)](const QJsonObject &data) {
             if (auto chan = weak.lock())
             {
-                const QString code =
-                    data[QStringLiteral("updateUser")]
-                        .toObject()[QStringLiteral("error")]
-                        .toObject()[QStringLiteral("code")]
-                        .toString();
+                const QString code = data[QStringLiteral("updateUser")]
+                                         .toObject()[QStringLiteral("error")]
+                                         .toObject()[QStringLiteral("code")]
+                                         .toString();
                 chan->addSystemMessage(
                     code.isEmpty()
                         ? QStringLiteral("Display name updated successfully!")
@@ -223,10 +223,12 @@ QString logsExtended(const CommandContext &ctx)
     auto *tchan = ctx.twitchChannel;
     if (tchan == nullptr)
     {
-        return QStringLiteral("/logsextended: only available in Twitch channels");
+        return QStringLiteral(
+            "/logsextended: only available in Twitch channels");
     }
 
-    say(ctx.channel, QStringLiteral("Fetching user's logs, this may take a while!"));
+    say(ctx.channel,
+        QStringLiteral("Fetching user's logs, this may take a while!"));
 
     // Grammar: /logsextended [-id] [user] [channel]; 1 arg=user, 2 args=user+channel.
     QStringList args = ctx.words.mid(1);
@@ -239,11 +241,10 @@ QString logsExtended(const CommandContext &ctx)
     auto token = LimerinoAuth::resolveReadToken(&err);
     if (!token.hasToken())
     {
-        say(ctx.channel,
-            err.isEmpty()
-                ? LimerinoAuth::errors::tokenRequiredMessage(
-                      QStringLiteral("fetch message logs"))
-                : err);
+        say(ctx.channel, err.isEmpty()
+                             ? LimerinoAuth::errors::tokenRequiredMessage(
+                                   QStringLiteral("fetch message logs"))
+                             : err);
         return {};
     }
 
@@ -254,15 +255,15 @@ QString logsExtended(const CommandContext &ctx)
                                   const QString &id1, const QString &id2) {
             auto lines = std::make_shared<QStringList>();
             auto pages = std::make_shared<int>(0);
-            auto page = std::make_shared<std::function<void(const QString &)>>();
+            auto page =
+                std::make_shared<std::function<void(const QString &)>>();
             *page = [page, lines, pages, token, id1, id2, withId, channel,
                      channelLogin](const QString &cursor) {
                 QJsonObject variables{
                     {QStringLiteral("senderID"), id1},
                     {QStringLiteral("channelID"), id2},
-                    {QStringLiteral("cursor"), cursor.isEmpty()
-                                                   ? QJsonValue()
-                                                   : QJsonValue(cursor)},
+                    {QStringLiteral("cursor"),
+                     cursor.isEmpty() ? QJsonValue() : QJsonValue(cursor)},
                 };
                 gql::executeInline(
                     QStringLiteral("TCN_ViewerCardModLogsMessagesBySender"),
@@ -272,13 +273,14 @@ QString logsExtended(const CommandContext &ctx)
                     [page, lines, pages, withId, channel,
                      channelLogin](const QJsonObject &data) {
                         const QJsonObject logs =
-                            data[QStringLiteral("viewerCardModLogs")].toObject();
+                            data[QStringLiteral("viewerCardModLogs")]
+                                .toObject();
                         if (logs.isEmpty())
                         {
                             if (auto chan = channel)
                             {
-                                chan->addSystemMessage(
-                                    QStringLiteral("Failed to fetch messages!"));
+                                chan->addSystemMessage(QStringLiteral(
+                                    "Failed to fetch messages!"));
                             }
                             return;
                         }
@@ -299,7 +301,8 @@ QString logsExtended(const CommandContext &ctx)
                                 continue;
                             }
                             QString line =
-                                node[QStringLiteral("sentAt")].toString().left(19) +
+                                node[QStringLiteral("sentAt")].toString().left(
+                                    19) +
                                 QStringLiteral(" ") +
                                 node[QStringLiteral("sender")]
                                     .toObject()[QStringLiteral("login")]
@@ -309,7 +312,8 @@ QString logsExtended(const CommandContext &ctx)
                             {
                                 line += QStringLiteral("\nDeleted by ") +
                                         node[QStringLiteral("lastUpdatedBy")]
-                                            .toObject()[QStringLiteral("displayName")]
+                                            .toObject()[QStringLiteral(
+                                                "displayName")]
                                             .toString();
                             }
                             else if (withId)
@@ -367,18 +371,19 @@ QString logsExtended(const CommandContext &ctx)
             [token, userLogin, channelLogin,
              fetchIds](const QJsonObject &data) {
                 const QString id1 = data[QStringLiteral("user")]
-                                            .toObject()[QStringLiteral("id")]
-                                            .toString();
+                                        .toObject()[QStringLiteral("id")]
+                                        .toString();
                 gql::executePersisted(
                     gql::PQ_GET_USER_ID,
-                    QJsonObject{{QStringLiteral("login"), channelLogin},
-                                {QStringLiteral("lookupType"),
-                                 QStringLiteral("ALL")}},
+                    QJsonObject{
+                        {QStringLiteral("login"), channelLogin},
+                        {QStringLiteral("lookupType"), QStringLiteral("ALL")}},
                     token,
                     [fetchIds, id1](const QJsonObject &data2) {
-                        const QString id2 = data2[QStringLiteral("user")]
-                                                    .toObject()[QStringLiteral("id")]
-                                                    .toString();
+                        const QString id2 =
+                            data2[QStringLiteral("user")]
+                                .toObject()[QStringLiteral("id")]
+                                .toString();
                         fetchIds(id1, id2);
                     },
                     [](const gql::GqlError &) {});

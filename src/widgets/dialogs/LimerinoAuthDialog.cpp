@@ -15,8 +15,8 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QTabWidget>
 #include <QTableWidget>
+#include <QTabWidget>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -94,10 +94,10 @@ LimerinoAuthDialog::LimerinoAuthDialog(QWidget *parent)
     deviceLayout->addWidget(this->ui_.deviceResult);
 
     auto *deviceButtons = new QHBoxLayout;
-    this->ui_.deviceStart = new QPushButton(QStringLiteral("Generate auth"),
-                                            devicePage);
-    this->ui_.deviceCancel = new QPushButton(QStringLiteral("Cancel"),
-                                             devicePage);
+    this->ui_.deviceStart =
+        new QPushButton(QStringLiteral("Generate auth"), devicePage);
+    this->ui_.deviceCancel =
+        new QPushButton(QStringLiteral("Cancel"), devicePage);
     this->ui_.deviceCancel->setEnabled(false);
     deviceButtons->addWidget(this->ui_.deviceStart);
     deviceButtons->addWidget(this->ui_.deviceCancel);
@@ -142,25 +142,26 @@ LimerinoAuthDialog::LimerinoAuthDialog(QWidget *parent)
 
     this->deviceLogin_ = new LimerinoAuth::DeviceLogin(this);
 
-    QObject::connect(
-        this->deviceLogin_, &LimerinoAuth::DeviceLogin::statusChanged, this,
-        [this](const LimerinoAuth::DeviceLogin::Status &status) {
-            this->setDeviceStatusText(status);
-        });
+    QObject::connect(this->deviceLogin_,
+                     &LimerinoAuth::DeviceLogin::statusChanged, this,
+                     [this](const LimerinoAuth::DeviceLogin::Status &status) {
+                         this->setDeviceStatusText(status);
+                     });
 
-    QObject::connect(this->ui_.deviceStart, &QPushButton::clicked, this, [this] {
-        // Snapshot the account universe so rebuildAccountsTable() can spot
-        // the account this attempt adds and name it in the success line.
-        this->knownUserIds_.clear();
-        for (const auto &a : LimerinoAuth::accounts())
-        {
-            this->knownUserIds_.append(a.userId);
-        }
-        this->newAccountUserId_.clear();
-        this->ui_.deviceResult->clear();
-        this->deviceLogin_->start();
-        this->ui_.deviceCancel->setEnabled(true);
-    });
+    QObject::connect(
+        this->ui_.deviceStart, &QPushButton::clicked, this, [this] {
+            // Snapshot the account universe so rebuildAccountsTable() can spot
+            // the account this attempt adds and name it in the success line.
+            this->knownUserIds_.clear();
+            for (const auto &a : LimerinoAuth::accounts())
+            {
+                this->knownUserIds_.append(a.userId);
+            }
+            this->newAccountUserId_.clear();
+            this->ui_.deviceResult->clear();
+            this->deviceLogin_->start();
+            this->ui_.deviceCancel->setEnabled(true);
+        });
     QObject::connect(this->ui_.deviceCancel, &QPushButton::clicked, this,
                      [this] {
                          this->deviceLogin_->cancel();
@@ -201,9 +202,10 @@ LimerinoAuthDialog::LimerinoAuthDialog(QWidget *parent)
             });
     });
 
-    this->managedConnections_.managedConnect(
-        LimerinoAuth::accountsChanged,
-        [this] { this->rebuildAccountsTable(); });
+    this->managedConnections_.managedConnect(LimerinoAuth::accountsChanged,
+                                             [this] {
+                                                 this->rebuildAccountsTable();
+                                             });
 
     this->setDeviceStatusText(this->deviceLogin_->status());
     this->rebuildAccountsTable();
@@ -276,8 +278,7 @@ void LimerinoAuthDialog::setDeviceStatusText(
             break;
     }
 
-    if (status.secondsRemaining > 0 &&
-        status.state == State::WaitingForUser)
+    if (status.secondsRemaining > 0 && status.state == State::WaitingForUser)
     {
         this->ui_.deviceStatus->setText(
             this->ui_.deviceStatus->text() +
@@ -319,10 +320,9 @@ void LimerinoAuthDialog::updateDeviceResult()
     {
         if (a.userId == this->newAccountUserId_)
         {
-            const QString name =
-                a.displayName.isEmpty()
-                    ? (a.login.isEmpty() ? a.userId : a.login)
-                    : a.displayName;
+            const QString name = a.displayName.isEmpty()
+                                     ? (a.login.isEmpty() ? a.userId : a.login)
+                                     : a.displayName;
             this->ui_.deviceResult->setText(
                 QStringLiteral("Signed in as %1 — generated %2. Status: %3.")
                     .arg(name)
@@ -344,14 +344,11 @@ void LimerinoAuthDialog::rebuildAccountsTable()
     int row = 0;
     for (const auto &account : accounts)
     {
-        const QString title = account.displayName.isEmpty()
-                                  ? account.login
-                                  : account.displayName;
-        auto *accountItem =
-            new QTableWidgetItem(QStringLiteral("%1 (ID %2)")
-                                     .arg(title, account.userId));
-        auto *channelsItem =
-            new QTableWidgetItem(channelListText(account));
+        const QString title =
+            account.displayName.isEmpty() ? account.login : account.displayName;
+        auto *accountItem = new QTableWidgetItem(
+            QStringLiteral("%1 (ID %2)").arg(title, account.userId));
+        auto *channelsItem = new QTableWidgetItem(channelListText(account));
 
         QString statusText =
             account.valid
@@ -369,8 +366,8 @@ void LimerinoAuthDialog::rebuildAccountsTable()
         this->ui_.accountsTable->setItem(row, 2, statusItem);
 
         const QString userId = account.userId;
-        auto *removeButton = new QPushButton(QStringLiteral("Remove"),
-                                             this->ui_.accountsTable);
+        auto *removeButton =
+            new QPushButton(QStringLiteral("Remove"), this->ui_.accountsTable);
         QObject::connect(removeButton, &QPushButton::clicked, this,
                          [this, userId, title] {
                              const auto answer = QMessageBox::question(

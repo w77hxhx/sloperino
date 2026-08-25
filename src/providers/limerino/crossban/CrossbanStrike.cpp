@@ -42,13 +42,15 @@ QString CrossbanStrike::detailLabel() const
     {
         parts.append(this->reason);
     }
-    const QString by =
-        this->actorDisplayName.isEmpty() ? this->actorLogin : this->actorDisplayName;
+    const QString by = this->actorDisplayName.isEmpty()
+                           ? this->actorLogin
+                           : this->actorDisplayName;
     if (!by.isEmpty())
     {
         parts.append(QStringLiteral("by %1").arg(by));
     }
-    if (this->kind == CrossbanStrikeKind::TimedOut && !this->expiresAt.isEmpty())
+    if (this->kind == CrossbanStrikeKind::TimedOut &&
+        !this->expiresAt.isEmpty())
     {
         parts.append(QStringLiteral("until %1").arg(this->expiresAt));
     }
@@ -76,7 +78,8 @@ CrossbanStrike parseStrikeStatus(const QJsonObject &data)
         return out;
     }
 
-    const QJsonObject timeout = root[QStringLiteral("timeoutDetails")].toObject();
+    const QJsonObject timeout =
+        root[QStringLiteral("timeoutDetails")].toObject();
     if (!timeout.isEmpty())
     {
         out.kind = CrossbanStrikeKind::TimedOut;
@@ -85,8 +88,8 @@ CrossbanStrike parseStrikeStatus(const QJsonObject &data)
         out.expiresAt = timeout[QStringLiteral("expiresAt")].toString();
         if (timeout.contains(QStringLiteral("expiresInMs")))
         {
-            out.expiresInMs =
-                static_cast<qint64>(timeout[QStringLiteral("expiresInMs")].toDouble());
+            out.expiresInMs = static_cast<qint64>(
+                timeout[QStringLiteral("expiresInMs")].toDouble());
         }
         const auto by = timeout[QStringLiteral("timedOutBy")].toObject();
         out.actorLogin = by[QStringLiteral("login")].toString();
@@ -94,7 +97,8 @@ CrossbanStrike parseStrikeStatus(const QJsonObject &data)
         return out;
     }
 
-    const QJsonObject warning = root[QStringLiteral("warningDetails")].toObject();
+    const QJsonObject warning =
+        root[QStringLiteral("warningDetails")].toObject();
     if (!warning.isEmpty())
     {
         out.kind = CrossbanStrikeKind::Warning;

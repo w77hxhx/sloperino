@@ -92,9 +92,9 @@ struct Serialize<chatterino::HighlightBadge> {
 
         if (!value.groupId().isNull())
         {
-            chatterino::rj::set(
-                ret, "groupId",
-                value.groupId().toString(QUuid::WithoutBraces), a);
+            chatterino::rj::set(ret, "groupId",
+                                value.groupId().toString(QUuid::WithoutBraces),
+                                a);
         }
 
         return ret;

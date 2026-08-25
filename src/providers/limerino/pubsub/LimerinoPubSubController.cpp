@@ -81,28 +81,28 @@ public:
     {
         return this->manager_->subscribeSucceeded;
     }
-    pajlada::Signals::Signal<const QString &, const QString &>
-        &subscribeFailed() override
+    pajlada::Signals::Signal<const QString &, const QString &> &
+        subscribeFailed() override
     {
         return this->manager_->subscribeFailed;
     }
-    pajlada::Signals::Signal<const QString &, const QString &>
-        &authSucceeded() override
+    pajlada::Signals::Signal<const QString &, const QString &> &authSucceeded()
+        override
     {
         return this->manager_->authSucceeded;
     }
-    pajlada::Signals::Signal<const QString &, const QString &>
-        &authFailed() override
+    pajlada::Signals::Signal<const QString &, const QString &> &authFailed()
+        override
     {
         return this->manager_->authFailed;
     }
-    pajlada::Signals::Signal<const QString &, const QString &>
-        &authUnavailable() override
+    pajlada::Signals::Signal<const QString &, const QString &> &
+        authUnavailable() override
     {
         return this->manager_->authUnavailable;
     }
-    pajlada::Signals::Signal<const QString &, const QJsonObject &>
-        &topicMessage() override
+    pajlada::Signals::Signal<const QString &, const QJsonObject &> &
+        topicMessage() override
     {
         return this->manager_->topicMessage;
     }
@@ -152,10 +152,11 @@ LimerinoPubSubController::LimerinoPubSubController(
                                  [this](const QString &key, const QString &) {
                                      this->onAuthSucceeded(key);
                                  });
-    this->holder_.managedConnect(this->sink_->authFailed(),
-                                 [this](const QString &key, const QString &err) {
-                                     this->onAuthFailed(key, err);
-                                 });
+    this->holder_.managedConnect(
+        this->sink_->authFailed(),
+        [this](const QString &key, const QString &err) {
+            this->onAuthFailed(key, err);
+        });
     this->holder_.managedConnect(
         this->sink_->authUnavailable(),
         [this](const QString &key, const QString &reason) {
@@ -167,8 +168,9 @@ LimerinoPubSubController::LimerinoPubSubController(
             this->onTopicMessage(topic, payload);
         });
 
-    this->holder_.managedConnect(LimerinoAuth::accountsChanged,
-                                 [this] { this->reconcile(); });
+    this->holder_.managedConnect(LimerinoAuth::accountsChanged, [this] {
+        this->reconcile();
+    });
 
     // Deferred: account-switch hook (needs Application to exist).
     std::weak_ptr<bool> alive = this->aliveGuard_;
@@ -183,8 +185,9 @@ LimerinoPubSubController::LimerinoPubSubController(
             // currentUserChanged is a boost::signals2 signal in this tree,
             // so it cannot go through the pajlada SignalHolder.
             this->twitchCurrentUserChangedConn_ =
-                app->getAccounts()->twitch.currentUserChanged.connect(
-                    [this] { this->reconcile(); });
+                app->getAccounts()->twitch.currentUserChanged.connect([this] {
+                    this->reconcile();
+                });
         }
     });
 }
@@ -222,8 +225,8 @@ void LimerinoPubSubController::ensureTopic(const QString &topic,
         this->entries_.erase(it);
     }
 
-    auto [placed, inserted] = this->entries_.emplace(
-        topic, TopicEntry(this->config_.retryBase));
+    auto [placed, inserted] =
+        this->entries_.emplace(topic, TopicEntry(this->config_.retryBase));
     placed->second.status.topic = topic;
     placed->second.status.auth = auth;
     (void)inserted;
@@ -444,9 +447,9 @@ std::optional<QString> LimerinoPubSubController::resolveLiveToken(
         {
             return token.token;
         }
-        return deny(err.isEmpty() ? QStringLiteral(
-                                        "no extra-features account available")
-                                  : err);
+        return deny(err.isEmpty()
+                        ? QStringLiteral("no extra-features account available")
+                        : err);
     }
 
     for (const auto &account : LimerinoAuth::accounts())
@@ -510,24 +513,22 @@ void LimerinoPubSubController::onSubscribeFailed(const QString &topic,
         entry->status.state = TopicState::Retrying;
         const int generation = ++entry->retryGeneration;
         std::weak_ptr<bool> alive = this->aliveGuard_;
-        QTimer::singleShot(entry->backoff.next(),
-                           [this, alive, topic, generation] {
-                               if (alive.expired())
-                               {
-                                   return;
-                               }
-                               auto *current = this->entryFor(topic);
-                               if (current == nullptr ||
-                                   current->retryGeneration != generation ||
-                                   current->status.state != TopicState::Retrying)
-                               {
-                                   return;
-                               }
-                               this->sink_->relisten(
-                                   topic, current->status.accountUserId);
-                               current->status.state = TopicState::Pending;
-                               this->diagChanged.invoke();
-                           });
+        QTimer::singleShot(entry->backoff.next(), [this, alive, topic,
+                                                   generation] {
+            if (alive.expired())
+            {
+                return;
+            }
+            auto *current = this->entryFor(topic);
+            if (current == nullptr || current->retryGeneration != generation ||
+                current->status.state != TopicState::Retrying)
+            {
+                return;
+            }
+            this->sink_->relisten(topic, current->status.accountUserId);
+            current->status.state = TopicState::Pending;
+            this->diagChanged.invoke();
+        });
     }
     this->diagChanged.invoke();
 }
@@ -585,10 +586,8 @@ QString eventCategoryFor(const QString &topic)
 {
     static const std::pair<QString, QString> groups[] = {
         {QStringLiteral("chatrooms-user-v1."), QStringLiteral("moderation")},
-        {QStringLiteral("community-points-user-v1."),
-         QStringLiteral("points")},
-        {QStringLiteral("predictions-user-v1."),
-         QStringLiteral("prediction")},
+        {QStringLiteral("community-points-user-v1."), QStringLiteral("points")},
+        {QStringLiteral("predictions-user-v1."), QStringLiteral("prediction")},
         {QStringLiteral("predictions-channel-v1."),
          QStringLiteral("prediction")},
         {QStringLiteral("polls."), QStringLiteral("poll")},
@@ -633,10 +632,10 @@ void LimerinoPubSubController::onTopicMessage(const QString &topic,
     {
         // Never print the raw topic string - it is an implementation detail.
         // Unknown events get an honestly-marked fallback line instead.
-        event.displayText = event.eventType.isEmpty()
-                                ? QStringLiteral("[unknown event]")
-                                : QStringLiteral("[unhandled event: %1]")
-                                      .arg(event.eventType);
+        event.displayText =
+            event.eventType.isEmpty()
+                ? QStringLiteral("[unknown event]")
+                : QStringLiteral("[unhandled event: %1]").arg(event.eventType);
     }
 
     if (!event.eventType.isEmpty())
@@ -663,19 +662,19 @@ void LimerinoPubSubController::onTopicMessage(const QString &topic,
     const QString channelId = event.displayChannelId;
     if (!channelId.isEmpty() && event.displayText.contains(channelId))
     {
-        resolveChannelName(channelId, [this, event,
-                                       channelId](const QString &name) mutable {
-            if (name != channelId)
-            {
-                event.displayText.replace(channelId, name);
-            }
-            else
-            {
-                event.displayText.replace(
-                    channelId, QStringLiteral("id:%1").arg(channelId));
-            }
-            this->eventProduced.invoke(event);
-        });
+        resolveChannelName(
+            channelId, [this, event, channelId](const QString &name) mutable {
+                if (name != channelId)
+                {
+                    event.displayText.replace(channelId, name);
+                }
+                else
+                {
+                    event.displayText.replace(
+                        channelId, QStringLiteral("id:%1").arg(channelId));
+                }
+                this->eventProduced.invoke(event);
+            });
         return;
     }
 
@@ -696,8 +695,8 @@ std::vector<LimerinoPubSubController::TopicStatus>
     return out;
 }
 
-LimerinoPubSubController::DiagSnapshot
-    LimerinoPubSubController::diagSnapshot() const
+LimerinoPubSubController::DiagSnapshot LimerinoPubSubController::diagSnapshot()
+    const
 {
     DiagSnapshot snapshot;
     snapshot.transport = this->sink_->transportStatus();
@@ -735,13 +734,14 @@ LimerinoPubSubController::DiagSnapshot
     return snapshot;
 }
 
-void LimerinoPubSubController::registerTopicHandler(
-    const QString &prefix, TopicMessageHandler handler)
+void LimerinoPubSubController::registerTopicHandler(const QString &prefix,
+                                                    TopicMessageHandler handler)
 {
     // Longest prefix first so specific topics win over generic ones.
-    auto pos = std::find_if(
-        this->handlers_.begin(), this->handlers_.end(),
-        [&](const auto &existing) { return existing.first.size() < prefix.size(); });
+    auto pos = std::find_if(this->handlers_.begin(), this->handlers_.end(),
+                            [&](const auto &existing) {
+                                return existing.first.size() < prefix.size();
+                            });
     this->handlers_.insert(pos, {prefix, std::move(handler)});
 }
 
@@ -752,7 +752,8 @@ void LimerinoPubSubController::registerKnownEventType(const QString &type)
 
 QStringList LimerinoPubSubController::knownEventTypes() const
 {
-    QStringList out(this->knownEventTypes_.begin(), this->knownEventTypes_.end());
+    QStringList out(this->knownEventTypes_.begin(),
+                    this->knownEventTypes_.end());
     out.sort(Qt::CaseInsensitive);
     return out;
 }
@@ -781,9 +782,9 @@ void initializePubSub()
     auto *managerPtr = manager.get();
     auto sink = std::make_unique<HermesManagerSink>(std::move(manager));
 
-    g_instance = new LimerinoPubSubController(std::move(sink),
-                                              &resolveWithLimerinoAuth,
-                                              LimerinoPubSubController::Config{});
+    g_instance =
+        new LimerinoPubSubController(std::move(sink), &resolveWithLimerinoAuth,
+                                     LimerinoPubSubController::Config{});
 
     // Topic-specific parsers/handlers (batch P1+), registered once.
     installHermesChannelTopicHandlers(*g_instance);

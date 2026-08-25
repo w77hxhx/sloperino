@@ -17,7 +17,6 @@
 #include "widgets/Window.hpp"
 
 #include <pajlada/signals/signalholder.hpp>
-
 #include <QHash>
 #include <QJsonDocument>
 #include <QList>
@@ -122,24 +121,23 @@ MessagePtr buildEventMessage(const PubSubEvent &event)
     // tabHighlightRequested, which is why /events never showed the unread
     // tab colour. System-only is enough to avoid highlight pings/sounds.
 
-    const QString msgId =
-        QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const QString msgId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     builder.message().id = msgId;
 
     const QString rawJson = QString::fromUtf8(
         QJsonDocument(event.payload).toJson(QJsonDocument::Compact));
     rememberRawEvent(msgId, rawJson);
 
-    builder.emplace<TextElement>(style.label, MessageElementFlag::Text,
-                                 style.color, FontStyle::ChatMediumBold)
+    builder
+        .emplace<TextElement>(style.label, MessageElementFlag::Text,
+                              style.color, FontStyle::ChatMediumBold)
         ->setTooltip(event.topic + QLatin1Char('\n') + rawJson);
 
     builder.emplace<TextElement>(QStringLiteral(" "), MessageElementFlag::Text,
                                  MessageColor::System);
 
-    auto *textEl =
-        builder.emplace<TextElement>(event.displayText, MessageElementFlag::Text,
-                                     MessageColor::Text);
+    auto *textEl = builder.emplace<TextElement>(
+        event.displayText, MessageElementFlag::Text, MessageColor::Text);
     // E1.b: resolved name stays in the line; numeric id remains on hover.
     if (!event.displayChannelId.isEmpty())
     {
@@ -162,10 +160,9 @@ MessagePtr buildEventMessage(const PubSubEvent &event)
             // appendChannelName() is private on MessageBuilder; this is its
             // exact body via the public element API.
             builder
-                .emplace<TextElement>(QStringLiteral("#") +
-                                          channelPtr->getName(),
-                                      MessageElementFlag::ChannelName,
-                                      MessageColor::System)
+                .emplace<TextElement>(
+                    QStringLiteral("#") + channelPtr->getName(),
+                    MessageElementFlag::ChannelName, MessageColor::System)
                 ->setLink({Link::JumpToChannel, channelPtr->getName()});
         }
     }

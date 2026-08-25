@@ -20,17 +20,12 @@ std::vector<HighlightGroupCellDelegate::Entry>
 {
     std::vector<Entry> out;
 
-    const QStringList names =
-        index.data(DisplayNamesRole).toStringList();
-    const QStringList ids =
-        index.data(GroupIdsRole).toStringList();
+    const QStringList names = index.data(DisplayNamesRole).toStringList();
+    const QStringList ids = index.data(GroupIdsRole).toStringList();
 
     // First entry: Default group (explicitly the fallback).
-    out.push_back({names.isEmpty() ? QStringLiteral("Default")
-                                   : names.value(0),
-                   QUuid(ids.isEmpty()
-                             ? QString()
-                             : ids.value(0))});
+    out.push_back({names.isEmpty() ? QStringLiteral("Default") : names.value(0),
+                   QUuid(ids.isEmpty() ? QString() : ids.value(0))});
 
     for (int i = 1; i < names.size(); ++i)
     {
@@ -81,8 +76,9 @@ void HighlightGroupCellDelegate::setEditorData(QWidget *editor,
     combo->setCurrentIndex(found >= 0 ? found : 0);
 }
 
-void HighlightGroupCellDelegate::setModelData(
-    QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const
+void HighlightGroupCellDelegate::setModelData(QWidget *editor,
+                                              QAbstractItemModel *model,
+                                              const QModelIndex &index) const
 {
     auto *combo = qobject_cast<QComboBox *>(editor);
     if (!combo)

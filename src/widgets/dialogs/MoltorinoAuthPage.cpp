@@ -152,14 +152,13 @@ private:
             return;
         }
 
-        const QColor color = isValid ? chatterino::semantic::success()
-                             : isError
-                                 ? chatterino::semantic::error()
-                                 : chatterino::semantic::mutedText();
+        const QColor color = isValid   ? chatterino::semantic::success()
+                             : isError ? chatterino::semantic::error()
+                                       : chatterino::semantic::mutedText();
 
         label->setText(text);
-        label->setStyleSheet(
-            QStringLiteral("QLabel { color: %1; }").arg(color.name(QColor::HexArgb)));
+        label->setStyleSheet(QStringLiteral("QLabel { color: %1; }")
+                                 .arg(color.name(QColor::HexArgb)));
     }
 
     static QTableWidgetItem *readOnlyItem(const QString &text)

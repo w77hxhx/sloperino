@@ -25,8 +25,9 @@ BadgeHighlightModel::BadgeHighlightModel(QObject *parent)
     // Limerino: rebuild per-row Group-cell option lists when the group set
     // changes (same hook as HighlightModel).
     this->groupRefreshHolder_.managedConnect(
-        getSettings()->highlightGroups.delayedItemsChanged,
-        [this] { this->refreshGroupCells(); });
+        getSettings()->highlightGroups.delayedItemsChanged, [this] {
+            this->refreshGroupCells();
+        });
 }
 
 void BadgeHighlightModel::refreshGroupCells()
@@ -52,9 +53,9 @@ void BadgeHighlightModel::refreshGroupCells()
         cell->setData(ids, Delegate::GroupIdsRole);
 
         const int found = ids.indexOf(cell->data(Qt::UserRole).toString());
-        cell->setData(found >= 0 ? names.value(found)
-                                 : QStringLiteral("Default"),
-                      Qt::DisplayRole);
+        cell->setData(
+            found >= 0 ? names.value(found) : QStringLiteral("Default"),
+            Qt::DisplayRole);
     }
 
     const int groupRowCount = int(this->rows().size());
@@ -117,8 +118,8 @@ void BadgeHighlightModel::getRowFromItem(const HighlightBadge &item,
     }
 
     int found = ids.indexOf(groupId.toString(QUuid::WithoutBraces));
-    const QString displayName = found >= 0 ? names.value(found)
-                                           : QStringLiteral("Default");
+    const QString displayName =
+        found >= 0 ? names.value(found) : QStringLiteral("Default");
 
     using Delegate = limerino::HighlightGroupCellDelegate;
     row[Column::Group]->setFlags(

@@ -17,18 +17,18 @@
 namespace chatterino::LimerinoAuth::gql {
 
 struct LimerinoSubDetail {
-    QString platform;              // raw wire value; empty when field absent
+    QString platform;  // raw wire value; empty when field absent
     bool purchasedWithPrime = false;
-    QString tier;                  // raw wire value (e.g. "1000"/"2000"/"3000")
+    QString tier;  // raw wire value (e.g. "1000"/"2000"/"3000")
     bool isGift = false;
-    QString gifterDisplayName;     // displayName, else login; empty if none
-    QString thirdPartySKU;         // raw wire value; empty when field absent
-    int tenureMonths = 0;          // 0 when tenure is unknown / not shown
+    QString gifterDisplayName;  // displayName, else login; empty if none
+    QString thirdPartySKU;      // raw wire value; empty when field absent
+    int tenureMonths = 0;       // 0 when tenure is unknown / not shown
 };
 
 struct LimerinoUserCardExtras {
-    QString preferredLanguageTag;    // empty when absent or settingsFailed
-    QString primaryTeamName;         // empty when user is on no team (ruling 1)
+    QString preferredLanguageTag;  // empty when absent or settingsFailed
+    QString primaryTeamName;       // empty when user is on no team (ruling 1)
     std::optional<LimerinoSubDetail> subscription;  // nullopt = none / absent
 
     // True when errors[] reported a failure on that field path. Distinguishes

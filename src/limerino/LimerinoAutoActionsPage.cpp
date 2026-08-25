@@ -55,14 +55,15 @@ LimerinoAutoActionsPage::LimerinoAutoActionsPage()
     LayoutCreator<LimerinoAutoActionsPage> layoutCreator(this);
     auto layout = layoutCreator.setLayoutType<QVBoxLayout>();
 
-    auto *intro = layout
-                      .emplace<QLabel>(QStringLiteral(
-                          "Rules that run automatically when a message arrives. "
-                          "A rule matches message text and/or sender (regex or "
-                          "plain text, case-insensitive by default). The action "
-                          "string supports placeholders like {sender.name}, "
-                          "{msg.id}, {channel.name}."))
-                      .getElement();
+    auto *intro =
+        layout
+            .emplace<QLabel>(QStringLiteral(
+                "Rules that run automatically when a message arrives. "
+                "A rule matches message text and/or sender (regex or "
+                "plain text, case-insensitive by default). The action "
+                "string supports placeholders like {sender.name}, "
+                "{msg.id}, {channel.name}."))
+            .getElement();
     intro->setWordWrap(true);
 
     this->list_ = layout.emplace<AutoActionRuleList>().getElement();
@@ -180,8 +181,7 @@ void LimerinoAutoActionsPage::onEdit()
     {
         return;
     }
-    auto *dialog =
-        new limerino::LimerinoAutoActionEditor(this, rules[row]);
+    auto *dialog = new limerino::LimerinoAutoActionEditor(this, rules[row]);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     QObject::connect(dialog, &limerino::LimerinoAutoActionEditor::ruleSaved,
                      this, [this](const limerino::LimerinoAutoAction &rule) {

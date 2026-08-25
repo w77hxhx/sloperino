@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "providers/liveupdates/BasicPubSubManager.hpp"
 #include "providers/limerino/pubsub/HermesClient.hpp"
+#include "providers/liveupdates/BasicPubSubManager.hpp"
 
 #include <pajlada/signals/signal.hpp>
 #include <QJsonObject>

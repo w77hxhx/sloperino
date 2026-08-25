@@ -116,9 +116,9 @@ struct Serialize<chatterino::HighlightPhrase> {
 
         if (!value.groupId().isNull())
         {
-            chatterino::rj::set(
-                ret, "groupId",
-                value.groupId().toString(QUuid::WithoutBraces), a);
+            chatterino::rj::set(ret, "groupId",
+                                value.groupId().toString(QUuid::WithoutBraces),
+                                a);
         }
 
         return ret;
@@ -168,10 +168,9 @@ struct Deserialize<chatterino::HighlightPhrase> {
         // channel".
         auto _groupId = QUuid::fromString(groupIdStr);
 
-        return chatterino::HighlightPhrase(_pattern, _showInMentions, _hasAlert,
-                                           _hasSound, _isRegex,
-                                           _isCaseSensitive, _soundUrl, _color,
-                                           _groupId);
+        return chatterino::HighlightPhrase(
+            _pattern, _showInMentions, _hasAlert, _hasSound, _isRegex,
+            _isCaseSensitive, _soundUrl, _color, _groupId);
     }
 };
 

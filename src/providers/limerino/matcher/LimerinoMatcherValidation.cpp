@@ -12,9 +12,9 @@ std::optional<QString> validateMatcherPair(
 {
     if (contentMatcher.isEmpty() && senderMatcher.isEmpty())
     {
-        return QStringLiteral(
-            "Both matchers are empty: this would select every message in the "
-            "channel. Provide at least one of %1 or %2.")
+        return QStringLiteral("Both matchers are empty: this would select "
+                              "every message in the "
+                              "channel. Provide at least one of %1 or %2.")
             .arg(fieldContentName, fieldSenderName);
     }
 

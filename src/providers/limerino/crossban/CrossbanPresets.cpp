@@ -17,8 +17,7 @@ namespace chatterino::limerino {
 namespace {
 
 // Fixed UUID so migrations can recognize the built-in default across installs.
-constexpr const char *kAllModeratedId =
-    "7e0c0001-11a0-41a0-a001-000000000001";
+constexpr const char *kAllModeratedId = "7e0c0001-11a0-41a0-a001-000000000001";
 constexpr const char *kAllModeratedName = "Every moderated channel";
 
 CrossbanChannel channelFromJson(const QJsonObject &o)
